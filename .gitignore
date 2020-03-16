@@ -1,6 +1,9 @@
 # Mac crap
 .DS_Store
 
+# Pycharm
+.idea
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -23,4 +26,4 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+_python_venv/
