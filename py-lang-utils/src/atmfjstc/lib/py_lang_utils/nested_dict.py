@@ -43,3 +43,25 @@ def set_in_nested_dict(mut_dict, path, value):
         raise ValueError("Invalid path {} for setting in a nested dict".format(path))
 
     ptr[path[-1]] = value
+
+
+def get_or_init_in_nested_dict(mut_dict, path, constructor):
+    """
+    Gets a value at a certain path in a nested dict, creating it and all parent dicts if missing.
+    """
+    value = get_in_nested_dict(mut_dict, path)
+    if value is not None:
+        return value
+
+    value = constructor()
+
+    set_in_nested_dict(mut_dict, path, value)
+
+    return value
+
+
+def accumulate_in_nested_dict(mut_dict, path, value):
+    """
+    Convenience function for creating and adding value to a list inside a nested dict.
+    """
+    get_or_init_in_nested_dict(mut_dict, path, list).append(value)
