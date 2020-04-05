@@ -70,3 +70,13 @@ class Section(AbstractCodegenASTNode):
 
     def render(self, context):
         yield from self.content.render(context)
+
+
+def seq0(*items):
+    """Convenience function for instantiating a 0-margin Sequence"""
+    return Sequence(items)
+
+
+def seq1(*items):
+    """Convenience function for instantiating a 1-margin Sequence"""
+    return Sequence(items, items_margin=1)
