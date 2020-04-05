@@ -76,7 +76,7 @@ The Solution
 ------------
 
 Enter this package. Instead of returning strings from your renderers, you will instead use the classes provided in
-`atmfjstc.lib.abstract_codegen.*` to assemble an AST that describes the output in a structured, language-independent
+`atmfjstc.lib.abstract_codegen.ast.*` to assemble an AST that describes the output in a structured, language-independent
 format. Then, you will call the `.render()` method for the root node (or any subtrees, as desired), which will produce
 the full rendered code text while taking care of all the details and subtle interactions. This has many benefits:
 

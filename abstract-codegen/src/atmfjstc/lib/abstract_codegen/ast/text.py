@@ -2,7 +2,7 @@ import re
 
 from textwrap import dedent, wrap
 
-from atmfjstc.lib.abstract_codegen.base import AbstractCodegenASTNode
+from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode
 
 
 class ReflowableText(AbstractCodegenASTNode):
