@@ -10,6 +10,7 @@ setup(
     packages=['atmfjstc.lib.abstract_codegen'],
 
     install_requires=[
+        'atmfjstc-py-lang-utils>=1, 2',
         'atmfjstc-ast>=1, <2',
     ],
 
