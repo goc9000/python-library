@@ -74,7 +74,7 @@ class WrapText(AbstractCodegenASTNode):
             if first and (self.head != ''):
                 yield self.head
 
-            yield self.indent + line
+            yield (self.indent + line).rstrip()
 
             first = False
 
