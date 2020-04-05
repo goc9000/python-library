@@ -72,6 +72,16 @@ class Section(AbstractCodegenASTNode):
         yield from self.content.render(context)
 
 
+class NullNode(AbstractCodegenASTNode):
+    """
+    A node that renders nothing. You can substitute nodes in a sequence with NullNode to make them disappear.
+    """
+    AST_NODE_CONFIG = ()
+
+    def render(self, context):
+        yield from []
+
+
 def seq0(*items):
     """Convenience function for instantiating a 0-margin Sequence"""
     return Sequence(items)
