@@ -30,3 +30,10 @@ class PreformattedLines(AbstractCodegenASTNode):
     def render(self, context):
         for line in self.lines:
             yield line
+
+
+def pre(lines_iterable):
+    """
+    Convenience function for instantiationg a PreformattedLines node using an iterable of lines (list, generator etc.)
+    """
+    return PreformattedLines(list(lines_iterable))
