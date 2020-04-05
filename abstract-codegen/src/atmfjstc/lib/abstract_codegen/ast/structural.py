@@ -1,4 +1,4 @@
-from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode
+from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
 class Sequence(AbstractCodegenASTNode):
@@ -72,13 +72,13 @@ class Section(AbstractCodegenASTNode):
         yield from self.content.render(context)
 
 
-class NullNode(AbstractCodegenASTNode):
+class NullNode(PromptableNode):
     """
     A node that renders nothing. You can substitute nodes in a sequence with NullNode to make them disappear.
     """
     AST_NODE_CONFIG = ()
 
-    def render(self, context):
+    def render_promptable(self, _context, _prompt_width, _tail_width):
         yield from []
 
 

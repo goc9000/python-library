@@ -1,7 +1,7 @@
-from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode
+from atmfjstc.lib.abstract_codegen.ast.base import PromptableNode
 
 
-class Atom(AbstractCodegenASTNode):
+class Atom(PromptableNode):
     """
     A node containing a single line of text that will be returned as-is.
     """
@@ -12,11 +12,11 @@ class Atom(AbstractCodegenASTNode):
     def _sanity_check_post_init(self):
         assert "\n" not in self.content
 
-    def render(self, context):
+    def render_promptable(self, _context, _prompt_width, _tail_width):
         yield self.content
 
 
-class PreformattedLines(AbstractCodegenASTNode):
+class PreformattedLines(PromptableNode):
     """
     A node containing preformatted lines that will be returned as-is.
 
@@ -27,9 +27,8 @@ class PreformattedLines(AbstractCodegenASTNode):
         ('PARAM', 'lines', dict(type=(list, tuple))),
     )
 
-    def render(self, context):
-        for line in self.lines:
-            yield line
+    def render_promptable(self, _context, _prompt_width, _tail_width):
+        yield from self.lines
 
 
 def pre(lines_iterable):
