@@ -1,3 +1,5 @@
+from atmfjstc.lib.py_lang_utils.searching import last_index_where
+
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
@@ -80,6 +82,94 @@ class NullNode(PromptableNode):
 
     def render_promptable(self, _context, _prompt_width, _tail_width):
         yield from []
+
+
+class ItemsList(AbstractCodegenASTNode):
+    """
+    A highly versatile construct used for rendering array items, object properties, method parameters, etc.
+
+    Depending on the available space, and the nature of the items, the construct will choose between two possible
+    representations (example is for joiner=", "):
+
+    - Horizontal::
+
+      item, item, item,
+      item, item
+
+    - Vertical::
+
+      item,
+      item,
+      item
+
+    Note: If any of the items is multiline, the vertical representation is the only one available.
+    """
+    AST_NODE_CONFIG = (
+        ('CHILD_LIST', 'items', dict(type=PromptableNode)),
+        ('PARAM', 'joiner', dict(type=str, default='')),
+        ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
+    )
+
+    def render(self, context):
+        item_renders = self._prepare_item_renders(context)
+
+        if self.allow_horiz and all(len(item_render) <= 1 for item_render in item_renders):
+            yield from self._render_horizontal(context, item_renders)
+        else:
+            yield from self._render_vertical(item_renders)
+
+    def _split_joiner(self):
+        joiner1 = self.joiner.rstrip()
+        joiner2 = self.joiner[len(joiner1):]
+
+        return joiner1, joiner2
+
+    def _prepare_item_renders(self, context):
+        # Note: it's very important that we do these steps in this exact order, even if it seems inefficient. The fact
+        # that some items may turn out to be empty really complicates things.
+
+        joiner1, _ = self._split_joiner()
+
+        item_renders = [list(item.render_promptable(context, 0, len(joiner1))) for item in self.items]
+
+        last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
+        if last_nonempty is not None:
+            # Last item does not have a comma and the associated tail space, redo its rendering
+            item_renders[last_nonempty] = list(self.items[last_nonempty].render(context))
+
+        item_renders = [render for render in item_renders if len(render) > 0]
+
+        return [
+            *[[*render[0:-1], render[-1] + joiner1] for render in item_renders[:-1]],
+            item_renders[-1]
+        ]
+
+    def _render_vertical(self, item_renders):
+        for item in item_renders:
+            yield from item
+
+    def _render_horizontal(self, context, item_renders):
+        _, joiner2 = self._split_joiner()
+
+        buffer = ''
+
+        for item_lines in item_renders:
+            item = item_lines[0]
+
+            # Try to add to current line
+            candidate = buffer + ('' if buffer == '' else joiner2) + item
+            if len(candidate) <= context.width:
+                buffer = candidate
+                continue
+
+            # Commit line and start new one
+            if buffer != '':
+                yield buffer
+
+            buffer = item
+
+        if buffer != '':
+            yield buffer
 
 
 def seq0(*items):
