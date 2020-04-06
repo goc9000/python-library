@@ -108,12 +108,15 @@ class ItemsList(AbstractCodegenASTNode):
         ('CHILD_LIST', 'items', dict(type=PromptableNode)),
         ('PARAM', 'joiner', dict(type=str, default='')),
         ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
+        ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
     )
 
     def render(self, context):
-        item_renders = self._prepare_item_renders(context)
+        item_renders = self._prepare_item_renders(context.derive(oneliner=True))
 
-        if self.allow_horiz and all(len(item_render) <= 1 for item_render in item_renders):
+        allow_horiz = self.allow_horiz or (context.oneliner and self.allow_horiz_if_oneliner)
+
+        if allow_horiz and all(len(item_render) <= 1 for item_render in item_renders):
             yield from self._render_horizontal(context, item_renders)
         else:
             yield from self._render_vertical(item_renders)

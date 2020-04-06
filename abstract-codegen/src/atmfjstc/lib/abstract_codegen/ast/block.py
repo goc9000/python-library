@@ -35,7 +35,7 @@ class Block(PromptableNode):
         if avail_width < 0:
             return None
 
-        content_render = list(self.content.render(context.derive(width=avail_width)))
+        content_render = list(self.content.render(context.derive(width=avail_width, oneliner=True)))
         if len(content_render) > 1:
             return None
 
