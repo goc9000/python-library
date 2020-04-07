@@ -205,6 +205,54 @@ class ItemsList(ItemsListBase):
         return render
 
 
+class UnionItemsList(ItemsListBase):
+    """
+    A variant of ItemsList with some display quirks suitable for rendering union/intersection items.
+
+    Possible representations will look like this (example is for joiner=' | '):
+
+    - Horizontal, one-liner::
+
+      item | item | item
+
+    - Horizontal, block/multiline::
+
+      | item | item | item
+      | item | item
+
+    - Vertical::
+
+      | item
+      | item
+      | (big..
+        ..item)
+      | item
+
+    Note: If any of the items is multiline, the vertical representation is the only one available.
+    """
+    AST_NODE_CONFIG = (
+    )
+
+    def _split_joiner(self):
+        joiner1 = self.joiner.lstrip()
+        joiner2 = self.joiner[:-len(joiner1)]
+
+        return joiner1, joiner2
+
+    def _get_extreme_item_index(self, n_items, context):
+        return 0 if (context.oneliner and (n_items > 0)) else None
+
+    def _render_item(self, item, context, is_extreme=False):
+        joiner1, _ = self._split_joiner()
+
+        render = list(item.render(context.derive(oneliner=True, sub_width=0 if is_extreme else len(joiner1))))
+
+        if (len(render) > 0) and not is_extreme:
+            render = [joiner1 + render[0], *[' ' * len(joiner1) + line for line in render[1:]]]
+
+        return render
+
+
 def seq0(*items):
     """Convenience function for instantiating a 0-margin Sequence"""
     return Sequence(items)
