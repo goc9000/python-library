@@ -86,7 +86,6 @@ either:
       positional)
 """
 
-from atmfjstc.lib.py_lang_utils.searching import index_where
 from atmfjstc.lib.ast._ast_node_fields import parse_ast_node_field, ASTNodeChildFieldDef, ASTNodeChildListFieldDef
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
@@ -135,6 +134,7 @@ class ASTNode:
 
         is_abstract = False
         field_defs = []
+        field_indexes = dict()
 
         for parent in reversed(cls.__mro__[:-1]):
             is_abstract = False
@@ -149,12 +149,12 @@ class ASTNode:
                 else:
                     field_def = parse_ast_node_field(item)
 
-                    old_field_index = index_where(field_defs, lambda f: f.name == field_def.name)
+                    old_field_index = field_indexes.get(field_def.name)
                     if old_field_index is not None:
-                        old_field = field_defs.pop(old_field_index)
-                        field_def = old_field.override(field_def)
-
-                    field_defs.append(field_def)
+                        field_defs[old_field_index] = field_defs[old_field_index].override(field_def)
+                    else:
+                        field_indexes[field_def.name] = len(field_defs)
+                        field_defs.append(field_def)
 
         result = dict(
             is_abstract=is_abstract,
