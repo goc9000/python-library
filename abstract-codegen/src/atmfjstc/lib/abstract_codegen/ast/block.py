@@ -1,16 +1,27 @@
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
-class Block(PromptableNode):
+class BlockLike(PromptableNode):
+    """
+    A base for all block-like nodes. All block-likes have a head, tail, and content.
+
+    Useful for arrays, objects, for, if, etc. constructs (esp. in combination with ItemsList).
+    """
+    AST_NODE_CONFIG = (
+        'abstract',
+        ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
+        ('PARAM', 'head', dict(type=str, default='')),
+        ('PARAM', 'tail', dict(type=str, default='')),
+    )
+
+
+class Block(BlockLike):
     """
     A construct for representing a block (an area delimited by symbols and/or indented).
 
     Useful for arrays, objects, for, if, etc. constructs (esp. in combination with ItemsList).
     """
     AST_NODE_CONFIG = (
-        ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
-        ('PARAM', 'head', dict(type=str, default='')),
-        ('PARAM', 'tail', dict(type=str, default='')),
         ('PARAM', 'allow_oneliner', dict(type=bool, default=True)),
     )
 
