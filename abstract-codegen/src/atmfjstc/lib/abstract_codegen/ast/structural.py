@@ -103,7 +103,7 @@ class ItemsListBase(AbstractCodegenASTNode):
         """
 
     @abstractmethod
-    def _get_extreme_item_index(self, n_items):
+    def _get_extreme_item_index(self, n_items, context):
         """Note, an item is "extreme" if the joiner/comma should not be added to it (e.g. it is the last)"""
 
     @abstractmethod
@@ -136,7 +136,7 @@ class ItemsList(ItemsListBase):
     )
 
     def render(self, context):
-        item_renders = self._prepare_item_renders(context.derive(oneliner=True))
+        item_renders = self._prepare_item_renders(context)
 
         allow_horiz = self.allow_horiz or (context.oneliner and self.allow_horiz_if_oneliner)
 
@@ -158,19 +158,19 @@ class ItemsList(ItemsListBase):
         filtered = [(render, item) for render, item in zip(item_renders, self.items) if len(render) > 0]
         item_renders, items = [pair[0] for pair in filtered], [pair[1] for pair in filtered]
 
-        extreme_item_index = self._get_extreme_item_index(len(items))
+        extreme_item_index = self._get_extreme_item_index(len(items), context)
         if extreme_item_index is not None:
             item_renders[extreme_item_index] = self._render_item(items[extreme_item_index], context, True)
 
         return item_renders
 
-    def _get_extreme_item_index(self, n_items):
+    def _get_extreme_item_index(self, n_items, _context):
         return (n_items - 1) if ((n_items > 0) and not self.trailing_comma) else None
 
     def _render_item(self, item, context, is_extreme=False):
         joiner1, _ = self._split_joiner()
 
-        render = list(item.render_promptable(context, 0, 0 if is_extreme else len(joiner1)))
+        render = list(item.render_promptable(context.derive(oneliner=True), 0, 0 if is_extreme else len(joiner1)))
 
         if (len(render) > 0) and not is_extreme:
             render[-1] += joiner1
