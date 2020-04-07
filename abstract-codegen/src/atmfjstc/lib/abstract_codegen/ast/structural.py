@@ -109,6 +109,7 @@ class ItemsList(AbstractCodegenASTNode):
         ('PARAM', 'joiner', dict(type=str, default='')),
         ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
         ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
+        ('PARAM', 'trailing_comma', dict(type=bool, default=False)),
     )
 
     def render(self, context):
@@ -135,15 +136,16 @@ class ItemsList(AbstractCodegenASTNode):
 
         item_renders = [list(item.render_promptable(context, 0, len(joiner1))) for item in self.items]
 
-        last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
-        if last_nonempty is not None:
-            # Last item does not have a comma and the associated tail space, redo its rendering
-            item_renders[last_nonempty] = list(self.items[last_nonempty].render(context))
+        if not self.trailing_comma:
+            last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
+            if last_nonempty is not None:
+                # Last item does not have a comma and the associated tail space, redo its rendering
+                item_renders[last_nonempty] = list(self.items[last_nonempty].render(context))
 
         item_renders = [render for render in item_renders if len(render) > 0]
 
         # Add commas
-        for render in item_renders[:-1]:
+        for render in (item_renders if self.trailing_comma else item_renders[:-1]):
             render[-1] += joiner1
 
         return item_renders
