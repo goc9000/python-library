@@ -93,48 +93,6 @@ class ItemsListBase(AbstractCodegenASTNode):
         ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
     )
 
-    @abstractmethod
-    def _split_joiner(self):
-        """
-        Splits the joiner into two parts:
-
-        - The part that is always added to an item (unless it is the last)
-        - The part that is only added between an item and the previous one, when it is not the first in line
-        """
-
-    @abstractmethod
-    def _get_extreme_item_index(self, n_items, context):
-        """Note, an item is "extreme" if the joiner/comma should not be added to it (e.g. it is the last)"""
-
-    @abstractmethod
-    def _render_item(self, item, context, is_extreme=False):
-        pass
-
-
-class ItemsList(ItemsListBase):
-    """
-    A highly versatile construct used for rendering array items, object properties, method parameters, etc.
-
-    Depending on the available space, and the nature of the items, the construct will choose between two possible
-    representations (example is for joiner=", "):
-
-    - Horizontal::
-
-      item, item, item,
-      item, item
-
-    - Vertical::
-
-      item,
-      item,
-      item
-
-    Note: If any of the items is multiline, the vertical representation is the only one available.
-    """
-    AST_NODE_CONFIG = (
-        ('PARAM', 'trailing_comma', dict(type=bool, default=False)),
-    )
-
     def render(self, context):
         item_renders = self._prepare_item_renders(context)
 
@@ -145,11 +103,14 @@ class ItemsList(ItemsListBase):
         else:
             yield from self._render_vertical(item_renders)
 
+    @abstractmethod
     def _split_joiner(self):
-        joiner1 = self.joiner.rstrip()
-        joiner2 = self.joiner[len(joiner1):]
+        """
+        Splits the joiner into two parts:
 
-        return joiner1, joiner2
+        - The part that is always added to an item (unless it is the last)
+        - The part that is only added between an item and the previous one, when it is not the first in line
+        """
 
     def _prepare_item_renders(self, context):
         item_renders = [self._render_item(item, context) for item in self.items]
@@ -164,18 +125,13 @@ class ItemsList(ItemsListBase):
 
         return item_renders
 
-    def _get_extreme_item_index(self, n_items, _context):
-        return (n_items - 1) if ((n_items > 0) and not self.trailing_comma) else None
+    @abstractmethod
+    def _get_extreme_item_index(self, n_items, context):
+        """Note, an item is "extreme" if the joiner/comma should not be added to it (e.g. it is the last)"""
 
+    @abstractmethod
     def _render_item(self, item, context, is_extreme=False):
-        joiner1, _ = self._split_joiner()
-
-        render = list(item.render_promptable(context.derive(oneliner=True), 0, 0 if is_extreme else len(joiner1)))
-
-        if (len(render) > 0) and not is_extreme:
-            render[-1] += joiner1
-
-        return render
+        pass
 
     def _render_vertical(self, item_renders):
         for item in item_renders:
@@ -203,6 +159,50 @@ class ItemsList(ItemsListBase):
 
         if buffer != '':
             yield buffer
+
+
+class ItemsList(ItemsListBase):
+    """
+    A highly versatile construct used for rendering array items, object properties, method parameters, etc.
+
+    Depending on the available space, and the nature of the items, the construct will choose between two possible
+    representations (example is for joiner=", "):
+
+    - Horizontal::
+
+      item, item, item,
+      item, item
+
+    - Vertical::
+
+      item,
+      item,
+      item
+
+    Note: If any of the items is multiline, the vertical representation is the only one available.
+    """
+    AST_NODE_CONFIG = (
+        ('PARAM', 'trailing_comma', dict(type=bool, default=False)),
+    )
+
+    def _split_joiner(self):
+        joiner1 = self.joiner.rstrip()
+        joiner2 = self.joiner[len(joiner1):]
+
+        return joiner1, joiner2
+
+    def _get_extreme_item_index(self, n_items, _context):
+        return (n_items - 1) if ((n_items > 0) and not self.trailing_comma) else None
+
+    def _render_item(self, item, context, is_extreme=False):
+        joiner1, _ = self._split_joiner()
+
+        render = list(item.render_promptable(context.derive(oneliner=True), 0, 0 if is_extreme else len(joiner1)))
+
+        if (len(render) > 0) and not is_extreme:
+            render[-1] += joiner1
+
+        return render
 
 
 def seq0(*items):
