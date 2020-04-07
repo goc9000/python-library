@@ -150,17 +150,17 @@ class ItemsList(ItemsListBase):
         return joiner1, joiner2
 
     def _prepare_item_renders(self, context):
-        # Note: it's very important that we do these steps in this exact order, even if it seems inefficient. The fact
-        # that some items may turn out to be empty really complicates things.
         item_renders = [self._render_item(item, context) for item in self.items]
+
+        # Filter out empty renders and their corresponding items
+        filtered = [(render, item) for render, item in zip(item_renders, self.items) if len(render) > 0]
+        item_renders, items = [pair[0] for pair in filtered], [pair[1] for pair in filtered]
 
         if not self.trailing_comma:
             last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
             if last_nonempty is not None:
                 # Last item does not have a comma and the associated tail space, redo its rendering
-                item_renders[last_nonempty] = self._render_item(self.items[last_nonempty], context, True)
-
-        item_renders = [render for render in item_renders if len(render) > 0]
+                item_renders[last_nonempty] = self._render_item(items[last_nonempty], context, True)
 
         return item_renders
 
