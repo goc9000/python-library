@@ -104,6 +104,10 @@ class ItemsListBase(AbstractCodegenASTNode):
         - The part that is only added between an item and the previous one, when it is not the first in line
         """
 
+    @abstractmethod
+    def _render_item(self, item, context, is_extreme=False):
+        """Note, an item is "extreme" if the joiner/comma should not be added to it (e.g. it is the last)"""
+
 
 class ItemsList(ItemsListBase):
     """
@@ -148,24 +152,27 @@ class ItemsList(ItemsListBase):
     def _prepare_item_renders(self, context):
         # Note: it's very important that we do these steps in this exact order, even if it seems inefficient. The fact
         # that some items may turn out to be empty really complicates things.
-
-        joiner1, _ = self._split_joiner()
-
-        item_renders = [list(item.render_promptable(context, 0, len(joiner1))) for item in self.items]
+        item_renders = [self._render_item(item, context) for item in self.items]
 
         if not self.trailing_comma:
             last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
             if last_nonempty is not None:
                 # Last item does not have a comma and the associated tail space, redo its rendering
-                item_renders[last_nonempty] = list(self.items[last_nonempty].render(context))
+                item_renders[last_nonempty] = self._render_item(self.items[last_nonempty], context, True)
 
         item_renders = [render for render in item_renders if len(render) > 0]
 
-        # Add commas
-        for render in (item_renders if self.trailing_comma else item_renders[:-1]):
+        return item_renders
+
+    def _render_item(self, item, context, is_extreme=False):
+        joiner1, _ = self._split_joiner()
+
+        render = list(item.render_promptable(context, 0, 0 if is_extreme else len(joiner1)))
+
+        if (len(render) > 0) and not is_extreme:
             render[-1] += joiner1
 
-        return item_renders
+        return render
 
     def _render_vertical(self, item_renders):
         for item in item_renders:
