@@ -1,3 +1,5 @@
+from atmfjstc.lib.py_lang_utils.iteration import iter_with_first_last
+
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
@@ -57,3 +59,25 @@ class Block(BlockLike):
             return None
 
         return self.head + content_render[0] + self.tail
+
+
+class Brace(BlockLike):
+    """
+    Wraps an element and ensures that a specific head and tail are added to it.
+
+    Useful for adding commas to elements, left-hand-side declarations to values etc.
+    """
+    AST_NODE_CONFIG = (
+        ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
+    )
+
+    def render_promptable(self, context, prompt_width, tail_width):
+        for line, is_first, is_last in iter_with_first_last(
+            self.content.render_promptable(context, prompt_width + len(self.head), tail_width + len(self.tail))
+        ):
+            if is_first:
+                line = self.head + line
+            if is_last:
+                line += self.tail
+
+            yield line
