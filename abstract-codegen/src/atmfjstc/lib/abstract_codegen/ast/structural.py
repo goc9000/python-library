@@ -142,10 +142,11 @@ class ItemsList(AbstractCodegenASTNode):
 
         item_renders = [render for render in item_renders if len(render) > 0]
 
-        return [
-            *[[*render[0:-1], render[-1] + joiner1] for render in item_renders[:-1]],
-            item_renders[-1]
-        ]
+        # Add commas
+        for render in item_renders[:-1]:
+            render[-1] += joiner1
+
+        return item_renders
 
     def _render_vertical(self, item_renders):
         for item in item_renders:
