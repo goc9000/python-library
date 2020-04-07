@@ -94,16 +94,15 @@ class ChainedBlocks(PromptableNode):
     This is highly useful for complex constructs such as if statements, methods, etc. For a function, for instance,
     the first block would be the parameters between the (), while the second is the code between the {}.
 
-    The sequence of blocks to be rendered is described by three kinds of child nodes:
+    The sequence of blocks to be rendered is described by four kinds of child nodes:
 
     - `BlockLike` nodes are the blocks themselves
     - `Atom` nodes will be merged with the tail of the previous block and the head of the next block (as well as with
       other adjacent `Atom` nodes)
     - `NullNode`'s will simply be ignored (they are useful for when just omitting the node is inelegant)
+    - `ChainedBlock` nodes will add their own blocks and delimiters to their place in the list
     """
-    AST_NODE_CONFIG = (
-        ('CHILD_LIST', 'content', dict(type=(Atom, BlockLike, NullNode))),
-    )
+    # Note: we set AST_NODE_CONFIG after the class definition, due to the self-reference
 
     def render_promptable(self, context, prompt_width, tail_width):
         blocks, delimiters = self._consolidate()
@@ -144,15 +143,24 @@ class ChainedBlocks(PromptableNode):
 
     def _iter_raw_items(self):
         yield ''
-
-        for item in self.content:
-            if isinstance(item, NullNode):
-                continue
-            elif isinstance(item, Atom):
-                yield item.content
-            else:
-                yield item.head
-                yield item
-                yield item.tail
-
+        yield from _iter_chain_content(self.content)
         yield ''
+
+
+ChainedBlocks.AST_NODE_CONFIG = (
+    ('CHILD_LIST', 'content', dict(type=(Atom, BlockLike, ChainedBlocks, NullNode))),
+)
+
+
+def _iter_chain_content(content):
+    for item in content:
+        if isinstance(item, NullNode):
+            continue
+        elif isinstance(item, Atom):
+            yield item.content
+        elif isinstance(item, ChainedBlocks):
+            yield from _iter_chain_content(item.content)
+        else:
+            yield item.head
+            yield item
+            yield item.tail
