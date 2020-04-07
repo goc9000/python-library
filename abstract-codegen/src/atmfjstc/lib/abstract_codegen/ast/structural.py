@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 from atmfjstc.lib.py_lang_utils.searching import last_index_where
 
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
@@ -92,6 +94,15 @@ class ItemsListBase(AbstractCodegenASTNode):
         ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
         ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
     )
+
+    @abstractmethod
+    def _split_joiner(self):
+        """
+        Splits the joiner into two parts:
+
+        - The part that is always added to an item (unless it is the last)
+        - The part that is only added between an item and the previous one, when it is not the first in line
+        """
 
 
 class ItemsList(ItemsListBase):
