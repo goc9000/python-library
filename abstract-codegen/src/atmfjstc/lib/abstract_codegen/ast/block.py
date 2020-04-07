@@ -1,6 +1,10 @@
-from atmfjstc.lib.py_lang_utils.iteration import iter_with_first_last
+import itertools
+
+from atmfjstc.lib.py_lang_utils.iteration import iter_with_first_last, iter_with_last
 
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
+from atmfjstc.lib.abstract_codegen.ast.raw import Atom
+from atmfjstc.lib.abstract_codegen.ast.structural import NullNode
 
 
 class BlockLike(PromptableNode):
@@ -81,3 +85,74 @@ class Brace(BlockLike):
                 line += self.tail
 
             yield line
+
+
+class ChainedBlocks(PromptableNode):
+    """
+    A construct that intelligently chains multiple blocks together.
+
+    This is highly useful for complex constructs such as if statements, methods, etc. For a function, for instance,
+    the first block would be the parameters between the (), while the second is the code between the {}.
+
+    The sequence of blocks to be rendered is described by three kinds of child nodes:
+
+    - `BlockLike` nodes are the blocks themselves
+    - `Atom` nodes will be merged with the tail of the previous block and the head of the next block (as well as with
+      other adjacent `Atom` nodes)
+    - `NullNode`'s will simply be ignored (they are useful for when just omitting the node is inelegant)
+    """
+    AST_NODE_CONFIG = (
+        ('CHILD_LIST', 'content', dict(type=(Atom, BlockLike, NullNode))),
+    )
+
+    def render_promptable(self, context, prompt_width, tail_width):
+        blocks, delimiters = self._consolidate()
+
+        last_line = delimiters[0]
+        effective_prompt_width = 0
+
+        for block, prev_delim, next_delim in zip(blocks, delimiters[:-1], delimiters[1:]):
+            effective_block = block.alter(head=last_line, tail=next_delim)
+
+            for line, is_last in iter_with_last(
+                effective_block.render_promptable(context, effective_prompt_width, tail_width)
+            ):
+                if not is_last:
+                    yield line
+                    effective_prompt_width = 0
+                else:
+                    last_line = line
+
+        yield last_line
+
+    def _consolidate(self):
+        delimiters = []
+        blocks = []
+
+        for is_delim, parts in itertools.groupby(self._iter_raw_items(), lambda item: isinstance(item, str)):
+            parts = list(parts)
+
+            if is_delim:
+                delimiters.append(''.join(parts))
+            else:
+                assert len(parts) == 1
+                blocks.append(parts[0])
+
+        assert len(delimiters) == len(blocks) + 1
+
+        return blocks, delimiters
+
+    def _iter_raw_items(self):
+        yield ''
+
+        for item in self.content:
+            if isinstance(item, NullNode):
+                continue
+            elif isinstance(item, Atom):
+                yield item.content
+            else:
+                yield item.head
+                yield item
+                yield item.tail
+
+        yield ''
