@@ -76,7 +76,7 @@ class Brace(BlockLike):
             self.content.render_promptable(context, prompt_width + len(self.head), tail_width + len(self.tail))
         ):
             if is_first:
-                line = self.head + line
+                line = (self.head + line).rstrip()
             if is_last:
                 line += self.tail
 
