@@ -84,7 +84,17 @@ class NullNode(PromptableNode):
         yield from []
 
 
-class ItemsList(AbstractCodegenASTNode):
+class ItemsListBase(AbstractCodegenASTNode):
+    AST_NODE_CONFIG = (
+        'abstract',
+        ('CHILD_LIST', 'items', dict(type=PromptableNode)),
+        ('PARAM', 'joiner', dict(type=str, default='')),
+        ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
+        ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
+    )
+
+
+class ItemsList(ItemsListBase):
     """
     A highly versatile construct used for rendering array items, object properties, method parameters, etc.
 
@@ -105,10 +115,6 @@ class ItemsList(AbstractCodegenASTNode):
     Note: If any of the items is multiline, the vertical representation is the only one available.
     """
     AST_NODE_CONFIG = (
-        ('CHILD_LIST', 'items', dict(type=PromptableNode)),
-        ('PARAM', 'joiner', dict(type=str, default='')),
-        ('PARAM', 'allow_horiz', dict(type=bool, default=True)),
-        ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
         ('PARAM', 'trailing_comma', dict(type=bool, default=False)),
     )
 
