@@ -1,7 +1,5 @@
 from abc import abstractmethod
 
-from atmfjstc.lib.py_lang_utils.searching import last_index_where
-
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
@@ -105,8 +103,12 @@ class ItemsListBase(AbstractCodegenASTNode):
         """
 
     @abstractmethod
-    def _render_item(self, item, context, is_extreme=False):
+    def _get_extreme_item_index(self, n_items):
         """Note, an item is "extreme" if the joiner/comma should not be added to it (e.g. it is the last)"""
+
+    @abstractmethod
+    def _render_item(self, item, context, is_extreme=False):
+        pass
 
 
 class ItemsList(ItemsListBase):
@@ -156,13 +158,14 @@ class ItemsList(ItemsListBase):
         filtered = [(render, item) for render, item in zip(item_renders, self.items) if len(render) > 0]
         item_renders, items = [pair[0] for pair in filtered], [pair[1] for pair in filtered]
 
-        if not self.trailing_comma:
-            last_nonempty = last_index_where(item_renders, lambda r: len(r) > 0)
-            if last_nonempty is not None:
-                # Last item does not have a comma and the associated tail space, redo its rendering
-                item_renders[last_nonempty] = self._render_item(items[last_nonempty], context, True)
+        extreme_item_index = self._get_extreme_item_index(len(items))
+        if extreme_item_index is not None:
+            item_renders[extreme_item_index] = self._render_item(items[extreme_item_index], context, True)
 
         return item_renders
+
+    def _get_extreme_item_index(self, n_items):
+        return (n_items - 1) if ((n_items > 0) and not self.trailing_comma) else None
 
     def _render_item(self, item, context, is_extreme=False):
         joiner1, _ = self._split_joiner()
