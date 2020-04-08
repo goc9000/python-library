@@ -40,7 +40,7 @@ class Block(BlockLike):
 
         yield self.head.rstrip()
 
-        for line in self.content.render(context.derive(sub_one_indent=True)):
+        for line in self.content.render(context.derive(sub_one_indent=True, oneliner=False)):
             yield ' ' * context.indent + line
 
         if self.tail.lstrip() != '':
