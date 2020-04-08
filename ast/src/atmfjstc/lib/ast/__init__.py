@@ -46,6 +46,17 @@ Features provided by this system
 - Inheritance is supported (and recommended)
 - Nodes (and thus subtrees) are hashable and can be tested for equality
 
+ASTNode vs dataclasses
+----------------------
+
+Although development of this package predates the standard Python `dataclasses` module, there are remarkable
+similarities between the two. Dataclasses also offer field management and immutability. However, ASTNode still presents
+several unique features in addition:
+
+- Distinguishes between non-tree and tree fields
+- Runtime typechecking - vital for complex ASTs where you can easily make a mistake when doing alterations deep in the
+  tree
+
 Usage and Reference
 -------------------
 
