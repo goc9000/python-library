@@ -92,4 +92,4 @@ def check_unique(seq, key=None, item_name='item'):
     if dupes is None:
         return seq
 
-    raise DuplicateItemError("Duplicate {}: {}".format(item_name, dupes.duplicate_item), dupes)
+    raise DuplicateItemError(f"Duplicate {item_name}: {dupes.duplicate_item}", dupes)
