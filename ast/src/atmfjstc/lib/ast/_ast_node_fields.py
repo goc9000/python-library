@@ -45,16 +45,16 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
         self.default = default
 
     def __repr__(self):
-        parts = ["{}({}".format(self.__class__.__name__, repr(self.name))]
+        parts = [f"{self.__class__.__name__}({self.name!r}"]
 
         if self.kw_only:
-            parts.append(", kw_only={}".format(repr(self.kw_only)))
+            parts.append(f", kw_only={self.kw_only!r}")
         if self.allow_none:
-            parts.append(", allow_none={}".format(repr(self.allow_none)))
+            parts.append(f", allow_none={self.allow_none!r}")
         if self.allowed_type != AnyType:
-            parts.append(", type={}".format(repr(self.allowed_type)))
+            parts.append(f", type={self.allowed_type!r}")
         if self.default != NVP:
-            parts.append(", default={}".format(repr(self.default)))
+            parts.append(f", default={self.default!r}")
 
         parts.append(')')
 
@@ -76,13 +76,13 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
             value = self.default
 
         if value == NVP:
-            raise ValueError("No value provided and no default for field '{}'".format(self.name))
+            raise ValueError(f"No value provided and no default for field '{self.name}'")
 
         try:
             self._pre_coerce_type_check_value(value)
             self._type_check_value(self._coerce_incoming_value(value))
         except Exception as e:
-            raise TypeError("Invalid value provided for field '{}'".format(self.name)) from e
+            raise TypeError(f"Invalid value provided for field '{self.name}'") from e
 
         return value
 
@@ -98,7 +98,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
 
     def _final_typecheck(self, value):
         if not isinstance_ex(value, self.allowed_type):
-            raise TypeError("Should be {}, is {}".format(self.allowed_type, type(value)))
+            raise TypeError(f"Should be {self.allowed_type}, is {type(value)}")
 
     def override(self, new_field):
         """
@@ -126,7 +126,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
                 default=new_field.default,
             )
         except Exception as e:
-            raise TypeError("Cannot override AST node field '{}' with '{}'".format(self, new_field)) from e
+            raise TypeError(f"Cannot override AST node field {self} with {new_field}") from e
 
 
 class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
@@ -140,7 +140,7 @@ class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
             raise TypeError("May not be None")
 
         if not isinstance(value, ASTNode):
-            raise TypeError("Should be ASTNode, is {}".format(type(value)))
+            raise TypeError(f"Should be ASTNode, is {type(value)}")
 
         self._final_typecheck(value)
 
@@ -161,11 +161,11 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
                 if child is None:
                     raise TypeError("May not be None")
                 if not isinstance(child, ASTNode):
-                    raise TypeError("Should be ASTNode, is {}".format(type(child)))
+                    raise TypeError(f"Should be ASTNode, is {type(child)}")
 
                 self._final_typecheck(child)
             except Exception as e:
-                raise TypeError("Error for child #{}".format(child_index)) from e
+                raise TypeError(f"Error for child #{child_index}") from e
 
 
 class ASTNodeParamFieldDef(ASTNodeFieldDefBase):
@@ -197,4 +197,4 @@ def parse_ast_node_field(field_spec):
 
         return cls(name, **options)
     except Exception as e:
-        raise TypeError("Error parsing AST node field specification '{}'".format(repr(field_spec))) from e
+        raise TypeError(f"Error parsing AST node field specification '{field_spec!r}'") from e

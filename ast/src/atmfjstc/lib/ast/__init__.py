@@ -120,7 +120,7 @@ class ASTNode:
 
             self._sanity_check_post_init()
         except Exception as e:
-            raise ValueError("Error instantiating {}".format(self.__class__.__name__)) from e
+            raise ValueError(f"Error instantiating {self.__class__.__name__}") from e
 
     def _sanity_check_post_init(self):
         """
@@ -200,13 +200,13 @@ class ASTNode:
         if name in self._ast_data:
             return self._ast_data[name]
 
-        raise AttributeError("Attribute '{}' not found in AST node of type {}".format(name, self.__class__.__name__))
+        raise AttributeError(f"Attribute '{name}' not found in AST node of type {self.__class__.__name__}")
 
     def __setattr__(self, name, value):
         if name == '_ast_data':
             super().__setattr__(name, value)
         else:
-            raise AttributeError("Attribute '{}' cannot be set in immutable AST Node. Use alter()".format(name))
+            raise AttributeError(f"Attribute '{name}' cannot be set in immutable AST Node. Use alter()")
 
     def __deepcopy__(self, memodict):
         return self
