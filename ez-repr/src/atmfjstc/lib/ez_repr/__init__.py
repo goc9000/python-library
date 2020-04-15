@@ -62,7 +62,7 @@ class EZRepr:
                     yield field, default_value
 
 
-def ez_render_object(name, fields, max_width=120, indent=2):
+def ez_render_object(name, fields, max_width=120, indent=2, renderers=None):
     """
     Helper for rendering an arbitrary class instance in the same way as a EZRepr-enabled class, provided you can
     supply the class name and the fields to be rendered.
@@ -73,15 +73,22 @@ def ez_render_object(name, fields, max_width=120, indent=2):
       dicts over multiple lines if necessary). If this is set to None, everything will be rendered on a single line
       as long as no value deep down has a multiline repr().
     - `indent`: How many columns to indent by when rendering the content of a multi-line object, array etc
+    - `renderers`: A mapping from types to renderer functions that controls how values deep inside the object will
+      be rendered. Normally ``ez_render_value`` would be called, but if a type in this dict matches (even as an
+      ancestor), the corresponding function will be called instead.
+
+      Note: The renderer function will receive the same parameters as ``ez_render_value`` (including max_width, etc)
+      so that it can adapt to the available width in the same way. Naive single-parameter renderers will also be
+      accepted.
     """
     return _render_block(
         name + '(', ')', [value for _, value in fields],
         item_prompts=[field + '=' for field, _ in fields],
-        max_width=max_width, indent=indent
+        max_width=max_width, indent=indent, renderers=renderers
     )
 
 
-def ez_render_value(value, max_width=120, indent=2):
+def ez_render_value(value, max_width=120, indent=2, renderers=None):
     """
     Renders an arbitrary value using EZRepr's advanced renderer.
 
@@ -92,21 +99,35 @@ def ez_render_value(value, max_width=120, indent=2):
       called automatically for each value in a list etc.)
     - Other values will just be rendered using repr().
     """
+    if renderers is not None:
+        for cls in value.__class__.__mro__:
+            if cls in renderers:
+                renderer = renderers[cls]
+
+                try:
+                    # Try full featured renderer first
+                    return renderer(value, max_width=max_width, indent=indent, renderers=renderers)
+                except Exception:
+                    pass
+
+                # Fall back to a naive renderer interface
+                return renderer(value)
+
     if type(value) == tuple:
-        return _render_block('(', ')', value, max_width=max_width, indent=indent, tuple_mode=True)
+        return _render_block('(', ')', value, max_width=max_width, indent=indent, tuple_mode=True, renderers=renderers)
     if type(value) == list:
-        return _render_block('[', ']', value, max_width=max_width, indent=indent)
+        return _render_block('[', ']', value, max_width=max_width, indent=indent, renderers=renderers)
     if type(value) == dict:
         items = value.items()
         return _render_block(
             '{', '}', [v for _, v in items],
-            item_prompts=[repr(k) + ': ' for k, _ in items], max_width=max_width, indent=indent
+            item_prompts=[repr(k) + ': ' for k, _ in items], max_width=max_width, indent=indent, renderers=renderers
         )
 
     if isinstance(value, EZRepr):
         try:
             # Note: this will only work if the user did not override the repr() supplied by EZRepr
-            return value.__repr__(max_width=max_width, indent=indent)
+            return value.__repr__(max_width=max_width, indent=indent, renderers=renderers)
         except Exception:
             pass
 
@@ -116,7 +137,7 @@ def ez_render_value(value, max_width=120, indent=2):
     return repr(value)
 
 
-def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple_mode=False):
+def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple_mode=False, renderers=None):
     if item_prompts is None:
         item_prompts = [''] * len(items)
 
@@ -124,7 +145,7 @@ def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple
     item_tails = ([','] * (len(items) - 1) + [last_comma]) if len(items) > 0 else []
 
     item_oneline_renders = [
-        item_head + ez_render_value(item, max_width=None) + item_tail
+        item_head + ez_render_value(item, max_width=None, renderers=renderers) + item_tail
         for item_head, item, item_tail in zip(item_prompts, items, item_tails)
     ]
 
@@ -143,7 +164,7 @@ def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple
             out_parts.append(' ' * indent + oneline_render)
         else:
             out_parts.append(textwrap.indent(
-                item_head + ez_render_value(item, max_width=new_width, indent=indent) + item_tail,
+                item_head + ez_render_value(item, max_width=new_width, indent=indent, renderers=renderers) + item_tail,
                 ' ' * indent,
             ))
 
