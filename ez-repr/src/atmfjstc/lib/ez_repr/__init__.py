@@ -13,8 +13,10 @@ guesswork.
 You can tweak various aspects of the rendering (as well as add extra fields) by overriding the ``_ez_repr_head``,
 ``ez_repr_fields`` etc. methods.
 
-There is also some rudimentary handling of multi-line repr's and tree structures. It's not particularly pretty or
-accurate, but miles better than Python's default repr() which does not handle multilines properly at all.
+The EZRepr renderer also handles nesting and multiline values better than Python's native ``repr()``. It will try to
+break arrays, dicts and object contents over several lines so as to keep the output within a specified number of
+columns. You can use this more advanced renderer in your projects by calling the functions ``ez_render_object``,
+``ez_render_value`` and ``as_is``.
 """
 
 import dataclasses
