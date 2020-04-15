@@ -79,7 +79,7 @@ def ez_render_object(name, fields, max_width=120, indent=2):
     prop_renders = [field + '=' + ez_render_value(value, max_width=None) for field, value in fields]
 
     oneliner = head + ', '.join(prop_renders) + tail
-    if ((max_width is None) or (len(oneliner) < max_width)) and ('\n' not in oneliner):
+    if _test_oneliner(oneliner, max_width):
         return oneliner
 
     return head + '\n' + ''.join(textwrap.indent(prop, ' ' * indent) + ',\n' for prop in prop_renders) + tail
@@ -105,6 +105,10 @@ def ez_render_value(value, max_width=120, indent=2):
         return repr(value)
 
     return repr(value)
+
+
+def _test_oneliner(candidate, max_width):
+    return ('\n' not in candidate) and ((max_width is None) or (len(candidate) <= max_width))
 
 
 def as_is(repr_value):
