@@ -85,11 +85,24 @@ def ez_render_value(value, max_width=120, indent=2):
     """
     Renders an arbitrary value using EZRepr's advanced renderer.
 
-    TODO: For now, this only has support for detecting other EZRepr-enabled values and ensuring that the user-supplied
-    indent, etc. params are passed to the underlying renderer.
-
-    Other values will just be rendered using repr().
+    - For native Python dicts, lists and tuples (but not their subclasses!), this renders them in a nice way that
+      breaks them over multiple lines in order to fit the maximum width or accomodate multi-line values
+    - For EZRepr-enabled values, this ensures that the user-supplied indent, etc. params are passed to the underlying
+      renderer (it may seem useless to call ez_render_value directly just for that, but note that ez_render_value is
+      called automatically for each value in a list etc.)
+    - Other values will just be rendered using repr().
     """
+    if type(value) == tuple:
+        return _render_block('(', ')', value, max_width=max_width, indent=indent, tuple_mode=True)
+    if type(value) == list:
+        return _render_block('[', ']', value, max_width=max_width, indent=indent)
+    if type(value) == dict:
+        items = value.items()
+        return _render_block(
+            '{', '}', [v for _, v in items],
+            item_prompts=[repr(k) + ': ' for k, _ in items], max_width=max_width, indent=indent
+        )
+
     if isinstance(value, EZRepr):
         try:
             # Note: this will only work if the user did not override the repr() supplied by EZRepr
@@ -103,11 +116,12 @@ def ez_render_value(value, max_width=120, indent=2):
     return repr(value)
 
 
-def _render_block(head, tail, items, max_width, indent, item_prompts=None):
+def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple_mode=False):
     if item_prompts is None:
         item_prompts = [''] * len(items)
 
-    item_tails = ([','] * (len(items) - 1) + ['']) if len(items) > 0 else []
+    last_comma = ',' if (tuple_mode and (len(items) == 1)) else ''
+    item_tails = ([','] * (len(items) - 1) + [last_comma]) if len(items) > 0 else []
 
     item_oneline_renders = [
         item_head + ez_render_value(item, max_width=None) + item_tail
