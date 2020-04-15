@@ -91,7 +91,7 @@ def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
     elif isinstance(xtd_type_spec, Hashable):
         return value == xtd_type_spec
     else:
-        raise TypeError("Invalid extended type specification: {}".format(xtd_type_spec))
+        raise TypeError(f"Invalid extended type specification: {xtd_type_spec!r}")
 
 
 def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> bool:
@@ -119,7 +119,7 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
         elif isinstance(xtd_type_spec, Hashable):
             return isinstance(xtd_type_spec, parent_type_spec)
         else:
-            raise TypeError("Invalid extended type specification: {}".format(xtd_type_spec))
+            raise TypeError(f"Invalid extended type specification: {xtd_type_spec!r}")
 
     if isinstance(parent_type_spec, Hashable):
         if isinstance(xtd_type_spec, type):
@@ -127,9 +127,9 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
         elif isinstance(xtd_type_spec, Hashable):
             return xtd_type_spec == parent_type_spec
         else:
-            raise TypeError("Invalid extended type specification: {}".format(xtd_type_spec))
+            raise TypeError(f"Invalid extended type specification: {xtd_type_spec!r}")
 
-    raise TypeError("Invalid extended type specification: {}".format(parent_type_spec))
+    raise TypeError(f"Invalid extended type specification: {parent_type_spec!r}")
 
 
 def _is_sequence(value):
