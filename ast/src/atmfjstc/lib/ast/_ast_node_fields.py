@@ -3,12 +3,14 @@ from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 
-from atmfjstc.lib.ast._initialization import NVP
+from atmfjstc.lib.ez_repr import EZRepr
 from atmfjstc.lib.xtd_type_spec import typecheck, issubclass_ex, AnyType, XtdTypeSpec
 
+from atmfjstc.lib.ast._initialization import NVP
 
-@dataclass(frozen=True)
-class ASTNodeFieldDefBase(metaclass=ABCMeta):
+
+@dataclass(frozen=True, repr=False)
+class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
     """
     This represents the definition of a field in an AST node.
 
@@ -39,22 +41,6 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
     def __post_init__(self):
         if len(self.name) == 0:
             raise ValueError("Field name must be non-empty!")
-
-    def __repr__(self):
-        parts = [f"{self.__class__.__name__}({self.name!r}"]
-
-        if self.kw_only:
-            parts.append(f", kw_only={self.kw_only!r}")
-        if self.allow_none:
-            parts.append(f", allow_none={self.allow_none!r}")
-        if self.allowed_type != AnyType:
-            parts.append(f", type={self.allowed_type!r}")
-        if self.default != NVP:
-            parts.append(f", default={self.default!r}")
-
-        parts.append(')')
-
-        return ''.join(parts)
 
     def prepare_field_value(self, value):
         """
