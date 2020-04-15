@@ -1,6 +1,9 @@
 """
 Provides an extended type specification mechanism that offers some extra features vs. just using a <type> object.
 
+Rationale
+---------
+
 Normally, in Python, when we want to programmatically specify a type against which a value can be typechecked at
 runtime, we can just use a <type> instance and then use ``isinstance(value, type)``. E.g::
 
@@ -19,6 +22,9 @@ There are, however, some type specifications that a <type> object cannot represe
 
 Python's built-in ``isinstance`` and ``issubclass`` offer some support for union types, but not for constant types and
 combinations thereof. Additionally, ``issubclass`` only allows a regular (non-union) type on the left side.
+
+Solution
+--------
 
 This module provides some utilities for working with an "extended" way of specifying types. Specifically, it offers
 the ``isinstance_ex`` and ``issubclass_ex`` functions, that mimic the interface of the builtins but support a richer
