@@ -39,7 +39,16 @@ syntax for expressing types:
 - these idioms can be combined recursively, e.g. ``(list, (1, 2, bool))`` although it should be noted that all such
   expressions ultimately reduce to a flat tuple under this simple type system
 - one can use an idiom like ``(type, None)`` to represent an optional type
+
+Extras
+------
+
+Other features provided in this module:
+
+- ``XtdTypeSpec``, a type hint for marking values in your code that are extended type specifications
 """
+
+import typing
 
 from collections.abc import Sequence, Hashable
 
@@ -54,7 +63,16 @@ VoidType = Token(repr_='VoidType')
 """This is used as a token for the null/void type (no value matches)."""
 
 
-def isinstance_ex(value, xtd_type_spec):
+# This specification is imperfect, might want to revisit it
+XtdTypeSpec_Proper = type
+XtdTypeSpec_Const = typing.Hashable
+XtdTypeSpec_Union = typing.Sequence['XtdTypeSpec']
+XtdTypeSpec_Any = Token
+XtdTypeSpec_Void = Token
+XtdTypeSpec = typing.Union[XtdTypeSpec_Proper, XtdTypeSpec_Const, XtdTypeSpec_Union, XtdTypeSpec_Any, XtdTypeSpec_Void]
+
+
+def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
     """
     Checks whether the given value conforms to the type described by ``xtd_type_spec``.
 
@@ -76,7 +94,7 @@ def isinstance_ex(value, xtd_type_spec):
         raise TypeError("Invalid extended type specification: {}".format(xtd_type_spec))
 
 
-def issubclass_ex(xtd_type_spec, parent_type_spec):
+def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> bool:
     """
     Checks whether the given type is a subtype of another, i.e. all values that would fit ``xtd_type_spec`` will also
     fit ``parent_type_spec``
