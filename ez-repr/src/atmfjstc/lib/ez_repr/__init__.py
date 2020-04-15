@@ -74,15 +74,11 @@ def ez_render_object(name, fields, max_width=120, indent=2):
       as long as no value deep down has a multiline repr().
     - `indent`: How many columns to indent by when rendering the content of a multi-line object, array etc
     """
-    head = name + '('
-    tail = ')'
-    prop_renders = [field + '=' + ez_render_value(value, max_width=None) for field, value in fields]
-
-    oneliner = head + ', '.join(prop_renders) + tail
-    if _test_oneliner(oneliner, max_width):
-        return oneliner
-
-    return head + '\n' + ''.join(textwrap.indent(prop, ' ' * indent) + ',\n' for prop in prop_renders) + tail
+    return _render_block(
+        name + '(', ')', [value for _, value in fields],
+        item_prompts=[field + '=' for field, _ in fields],
+        max_width=max_width, indent=indent
+    )
 
 
 def ez_render_value(value, max_width=120, indent=2):
@@ -105,6 +101,41 @@ def ez_render_value(value, max_width=120, indent=2):
         return repr(value)
 
     return repr(value)
+
+
+def _render_block(head, tail, items, max_width, indent, item_prompts=None):
+    if item_prompts is None:
+        item_prompts = [''] * len(items)
+
+    item_tails = ([','] * (len(items) - 1) + ['']) if len(items) > 0 else []
+
+    item_oneline_renders = [
+        item_head + ez_render_value(item, max_width=None) + item_tail
+        for item_head, item, item_tail in zip(item_prompts, items, item_tails)
+    ]
+
+    oneliner = head + ' '.join(item_oneline_renders) + tail
+    if ((max_width is None) or (len(oneliner) < max_width)) and ('\n' not in oneliner):
+        return oneliner
+
+    # Try multiline render
+
+    new_width = (max_width - indent) if max_width is not None else None
+
+    out_parts = [head]
+
+    for item_head, item, item_tail, oneline_render in zip(item_prompts, items, item_tails, item_oneline_renders):
+        if _test_oneliner(oneline_render, new_width):
+            out_parts.append(' ' * indent + oneline_render)
+        else:
+            out_parts.append(textwrap.indent(
+                item_head + ez_render_value(item, max_width=new_width, indent=indent) + item_tail,
+                ' ' * indent,
+            ))
+
+    out_parts.append(tail)
+
+    return '\n'.join(out_parts)
 
 
 def _test_oneliner(candidate, max_width):
