@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-xtd-type-spec',
-    version='1.0.0',
+    version='1.1.0',
 
     author_email='atmfjstc@protonmail.com',
 
@@ -22,5 +22,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
 )
