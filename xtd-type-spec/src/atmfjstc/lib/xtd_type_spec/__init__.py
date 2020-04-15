@@ -46,6 +46,8 @@ Extras
 Other features provided in this module:
 
 - ``XtdTypeSpec``, a type hint for marking values in your code that are extended type specifications
+- ``render_xtd_type_spec``, a function for formatting extended type specs in a readable way
+- ``typecheck``, a convenience function for easily throwing descriptive errors when type checks fail
 """
 
 import typing
@@ -134,3 +136,56 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
 
 def _is_sequence(value):
     return isinstance(value, Sequence) and not isinstance(value, str)
+
+
+def render_xtd_type_spec(xtd_type_spec: XtdTypeSpec, dequalify: bool = False) -> str:
+    """
+    Returns a more readable representation of an extended type specification.
+
+    By default, type names are de-qualified, i.e. the prefix indicating the specific package they belong to is removed,
+    as it decreases readability whereas such conflicts are rare in practice. To keep the type names qualifies, set
+    ``dequalify=`` to False.
+    """
+    if _is_sequence(xtd_type_spec):
+        return '(' + (' | '.join(render_xtd_type_spec(alt) for alt in xtd_type_spec)) + ')'
+    if xtd_type_spec is AnyType:
+        return '<any>'
+    if xtd_type_spec is VoidType:
+        return '<void>'
+    if isinstance(xtd_type_spec, type):
+        return ((xtd_type_spec.__module__ + '.') if dequalify and xtd_type_spec.__module__ != 'builtins' else '') + \
+            xtd_type_spec.__qualname__
+
+    return repr(xtd_type_spec)
+
+
+T = typing.TypeVar('T')
+
+
+def typecheck(value: T, xtd_type_spec: XtdTypeSpec, value_name: str = 'value', dequalify: bool = False) -> T:
+    """
+    Convenience function that does an ``isinstance_ex`` check and throws a descriptive TypeCheckError if the type does
+    not match.
+
+    If the type does match, the function returns the value that was passed, such that one may use this in fluent code
+    like::
+
+        dest = typecheck(source, type_spec)
+    """
+    if isinstance_ex(value, xtd_type_spec):
+        return value
+
+    message = f"{value_name} should be {render_xtd_type_spec(xtd_type_spec, dequalify=dequalify)}, " \
+        f"is {render_xtd_type_spec(type(value), dequalify=dequalify)}".lstrip()
+
+    raise TypeCheckError(message[0].upper() + message[1:], value, xtd_type_spec)
+
+
+class TypeCheckError(TypeError):
+    offending_value: typing.Any
+    expected_type: XtdTypeSpec
+
+    def __init__(self, message: str, offending_value: typing.Any, expected_type: XtdTypeSpec):
+        super().__init__(message)
+        self.offending_value = offending_value
+        self.expected_type = expected_type
