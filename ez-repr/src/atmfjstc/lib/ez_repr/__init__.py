@@ -76,13 +76,35 @@ def ez_render_object(name, fields, max_width=120, indent=2):
     """
     head = name + '('
     tail = ')'
-    prop_renders = [field + '=' + repr(value) for field, value in fields]
+    prop_renders = [field + '=' + ez_render_value(value, max_width=None) for field, value in fields]
 
     oneliner = head + ', '.join(prop_renders) + tail
     if ((max_width is None) or (len(oneliner) < max_width)) and ('\n' not in oneliner):
         return oneliner
 
     return head + '\n' + ''.join(textwrap.indent(prop, ' ' * indent) + ',\n' for prop in prop_renders) + tail
+
+
+def ez_render_value(value, max_width=120, indent=2):
+    """
+    Renders an arbitrary value using EZRepr's advanced renderer.
+
+    TODO: For now, this only has support for detecting other EZRepr-enabled values and ensuring that the user-supplied
+    indent, etc. params are passed to the underlying renderer.
+
+    Other values will just be rendered using repr().
+    """
+    if isinstance(value, EZRepr):
+        try:
+            # Note: this will only work if the user did not override the repr() supplied by EZRepr
+            return value.__repr__(max_width=max_width, indent=indent)
+        except Exception:
+            pass
+
+        # Fall back to the usual repr()
+        return repr(value)
+
+    return repr(value)
 
 
 def as_is(repr_value):
