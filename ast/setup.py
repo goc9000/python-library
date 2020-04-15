@@ -11,7 +11,7 @@ setup(
     
     install_requires=[
         'atmfjstc-py-lang-utils>=1, <2',
-        'atmfjstc-xtd-type-spec>=1, <2',
+        'atmfjstc-xtd-type-spec>=1.1, <2',
     ],
 
     zip_safe=True,

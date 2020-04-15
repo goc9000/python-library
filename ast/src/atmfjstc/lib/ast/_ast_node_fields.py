@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 
 from atmfjstc.lib.ast._initialization import NVP
-from atmfjstc.lib.xtd_type_spec import isinstance_ex, issubclass_ex, AnyType
+from atmfjstc.lib.xtd_type_spec import typecheck, issubclass_ex, AnyType, XtdTypeSpec
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
 
     kw_only: bool = False
     allow_none: bool = False
-    allowed_type: Any = AnyType
+    allowed_type: XtdTypeSpec = AnyType
     default: Any = NVP
 
     def __post_init__(self):
@@ -93,8 +93,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
         pass
 
     def _final_typecheck(self, value):
-        if not isinstance_ex(value, self.allowed_type):
-            raise TypeError(f"Should be {self.allowed_type}, is {type(value)}")
+        typecheck(value, self.allowed_type)
 
     def override(self, new_field):
         """
@@ -136,9 +135,7 @@ class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
 
             raise TypeError("May not be None")
 
-        if not isinstance(value, ASTNode):
-            raise TypeError(f"Should be ASTNode, is {type(value)}")
-
+        typecheck(value, ASTNode, value_name='child')
         self._final_typecheck(value)
 
 
@@ -158,9 +155,8 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
             try:
                 if child is None:
                     raise TypeError("May not be None")
-                if not isinstance(child, ASTNode):
-                    raise TypeError(f"Should be ASTNode, is {type(child)}")
 
+                typecheck(child, ASTNode, value_name='child')
                 self._final_typecheck(child)
             except Exception as e:
                 raise TypeError(f"Error for child #{child_index}") from e
