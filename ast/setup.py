@@ -24,5 +24,5 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Code Generators"
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
 )
