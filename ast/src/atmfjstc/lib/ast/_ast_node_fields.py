@@ -1,10 +1,13 @@
+from typing import Any
 from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 
 from atmfjstc.lib.ast._initialization import NVP
 from atmfjstc.lib.xtd_type_spec import isinstance_ex, issubclass_ex, AnyType
 
 
+@dataclass(frozen=True)
 class ASTNodeFieldDefBase(metaclass=ABCMeta):
     """
     This represents the definition of a field in an AST node.
@@ -26,23 +29,16 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
                    positional)
     """
 
-    name = None
+    name: str
 
-    kw_only = None
-    allow_none = None
-    allowed_type = None
-    default = None
+    kw_only: bool = False
+    allow_none: bool = False
+    allowed_type: Any = AnyType
+    default: Any = NVP
 
-    def __init__(self, name, kw_only=False, allow_none=False, allowed_type=AnyType, default=NVP):
-        if not isinstance(name, str) or len(name) == 0:
-            raise TypeError("Field name must be non-empty string")
-
-        self.name = name
-
-        self.kw_only = kw_only
-        self.allow_none = allow_none
-        self.allowed_type = allowed_type
-        self.default = default
+    def __post_init__(self):
+        if len(self.name) == 0:
+            raise ValueError("Field name must be non-empty!")
 
     def __repr__(self):
         parts = [f"{self.__class__.__name__}({self.name!r}"]
@@ -129,6 +125,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
             raise TypeError(f"Cannot override AST node field {self} with {new_field}") from e
 
 
+@dataclass(frozen=True, repr=False)
 class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
     def _type_check_value(self, value):
         from atmfjstc.lib.ast import ASTNode
@@ -145,6 +142,7 @@ class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
         self._final_typecheck(value)
 
 
+@dataclass(frozen=True, repr=False)
 class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
     def _pre_coerce_type_check_value(self, value):
         if not isinstance(value, Iterable):
@@ -168,6 +166,7 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
                 raise TypeError(f"Error for child #{child_index}") from e
 
 
+@dataclass(frozen=True, repr=False)
 class ASTNodeParamFieldDef(ASTNodeFieldDefBase):
     def _type_check_value(self, value):
         if value is None:
