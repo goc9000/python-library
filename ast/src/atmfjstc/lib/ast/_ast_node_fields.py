@@ -33,7 +33,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
     allowed_type = None
     default = None
 
-    def __init__(self, name, kw_only=False, allow_none=False, type=AnyType, default=NVP):
+    def __init__(self, name, kw_only=False, allow_none=False, allowed_type=AnyType, default=NVP):
         if not isinstance(name, str) or len(name) == 0:
             raise TypeError("Field name must be non-empty string")
 
@@ -41,7 +41,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
 
         self.kw_only = kw_only
         self.allow_none = allow_none
-        self.allowed_type = type
+        self.allowed_type = allowed_type
         self.default = default
 
     def __repr__(self):
@@ -122,7 +122,7 @@ class ASTNodeFieldDefBase(metaclass=ABCMeta):
                 self.name,
                 kw_only=self.kw_only,
                 allow_none=new_field.allow_none,
-                type=new_field.allowed_type,
+                allowed_type=new_field.allowed_type,
                 default=new_field.default,
             )
         except Exception as e:
@@ -195,6 +195,11 @@ def parse_ast_node_field(field_spec):
         if cls is None:
             raise TypeError("Field kind must be CHILD, CHILD_LIST or PARAM")
 
-        return cls(name, **options)
+        def _adjust_name(key):
+            return 'allowed_type' if key == 'type' else key
+
+        init_params = {_adjust_name(key): value for key, value in options.items()}
+
+        return cls(name, **init_params)
     except Exception as e:
         raise TypeError(f"Error parsing AST node field specification '{field_spec!r}'") from e
