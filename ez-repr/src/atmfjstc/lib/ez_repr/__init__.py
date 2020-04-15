@@ -26,15 +26,7 @@ from textwrap import indent
 
 class EZRepr:
     def __repr__(self):
-        head = self._ez_repr_head() + '('
-        tail = ')'
-        prop_renders = [field + '=' + repr(value) for field, value in self._ez_repr_fields().items()]
-
-        oneliner = head + ', '.join(prop_renders) + tail
-        if (len(oneliner) < 100) and ('\n' not in oneliner):
-            return oneliner
-
-        return head + '\n' + ''.join(indent(prop, '  ') + ',\n' for prop in prop_renders) + tail
+        return ez_render_object(self._ez_repr_head(), self._ez_repr_fields().items())
 
     def _ez_repr_head(self):
         return self.__class__.__name__
@@ -65,6 +57,22 @@ class EZRepr:
                         continue
 
                     yield field, default_value
+
+
+def ez_render_object(name, fields):
+    """
+    Helper for rendering an arbitrary class instance in the same way as a EZRepr-enabled class, provided you can
+    supply the class name and the fields to be rendered.
+    """
+    head = name + '('
+    tail = ')'
+    prop_renders = [field + '=' + repr(value) for field, value in fields]
+
+    oneliner = head + ', '.join(prop_renders) + tail
+    if (len(oneliner) < 100) and ('\n' not in oneliner):
+        return oneliner
+
+    return head + '\n' + ''.join(indent(prop, '  ') + ',\n' for prop in prop_renders) + tail
 
 
 def as_is(repr_value):
