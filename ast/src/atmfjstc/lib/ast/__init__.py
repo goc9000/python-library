@@ -97,6 +97,8 @@ either:
       positional)
 """
 
+from atmfjstc.lib.ez_repr import ez_render_object
+
 from atmfjstc.lib.ast._ast_node_fields import parse_ast_node_field, ASTNodeChildFieldDef, ASTNodeChildListFieldDef
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
@@ -211,10 +213,15 @@ class ASTNode:
     def __deepcopy__(self, memodict):
         return self
 
-    def __repr__(self):
-        from atmfjstc.lib.ast._render_repr import render_ast_node_repr
+    def __repr__(self, max_width=120, indent=2, renderers=None):
+        # Note that we intentionally do not make ASTNode an EZRepr class, even though we use the same functionality to
+        # render it, by default.
 
-        return render_ast_node_repr(self)
+        return ez_render_object(
+            self.__class__.__name__,
+            [(field.name, value) for field, value in self.all_field_values() if value != field.default],
+            max_width=max_width, indent=indent, renderers=renderers
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ASTNode):
