@@ -18,15 +18,18 @@ accurate, but miles better than Python's default repr() which does not handle mu
 """
 
 import dataclasses
+import textwrap
 
 from inspect import isroutine, isdatadescriptor
 from collections import OrderedDict
-from textwrap import indent
 
 
 class EZRepr:
-    def __repr__(self):
-        return ez_render_object(self._ez_repr_head(), self._ez_repr_fields().items())
+    def __repr__(self, **kwargs):
+        """
+        For the extra parameters accepted by this generated repr(), refer to the ``ez_render_object`` function.
+        """
+        return ez_render_object(self._ez_repr_head(), self._ez_repr_fields().items(), **kwargs)
 
     def _ez_repr_head(self):
         return self.__class__.__name__
@@ -59,20 +62,27 @@ class EZRepr:
                     yield field, default_value
 
 
-def ez_render_object(name, fields):
+def ez_render_object(name, fields, max_width=120, indent=2):
     """
     Helper for rendering an arbitrary class instance in the same way as a EZRepr-enabled class, provided you can
     supply the class name and the fields to be rendered.
+
+    The rendering is further controlled by these parameters:
+
+    - `max_width`: Tries to render items so as to fit a given number of columns (breaking up properties, lists and
+      dicts over multiple lines if necessary). If this is set to None, everything will be rendered on a single line
+      as long as no value deep down has a multiline repr().
+    - `indent`: How many columns to indent by when rendering the content of a multi-line object, array etc
     """
     head = name + '('
     tail = ')'
     prop_renders = [field + '=' + repr(value) for field, value in fields]
 
     oneliner = head + ', '.join(prop_renders) + tail
-    if (len(oneliner) < 100) and ('\n' not in oneliner):
+    if ((max_width is None) or (len(oneliner) < max_width)) and ('\n' not in oneliner):
         return oneliner
 
-    return head + '\n' + ''.join(indent(prop, '  ') + ',\n' for prop in prop_renders) + tail
+    return head + '\n' + ''.join(textwrap.indent(prop, ' ' * indent) + ',\n' for prop in prop_renders) + tail
 
 
 def as_is(repr_value):
