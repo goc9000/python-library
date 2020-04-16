@@ -1,5 +1,7 @@
 from abc import abstractmethod
 
+from atmfjstc.lib.text_utils import iter_wrap_items
+
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
@@ -144,25 +146,7 @@ class ItemsListBase(AbstractCodegenASTNode):
             yield from item
 
     def _render_horizontal(self, context, item_renders):
-        buffer = ''
-
-        for item_lines in item_renders:
-            item = item_lines[0]
-
-            # Try to add to current line
-            candidate = buffer + ('' if buffer == '' else self._joiner2) + item
-            if len(candidate) <= context.width:
-                buffer = candidate
-                continue
-
-            # Commit line and start new one
-            if buffer != '':
-                yield buffer
-
-            buffer = item
-
-        if buffer != '':
-            yield buffer
+        yield from iter_wrap_items((render[0] for render in item_renders), context.width, separator=self._joiner2)
 
 
 class ItemsList(ItemsListBase):
