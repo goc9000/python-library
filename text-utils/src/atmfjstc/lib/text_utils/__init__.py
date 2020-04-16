@@ -202,3 +202,41 @@ def convert_indent(text, old_indent, new_indent):
         return new_indent + line[len(old_indent):]
 
     return ''.join(convert_line(line) for line in text.splitlines(True))
+
+
+def iter_wrap_items(items, max_width, separator=' '):
+    """
+    Wraps items over multiple lines so as to fit within a given width.
+
+    :param items: An iterable of "items", sort of like words but really they can be any string that must be presented
+                  unbroken. Items can contain newlines, which will cause them to appear on their own set of lines,
+                  breaking the flow of the other elements.
+    :param max_width: The maximum width allowed for a line. Use None to disable the limit.
+    :param separator: A string that will be inserted between any two items that appear on the same line.
+    :return: The function will generate the resulting lines as items stream in. Note that this potentially means it can
+             handle an infinite stream.
+    """
+    buffer = ''
+
+    for item in items:
+        is_multiline = '\n' in item
+
+        # Try to add to current line
+        if not is_multiline:
+            candidate = buffer + ('' if buffer == '' else separator) + item
+            if (max_width is None) or (len(candidate) <= max_width):
+                buffer = candidate
+                continue
+
+        # Commit line and start new one
+        if buffer != '':
+            yield buffer
+
+        if is_multiline:
+            yield from item.splitlines(False)
+            buffer = ''
+        else:
+            buffer = item
+
+    if buffer != '':
+        yield buffer
