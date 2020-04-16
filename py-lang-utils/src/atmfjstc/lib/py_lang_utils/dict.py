@@ -37,3 +37,26 @@ def filter_dict_nulls(source_dict, nulls=None):
     null_test = make_null_test(nulls)
 
     return source_dict.__class__((k, v) for k, v in source_dict.items() if not null_test(v))
+
+
+def dict_no_nulls(*args, nulls_=None, **kwargs):
+    """
+    Drop-in replacement for the dict constructor that filters out null values. By default, null means None.
+
+    To specify other values that be considered null, use the ``nulls_=`` parameter (note the trailing underscore). The
+    significance is the same as for the ``filter_dict_nulls`` function.
+    """
+    null_test = make_null_test(nulls_)
+
+    # Reproduce the logic of the dict constructor
+    if len(args) == 0:
+        pairs = []
+    elif len(args) == 1:
+        pairs = args[0].items() if isinstance(args[0], Mapping) else args[0]
+    else:
+        raise TypeError(f"dict_no_nones expected at most 1 arguments, got {len(args)}")
+
+    return dict(
+        ((key, value) for key, value in pairs if not null_test(value)),
+        **{key: value for key, value in kwargs.items() if not null_test(value)}
+    )
