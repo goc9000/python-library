@@ -15,7 +15,7 @@ def copy_only_fields(source_dict, fields):
     return source_dict.__class__((k, v) for k, v in source_dict.items() if k in fields)
 
 
-def dict_no_nulls(source_dict, *nulls):
+def filter_dict_nulls(source_dict, *nulls):
     """
     Creates a copy of a dict with only non-null fields preserved. By default, a field is null if it is None.
 
