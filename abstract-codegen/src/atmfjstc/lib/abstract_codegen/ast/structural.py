@@ -93,6 +93,12 @@ class ItemsListBase(AbstractCodegenASTNode):
         ('PARAM', 'allow_horiz_if_oneliner', dict(type=bool, default=False)),
     )
 
+    _joiner1 = None
+    _joiner2 = None
+
+    def _post_init(self):
+        self._joiner1, self._joiner2 = self._split_joiner()
+
     def render(self, context):
         item_renders = self._prepare_item_renders(context)
 
@@ -138,15 +144,13 @@ class ItemsListBase(AbstractCodegenASTNode):
             yield from item
 
     def _render_horizontal(self, context, item_renders):
-        _, joiner2 = self._split_joiner()
-
         buffer = ''
 
         for item_lines in item_renders:
             item = item_lines[0]
 
             # Try to add to current line
-            candidate = buffer + ('' if buffer == '' else joiner2) + item
+            candidate = buffer + ('' if buffer == '' else self._joiner2) + item
             if len(candidate) <= context.width:
                 buffer = candidate
                 continue
@@ -195,12 +199,10 @@ class ItemsList(ItemsListBase):
         return (n_items - 1) if ((n_items > 0) and not self.trailing_comma) else None
 
     def _render_item(self, item, context, is_extreme=False):
-        joiner1, _ = self._split_joiner()
-
-        render = list(item.render_promptable(context.derive(oneliner=True), 0, 0 if is_extreme else len(joiner1)))
+        render = list(item.render_promptable(context.derive(oneliner=True), 0, 0 if is_extreme else len(self._joiner1)))
 
         if (len(render) > 0) and not is_extreme:
-            render[-1] += joiner1
+            render[-1] += self._joiner1
 
         return render
 
