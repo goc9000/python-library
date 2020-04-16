@@ -110,6 +110,7 @@ class ASTNode:
     AST_NODE_CONFIG = ('abstract',)
 
     _ast_data = None
+    _locked = False
 
     def __init__(self, *args, **kwargs):
         try:
@@ -121,6 +122,8 @@ class ASTNode:
             self._ast_data = parse_ast_node_args(self.field_defs(), args, kwargs)
 
             self._sanity_check_post_init()
+            self._post_init()
+            self._locked = True
         except Exception as e:
             raise ValueError(f"Error instantiating {self.__class__.__name__}") from e
 
@@ -129,6 +132,14 @@ class ASTNode:
         This method can be overridden in specific node types to provide semantic sanity checking upon node creation.
 
         Throw exceptions here as needed.
+        """
+        pass   # Do nothing by default
+
+    def _post_init(self):
+        """
+        This method can be overridden so as to provide initialization of private cache fields etc.
+
+        You are allowed to set attributes here.
         """
         pass   # Do nothing by default
 
@@ -205,10 +216,10 @@ class ASTNode:
         raise AttributeError(f"Attribute '{name}' not found in AST node of type {self.__class__.__name__}")
 
     def __setattr__(self, name, value):
-        if name == '_ast_data':
-            super().__setattr__(name, value)
-        else:
+        if self._locked:
             raise AttributeError(f"Attribute '{name}' cannot be set in immutable AST Node. Use alter()")
+        else:
+            super().__setattr__(name, value)
 
     def __deepcopy__(self, memodict):
         return self
