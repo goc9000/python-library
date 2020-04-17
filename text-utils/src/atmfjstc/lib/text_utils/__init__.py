@@ -2,6 +2,8 @@
 A collection of utilities for working with plain text.
 """
 
+import re
+
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 
 
@@ -245,3 +247,15 @@ def iter_wrap_items(items, max_width, separator=' '):
 
     if buffer != '':
         yield buffer
+
+
+def split_paragraphs(text, keep_separators=False):
+    """
+    Roughly splits a text into paragraphs, i.e. areas separated by more than one newline.
+
+    If ``keep_separators=`` is true, the newline sequences that separate the paragraphs will also be returned. They
+    will always occur on odd indexes in the returned list.
+    """
+    pattern = r'\n\s*\n'
+
+    return re.split(f'({pattern})' if keep_separators else pattern, text)
