@@ -3,6 +3,11 @@ Utilities for working with external processes.
 """
 
 import shutil
+import subprocess
+import re
+import textwrap
+
+from atmfjstc.lib.text_utils import ucfirst, add_prompt, iter_wrap_items, iter_limit_text
 
 
 def command_exists(command):
@@ -10,3 +15,197 @@ def command_exists(command):
     Checks whether some external utility is installed and accessible to this script.
     """
     return shutil.which(command) is not None
+
+
+def run_external(
+    command, *args,
+    stdin=None, input=None, stdout=None, stderr=None, capture_output=False, shell=False,
+    cwd=None, timeout=None, check=False, encoding=None, errors=None, text=None, env=None,
+):
+    """
+    Calls an external utility in a manner similar to ``subprocess.run()``, with some extra niceties:
+
+    - The exceptions thrown by ``subprocess.run()`` (OSError for non-accessible executables, vs SubprocessError for
+      bad returncodes and timeouts) are replaced by the overarching class RunExternalError and its subclasses. These
+      exceptions also present much richer info by default.
+    """
+
+    try:
+        return subprocess.run(
+            (command, *(str(arg) for arg in args)),
+            stdin=stdin, input=input, stdout=stdout, stderr=stderr, capture_output=capture_output, shell=shell,
+            cwd=cwd, timeout=timeout, check=check, encoding=encoding, errors=errors, text=text, env=env,
+        )
+    except subprocess.SubprocessError as e:
+        raise RunExternalError.from_std_error(e)
+    except OSError as e:
+        raise RunExternalError.from_std_error(e, command, args)
+
+
+class RunExternalError(Exception):
+    command = None
+    args = None
+    return_code = None
+    stdout = None
+    stderr = None
+
+    def __init__(
+        self, message_base, command, args, retcode, stdout, stderr,
+        quoted_error=None, quoted_output=None, show_retcode=True
+    ):
+        self.command = command
+        self.args = args or ()
+        self.return_code = retcode
+        self.stdout = stdout
+        self.stderr = stderr
+
+        super().__init__(_render_external_error_message(
+            message_base, command, args, retcode,
+            quoted_error=quoted_error, quoted_output=quoted_output, show_retcode=show_retcode
+        ))
+
+    @staticmethod
+    def from_std_error(error, command=None, args=None):
+        if isinstance(error, OSError):
+            return RunExternalLaunchError(error, command, args)
+        elif isinstance(error, subprocess.CalledProcessError):
+            return RunExternalCalledProcessError(error)
+        elif isinstance(error, subprocess.TimeoutExpired):
+            return RunExternalTimeoutError(error)
+        else:
+            return RunExternalOtherError(error, command, args)
+
+
+class RunExternalLaunchError(RunExternalError):
+    error = None
+
+    def __init__(self, underlying_error, command, args):
+        self.error = underlying_error
+
+        super().__init__(
+            "Could not launch {}",
+            command, args or (), None, None, None,
+            quoted_error=underlying_error
+        )
+
+
+class RunExternalCalledProcessError(RunExternalError):
+    def __init__(self, called_proc_result_or_error):
+        cpr = called_proc_result_or_error  # Shortcut
+        if isinstance(cpr, subprocess.CompletedProcess):
+            raw_command = cpr.args
+        elif isinstance(cpr, subprocess.CalledProcessError):
+            raw_command = cpr.cmd
+        else:
+            raise TypeError("Must be called on either CompletedProcess or CalledProcessError")
+
+        command, args = _split_cmd_args(raw_command)
+
+        if (cpr.stderr is not None) and (len(cpr.stderr) > 0):
+            head = "{} reported an error"
+            quoted_output = cpr.stderr
+            show_retcode = True
+        else:
+            head = f"{{}} reported a failure return code ({cpr.returncode})"
+            quoted_output = None
+            show_retcode = False
+
+        super().__init__(
+            head,
+            command, args, cpr.returncode, cpr.stdout, cpr.stderr,
+            quoted_output=quoted_output, show_retcode=show_retcode
+        )
+
+
+class RunExternalTimeoutError(RunExternalError):
+    def __init__(self, from_error):
+        assert isinstance(from_error, subprocess.TimeoutExpired)
+
+        command, args = _split_cmd_args(from_error.cmd)
+
+        super().__init__(
+            f"{{}} timed out at {from_error.timeout} seconds",
+            command, args, None, from_error.stdout, from_error.stderr
+        )
+
+
+class RunExternalOtherError(RunExternalError):
+    error = None
+
+    def __init__(self, from_error, command, args):
+        self.error = from_error
+
+        super().__init__(
+            "Unexpected error while launching {}",
+            command, args or (), None, None, None,
+            quoted_error=from_error
+        )
+
+
+def _split_cmd_args(raw_command):
+    if isinstance(raw_command, (str, bytes)):
+        return raw_command, ()
+
+    return raw_command[0], tuple(raw_command[1:])
+
+
+def _render_external_error_message(
+    message_base, command, args, retcode, quoted_error=None, quoted_output=None, show_retcode=True, max_width=120
+):
+    if command is not None:
+        command_name = f"command '{command}'" if _looks_like_shell_command(command) else f"'{command}'"
+    else:
+        command_name = 'command'
+
+    message_parts = [
+        ucfirst(message_base.format(command_name)) +
+        (':' if (quoted_error or quoted_output) is not None else '')
+    ]
+
+    if quoted_error is not None:
+        err_str = str(quoted_error)
+        if ('\n' not in err_str) and (len(message_parts[0]) + len(err_str) + 1 < max_width):
+            message_parts[0] += ' ' + err_str
+        else:
+            message_parts.append(textwrap.indent(err_str, '  '))
+
+    if quoted_output is not None:
+        emitted = False
+        for line in iter_limit_text(
+            _parse_output(quoted_output), max_lines=10, max_width=max_width-2, long_lines='wrap'
+        ):
+            message_parts.append('> ' + line)
+            emitted = True
+
+        if not emitted:
+            message_parts.append('(no stderr output)')
+
+    if show_retcode and (retcode is not None):
+        message_parts.append(f"Return code: {retcode}")
+
+    if len(args or ()) > 0:
+        prompt = "Args: "
+
+        message_parts.append(add_prompt(
+            prompt,
+            '\n'.join(iter_wrap_items([_quote_arg(arg) for arg in args], max_width - len(prompt)))
+        ))
+
+    return '\n'.join(part for part in message_parts)
+
+
+def _quote_arg(arg):
+    return repr(arg) if re.search(r'[ \'"]', arg) else arg
+
+
+def _looks_like_shell_command(command):
+    return re.match(r'^[.0-9a-z_-]*$', command, re.I) is None
+
+
+def _parse_output(raw_output):
+    if raw_output is None:
+        return []
+    if isinstance(raw_output, bytes):
+        raw_output = raw_output.decode('utf-8', errors='replace')
+
+    return raw_output.splitlines(False)

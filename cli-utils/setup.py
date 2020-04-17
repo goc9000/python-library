@@ -11,6 +11,7 @@ setup(
     
     install_requires=[
         'termcolor>=1, <2',
+        'atmfjstc-text-utils>=1.3, <2',
     ],
 
     zip_safe=True,
