@@ -40,14 +40,27 @@ def run_external(
         result = subprocess.run(
             (command, *(str(arg) for arg in args)),
             stdin=stdin, input=input, stdout=stdout, stderr=stderr, capture_output=capture_output, shell=shell,
-            cwd=cwd, timeout=timeout, check=check_retcode, encoding=encoding, errors=errors, text=text, env=env,
+            cwd=cwd, timeout=timeout, encoding=encoding, errors=errors, text=text, env=env,
         )
     except subprocess.SubprocessError as e:
         raise RunExternalError.from_std_error(e)
     except OSError as e:
         raise RunExternalError.from_std_error(e, command, args)
 
-    if check_stderr and len(result.stderr or '') > 0:
+    check_external_cmd_result(result, check_retcode=check_retcode, check_stderr=check_stderr)
+
+    return result
+
+
+def check_external_cmd_result(result, check_retcode=True, check_stderr=True):
+    """
+    Analyzes a CompletedProcess result and throws an error if the return code or stderr indicate the program failed.
+
+    Basically this does the check at the end of ``run_external`` in case you didn't check the return code or stderr
+    immediately (e.g. because you had to do some processing on the result first).
+
+    """
+    if (check_retcode and (result.returncode != 0)) or (check_stderr and len(result.stderr or '') > 0):
         raise RunExternalCalledProcessError(result)
 
     return result
