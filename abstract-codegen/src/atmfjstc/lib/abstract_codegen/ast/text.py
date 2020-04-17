@@ -1,6 +1,6 @@
-import re
-
 from textwrap import dedent, wrap
+
+from atmfjstc.lib.text_utils import split_paragraphs
 
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode
 
@@ -25,14 +25,14 @@ class ReflowableText(AbstractCodegenASTNode):
     )
 
     def render(self, context):
-        parts = re.split(r'(\s{2,})', dedent(self.text).strip("\n"))
+        parts = split_paragraphs(dedent(self.text).strip("\n"), keep_separators=True)
 
         for i in range(0, len(parts), 2):
             if i > 0:
-                for _ in range(len(parts[i - 1]) - 1):
+                for _ in range(parts[i - 1].count('\n') - 1):
                     yield ''
 
-            for line in wrap(parts[i], width=context.width):
+            for line in wrap(parts[i].rstrip(), width=context.width):
                 yield line
 
 
