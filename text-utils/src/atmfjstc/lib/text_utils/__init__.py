@@ -5,6 +5,11 @@ A collection of utilities for working with plain text.
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 
 
+def ucfirst(word):
+    """Capitalize the first letter of a word (while leaving the rest alone, unlike ``str.capitalize``)"""
+    return '' if len(word) == 0 else (word[0].upper() + word[1:])
+
+
 def find_line_col(text, offset):
     """
     Returns the line and column corresponding to an offset in a given text (i.e. the position of the character at
