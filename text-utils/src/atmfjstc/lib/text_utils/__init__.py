@@ -54,7 +54,7 @@ def add_prompt(prompt, value):
     Returns the ``str()`` of a value with a prompt prepended. The prompt will clear all space below it, such that a
     multiline representation of the value will not be disrupted.
     """
-    return '\n'.join(
+    return ''.join(
         (prompt if is_first else ' ' * len(prompt)) + line
         for line, is_first in iter_with_first(str(value).splitlines(True))
     )
