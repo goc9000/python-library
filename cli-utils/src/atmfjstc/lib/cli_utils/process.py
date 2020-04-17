@@ -19,8 +19,9 @@ def command_exists(command):
 
 def run_external(
     command, *args,
-    stdin=None, input=None, stdout=None, stderr=None, capture_output=False, shell=False,
-    cwd=None, timeout=None, check=False, encoding=None, errors=None, text=None, env=None,
+    stdin=None, input=None, capture_output=True, stdout=None, stderr=None, shell=False,
+    cwd=None, timeout=None, encoding=None, errors=None, text=None, env=None,
+    check_retcode=True, check_stderr=True
 ):
     """
     Calls an external utility in a manner similar to ``subprocess.run()``, with some extra niceties:
@@ -28,18 +29,28 @@ def run_external(
     - The exceptions thrown by ``subprocess.run()`` (OSError for non-accessible executables, vs SubprocessError for
       bad returncodes and timeouts) are replaced by the overarching class RunExternalError and its subclasses. These
       exceptions also present much richer info by default.
+    - ``capture_output=`` defaults to True
+    - ``check=`` is now named ``check_retcode=`` and defaults to True
+    - An option ``check_stderr=`` that causes an error to be thrown if the called process writes anything to stderr
+      (defaults to True). The stderr output is automatically decoded regardless of the ``text=`` setting and a limited
+      amount of it is included in the exception.
     """
 
     try:
-        return subprocess.run(
+        result = subprocess.run(
             (command, *(str(arg) for arg in args)),
             stdin=stdin, input=input, stdout=stdout, stderr=stderr, capture_output=capture_output, shell=shell,
-            cwd=cwd, timeout=timeout, check=check, encoding=encoding, errors=errors, text=text, env=env,
+            cwd=cwd, timeout=timeout, check=check_retcode, encoding=encoding, errors=errors, text=text, env=env,
         )
     except subprocess.SubprocessError as e:
         raise RunExternalError.from_std_error(e)
     except OSError as e:
         raise RunExternalError.from_std_error(e, command, args)
+
+    if check_stderr and len(result.stderr or '') > 0:
+        raise RunExternalCalledProcessError(result)
+
+    return result
 
 
 class RunExternalError(Exception):
