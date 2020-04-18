@@ -132,7 +132,8 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
 
 from atmfjstc.lib.ez_repr import ez_render_object
 
-from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec
+from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec, \
+    ASTNodeConfig
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
@@ -213,9 +214,9 @@ class ASTNode:
                         field_indexes[field_def.name] = len(field_defs)
                         field_defs.append(field_def)
 
-        result = dict(
+        result = ASTNodeConfig(
             is_abstract=is_abstract,
-            field_defs=tuple(field_defs),
+            fields=tuple(field_defs),
         )
 
         cls._cached_ast_node_config = result
@@ -227,14 +228,14 @@ class ASTNode:
         """
         Returns True if this is an abstract node type (i.e. only meant to serve as an ancestor for concrete nodes)
         """
-        return cls.ast_node_config()['is_abstract']
+        return cls.ast_node_config().is_abstract
 
     @classmethod
     def field_defs(cls):
         """
         A list of field definitions applicable to this AST node class, in reverse MRO order (ancestor -> child)
         """
-        return cls.ast_node_config()['field_defs']
+        return cls.ast_node_config().fields
 
     def all_field_values(self):
         """

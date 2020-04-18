@@ -182,3 +182,13 @@ def parse_ast_node_field(field_spec):
         return cls(name, **init_params)
     except Exception as e:
         raise TypeError(f"Error parsing AST node field specification '{field_spec!r}'") from e
+
+
+@dataclass(frozen=True, repr=False)
+class ASTNodeConfig(EZRepr):
+    """
+    This is a class for storing the configuration for an AST node (its set of fields and whether it is abstract)
+    """
+
+    is_abstract: bool
+    fields: Tuple[ASTNodeFieldSpec, ...]
