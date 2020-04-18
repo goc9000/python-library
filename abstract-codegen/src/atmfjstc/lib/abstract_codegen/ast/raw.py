@@ -1,3 +1,5 @@
+import collections
+
 from typing import Iterable
 
 from atmfjstc.lib.text_utils import check_single_line
@@ -21,6 +23,10 @@ class Atom(PromptableNode):
         yield self.content
 
 
+def _ensure_tuple(value):
+    return tuple(value) if isinstance(value, collections.abc.Iterable) else value
+
+
 class PreformattedLines(PromptableNode):
     """
     A node containing preformatted lines that will be rendered as-is.
@@ -29,7 +35,7 @@ class PreformattedLines(PromptableNode):
     being refactored.
     """
     AST_NODE_CONFIG = (
-        ('PARAM', 'lines', dict(type=tuple)),
+        ('PARAM', 'lines', dict(coerce=_ensure_tuple, type=tuple)),
     )
 
     def render_promptable(self, _context: CodegenContext, _prompt_width: int, _tail_width: int) -> Iterable[str]:
@@ -40,4 +46,4 @@ def pre(lines_iterable: Iterable[str]) -> PreformattedLines:
     """
     Convenience function for instantiationg a PreformattedLines node using an iterable of lines (list, generator etc.)
     """
-    return PreformattedLines(tuple(lines_iterable))
+    return PreformattedLines(lines_iterable)
