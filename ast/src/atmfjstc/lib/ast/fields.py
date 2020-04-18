@@ -113,6 +113,39 @@ class ASTNodeFieldSpec(EZRepr):
         except Exception as e:
             raise TypeError(f"Cannot override AST node field {self} with {new_field}") from e
 
+    @staticmethod
+    def parse(raw_field_spec):
+        try:
+            if not isinstance(raw_field_spec, tuple) or len(raw_field_spec) not in [2, 3]:
+                raise TypeError("Field spec must be a tuple of length 2 or 3")
+
+            kind, name, options = (raw_field_spec + (dict(),))[:3]
+
+            cls = {
+                'CHILD': ASTNodeSingleChildFieldSpec,
+                'CHILD_LIST': ASTNodeChildListFieldSpec,
+                'PARAM': ASTNodeParamFieldSpec,
+            }.get(kind)
+
+            if cls is None:
+                raise TypeError("Field kind must be CHILD, CHILD_LIST or PARAM")
+
+            init_params = dict()
+            for key, value in options.items():
+                if key == 'check':
+                    key = 'checks'
+                if key == 'type':
+                    key = 'allowed_type'
+
+                if key == 'checks':
+                    value = tuple(value) if isinstance(value, Iterable) else (value,)
+
+                init_params[key] = value
+
+            return cls(name, **init_params)
+        except Exception as e:
+            raise TypeError(f"Error parsing AST node field specification '{raw_field_spec!r}'") from e
+
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeChildFieldSpecBase(ASTNodeFieldSpec):
@@ -149,39 +182,6 @@ class ASTNodeChildListFieldSpec(ASTNodeChildFieldSpecBase):
 @dataclass(frozen=True, repr=False)
 class ASTNodeParamFieldSpec(ASTNodeFieldSpec):
     pass
-
-
-def parse_ast_node_field(field_spec):
-    try:
-        if not isinstance(field_spec, tuple) or len(field_spec) not in [2,3]:
-            raise TypeError("Field spec must be a tuple of length 2 or 3")
-
-        kind, name, options = (field_spec + (dict(),))[:3]
-
-        cls = {
-            'CHILD': ASTNodeSingleChildFieldSpec,
-            'CHILD_LIST': ASTNodeChildListFieldSpec,
-            'PARAM': ASTNodeParamFieldSpec,
-        }.get(kind)
-
-        if cls is None:
-            raise TypeError("Field kind must be CHILD, CHILD_LIST or PARAM")
-
-        init_params = dict()
-        for key, value in options.items():
-            if key == 'check':
-                key = 'checks'
-            if key == 'type':
-                key = 'allowed_type'
-
-            if key == 'checks':
-                value = tuple(value) if isinstance(value, Iterable) else (value,)
-
-            init_params[key] = value
-
-        return cls(name, **init_params)
-    except Exception as e:
-        raise TypeError(f"Error parsing AST node field specification '{field_spec!r}'") from e
 
 
 @dataclass(frozen=True, repr=False)

@@ -132,8 +132,8 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
 
 from atmfjstc.lib.ez_repr import ez_render_object
 
-from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec, \
-    ASTNodeConfig
+from atmfjstc.lib.ast.fields import ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec, ASTNodeConfig, \
+    ASTNodeFieldSpec
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
@@ -205,7 +205,7 @@ class ASTNode:
                 if item == 'abstract':
                     is_abstract = True
                 else:
-                    field_def = parse_ast_node_field(item)
+                    field_def = ASTNodeFieldSpec.parse(item)
 
                     old_field_index = field_indexes.get(field_def.name)
                     if old_field_index is not None:
