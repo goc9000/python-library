@@ -1,7 +1,9 @@
 from textwrap import dedent, wrap
+from typing import Iterable
 
 from atmfjstc.lib.text_utils import split_paragraphs
 
+from atmfjstc.lib.abstract_codegen.CodegenContext import CodegenContext
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode
 
 
@@ -17,14 +19,14 @@ class ReflowableText(AbstractCodegenASTNode):
     - This is particularly useful for the text inside comment blocks
     - Leading and trailing blank lines will be automatically removed
     - Do not put bulleted lists, etc. or other formatting inside the text, as they will not respond to the reflow
-      correctly. Instead, represent the text using a Sequence of ReflowableText paragraphs and other nodes to represent
-      the non-text content.
+      correctly. Instead, represent the text using a `Sequence` of `ReflowableText` paragraphs and other nodes to
+      represent the non-text content.
     """
     AST_NODE_CONFIG = (
         ('PARAM', 'text', dict(type=str)),
     )
 
-    def render(self, context):
+    def render(self, context: CodegenContext) -> Iterable[str]:
         parts = split_paragraphs(dedent(self.text).strip("\n"), keep_separators=True)
 
         for i in range(0, len(parts), 2):
@@ -45,11 +47,11 @@ class WrapText(AbstractCodegenASTNode):
     - The caller will specify a 'head', 'indent' and/or 'tail' (by default all are empty)
     - If the content is non-empty, the rendering will look like::
 
-      <head>
-      <indent>content line 1
-      <indent>content line 2
-      ...
-      <tail>
+          <head>
+          <indent>content line 1
+          <indent>content line 2
+          ...
+          <tail>
 
     - If the content is empty, nothing will be generated (even if head and tail are non-empty)
 
@@ -65,7 +67,7 @@ class WrapText(AbstractCodegenASTNode):
         ('PARAM', 'tail', dict(type=str, default='')),
     )
 
-    def render(self, context):
+    def render(self, context: CodegenContext) -> Iterable[str]:
         subcontext = context.derive(sub_width=len(self.indent))
 
         first = True
