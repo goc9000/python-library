@@ -180,7 +180,7 @@ class ASTNode:
     def ast_node_config(cls):
         """
         Returns the complete set of fields and abstract status in effect for this node type. Fields are presented in
-        reverse MRO order (i.e. from ASTNode through all the ancestors up to the current node type).
+        reverse MRO order (i.e. from `ASTNode` through all the ancestors up to the current node type).
         """
 
         # Note: we are using .__dict__.get() to ensure that we only get the value for this class, not inherit it from
@@ -327,8 +327,8 @@ class ASTNode:
         Recursively replaces data throughout this node and its children, their children etc. and returns the modified
         subtree (the original is of course unaffected, as per the immutable nature of ASTs).
 
-        The ``callback`` will receive each node as it is visited. It must return an altered copy of the node (or
-        the unchanged node if so desired). It can also return ``None`` which means the visited node should be deleted.
+        The `callback` will receive each node as it is visited. It must return an altered copy of the node (or
+        the unchanged node if so desired). It can also return None which means the visited node should be deleted.
 
         Note that the callback can modify the child lists themselves, but should not recurse into children (rather,
         leave that to this function).
