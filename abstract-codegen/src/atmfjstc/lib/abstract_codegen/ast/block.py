@@ -49,6 +49,7 @@ class Block(BlockLike):
 
     Notes:
 
+    - The `head` and `tail` will always be rendered even if the content is empty
     - The `head` and `tail` cannot be multiline. If you need something like a multiline head or tail, consider using
       the `ChainedBlocks` node
     """
@@ -99,6 +100,7 @@ class Brace(BlockLike):
     Notes:
 
     - The content must be promptable (thus it is a more restricted type than for a general BlockLike)
+    - If the content is empty, the `head` and `tail` will NOT be rendered - the whole element will be empty
     - The `head` and `tail` cannot be multiline. If you need something like a multiline head or tail, consider using
       the `ChainedBlocks` node
     """
