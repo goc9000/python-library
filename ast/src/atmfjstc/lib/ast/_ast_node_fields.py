@@ -43,6 +43,12 @@ class ASTNodeFieldDefBase(EZRepr):
             - The functions are called in order, after the value has passed the type check
             - The value None, if allowed, is NOT checked
 
+        coerce: A function that is called on an incoming value before any other checks are made, so as to try to
+            convert it to the accepted type if it is compatible (e.g. allowing lists for a parameter that accepts only
+            tuples). Should be used sparingly.
+
+            Note that unlike the other checks, the coerce function can be called with a None value if one is supplied.
+
         default: Specifies a default value for this field.
 
             Note: no checks are performed for the default value. It must be of the same type that would pass the node's
@@ -56,6 +62,7 @@ class ASTNodeFieldDefBase(EZRepr):
 
     kw_only: bool = False
     allow_none: bool = False
+    coerce: Optional[Callable[[Any], Any]] = None
     allowed_type: XtdTypeSpec = AnyType
     checks: Tuple[Callable[[Any], Optional[bool]], ...] = ()
     default: Any = NVP
@@ -94,6 +101,9 @@ class ASTNodeFieldDefBase(EZRepr):
         return value   # Do nothing by default
 
     def _check_value(self, value):
+        if self.coerce is not None:
+            value = self.coerce(value)
+
         if value is None:
             if self.allow_none:
                 return
