@@ -132,7 +132,7 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
 
 from atmfjstc.lib.ez_repr import ez_render_object
 
-from atmfjstc.lib.ast._ast_node_fields import parse_ast_node_field, ASTNodeChildFieldDef, ASTNodeChildListFieldDef
+from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeChildFieldDef, ASTNodeChildListFieldDef
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
