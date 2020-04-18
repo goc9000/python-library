@@ -79,11 +79,12 @@ class Brace(BlockLike):
 
     Notes:
 
+    - The content must be promptable (thus it is a more restricted type than for a general BlockLike)
     - The `head` and `tail` cannot be multiline. If you need something like a multiline head or tail, consider using
       the `ChainedBlocks` node
     """
     AST_NODE_CONFIG = (
-        ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
+        ('CHILD', 'content', dict(type=PromptableNode)),
     )
 
     def render_promptable(self, context, prompt_width, tail_width):
