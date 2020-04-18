@@ -12,6 +12,22 @@ def ucfirst(word):
     return '' if len(word) == 0 else (word[0].upper() + word[1:])
 
 
+def check_nonempty_str(value, value_name='value'):
+    """Checks that a string is not empty and returns it, otherwise throws a `ValueError`"""
+    if value == '':
+        raise ValueError(ucfirst(f"{value_name} must be a non-empty string".lstrip()))
+
+    return value
+
+
+def check_single_line(value, value_name='value'):
+    """Checks that a string does not contain newlines and returns it, otherwise throws a `ValueError`"""
+    if '\n' in value:
+        raise ValueError(ucfirst(f"{value_name} must be a single-line string".lstrip()))
+
+    return value
+
+
 def find_line_col(text, offset):
     """
     Returns the line and column corresponding to an offset in a given text (i.e. the position of the character at
