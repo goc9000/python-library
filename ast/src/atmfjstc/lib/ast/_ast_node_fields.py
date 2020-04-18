@@ -20,15 +20,28 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
     - Child List: A list of children (AST nodes)
     - Param: Any other kind of parameter that is not an AST node
 
-    Each field can be configured with a number of options, as follows:
+    Attributes:
+        name: The name of the field
+        allowed_type: Restricts the type of value/node that can go into the field. Must be an extended type
+            specification (see the ``xtd_type_spec`` package for details).
 
-    - ``type``: Restricts the type of value/node that can go into the field. Must be an extended type specification (see
-                the ``xtd_type_spec`` package for details). Note that in addition to this restriction, items in a
-                child/child-list field must also be AST nodes.
-    - ``allow_none``: Allows params or single child slots to accept the value None (which is normally not the case).
-    - ``default``: Specifies a default value for this field
-    - ``kw_only``: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
-                   positional)
+            Notes:
+
+            - In addition to this restriction, items in a child/child-list field must also be AST nodes.
+            - For a child list field, the `type` check (and any other check) is applied to each child, not to the
+              iterable of children itself.
+
+        allow_none: Allows params or single child slots to accept the value None (which is normally not the case).
+
+            Children in a child list field can never be None.
+
+        default: Specifies a default value for this field.
+
+            Note: no checks are performed for the default value. It must be of the same type that would pass the node's
+            `type` check.
+
+        kw_only: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
+            positional)
     """
 
     name: str
