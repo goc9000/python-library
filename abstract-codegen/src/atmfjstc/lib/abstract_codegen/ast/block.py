@@ -1,6 +1,7 @@
 import itertools
 
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first_last, iter_with_last
+from atmfjstc.lib.text_utils import check_single_line
 
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 from atmfjstc.lib.abstract_codegen.ast.raw import Atom
@@ -16,8 +17,8 @@ class BlockLike(PromptableNode):
     AST_NODE_CONFIG = (
         'abstract',
         ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
-        ('PARAM', 'head', dict(type=str, default='')),
-        ('PARAM', 'tail', dict(type=str, default='')),
+        ('PARAM', 'head', dict(type=str, check=check_single_line, default='')),
+        ('PARAM', 'tail', dict(type=str, check=check_single_line, default='')),
     )
 
 
@@ -26,6 +27,11 @@ class Block(BlockLike):
     A construct for representing a block (an area delimited by symbols and/or indented).
 
     Useful for arrays, objects, for, if, etc. constructs (esp. in combination with ItemsList).
+
+    Notes:
+
+    - The `head` and `tail` cannot be multiline. If you need something like a multiline head or tail, consider using
+      the `ChainedBlocks` node
     """
     AST_NODE_CONFIG = (
         ('PARAM', 'allow_oneliner', dict(type=bool, default=True)),
@@ -70,6 +76,11 @@ class Brace(BlockLike):
     Wraps an element and ensures that a specific head and tail are added to it.
 
     Useful for adding commas to elements, left-hand-side declarations to values etc.
+
+    Notes:
+
+    - The `head` and `tail` cannot be multiline. If you need something like a multiline head or tail, consider using
+      the `ChainedBlocks` node
     """
     AST_NODE_CONFIG = (
         ('CHILD', 'content', dict(type=AbstractCodegenASTNode)),
