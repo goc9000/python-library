@@ -154,6 +154,19 @@ class ChainedBlocks(PromptableNode):
         return blocks, delimiters
 
     def _iter_raw_items(self):
+        def _iter_chain_content(content):
+            for item in content:
+                if isinstance(item, NullNode):
+                    continue
+                elif isinstance(item, Atom):
+                    yield item.content
+                elif isinstance(item, ChainedBlocks):
+                    yield from _iter_chain_content(item.content)
+                else:
+                    yield item.head
+                    yield item
+                    yield item.tail
+
         yield ''
         yield from _iter_chain_content(self.content)
         yield ''
@@ -162,17 +175,3 @@ class ChainedBlocks(PromptableNode):
 ChainedBlocks.AST_NODE_CONFIG = (
     ('CHILD_LIST', 'content', dict(type=(Atom, BlockLike, ChainedBlocks, NullNode))),
 )
-
-
-def _iter_chain_content(content):
-    for item in content:
-        if isinstance(item, NullNode):
-            continue
-        elif isinstance(item, Atom):
-            yield item.content
-        elif isinstance(item, ChainedBlocks):
-            yield from _iter_chain_content(item.content)
-        else:
-            yield item.head
-            yield item
-            yield item.tail
