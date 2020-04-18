@@ -27,6 +27,14 @@ def _ensure_tuple(value):
     return tuple(value) if isinstance(value, collections.abc.Iterable) else value
 
 
+def _check_lines_ok(lines):
+    for line in lines:
+        if not isinstance(line, str):
+            raise TypeError("Value must be a tuple of strings")
+        if '\n' in line:
+            raise ValueError("Lines should not contain newline characters")
+
+
 class PreformattedLines(PromptableNode):
     """
     A node containing preformatted lines that will be rendered as-is.
@@ -35,7 +43,7 @@ class PreformattedLines(PromptableNode):
     being refactored.
     """
     AST_NODE_CONFIG = (
-        ('PARAM', 'lines', dict(coerce=_ensure_tuple, type=tuple)),
+        ('PARAM', 'lines', dict(coerce=_ensure_tuple, type=tuple, check=_check_lines_ok)),
     )
 
     def render_promptable(self, _context: CodegenContext, _prompt_width: int, _tail_width: int) -> Iterable[str]:
