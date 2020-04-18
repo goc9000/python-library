@@ -1,8 +1,11 @@
 import itertools
 
+from typing import Iterable, Optional
+
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first_last, iter_with_last
 from atmfjstc.lib.text_utils import check_single_line
 
+from atmfjstc.lib.abstract_codegen.CodegenContext import CodegenContext
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 from atmfjstc.lib.abstract_codegen.ast.raw import Atom
 from atmfjstc.lib.abstract_codegen.ast.structural import NullNode
@@ -11,8 +14,6 @@ from atmfjstc.lib.abstract_codegen.ast.structural import NullNode
 class BlockLike(PromptableNode):
     """
     A base for all block-like nodes. All block-likes have a head, tail, and content.
-
-    Useful for arrays, objects, for, if, etc. constructs (esp. in combination with ItemsList).
     """
     AST_NODE_CONFIG = (
         'abstract',
@@ -24,9 +25,27 @@ class BlockLike(PromptableNode):
 
 class Block(BlockLike):
     """
-    A construct for representing a block (an area delimited by symbols and/or indented).
+    A node for representing a "block", a powerful workhorse useful for arrays, objects, for/if/switch constructs,
+    class/function/method declarations etc. (esp. in combination with `ItemsList`).
 
-    Useful for arrays, objects, for, if, etc. constructs (esp. in combination with ItemsList).
+    A block is a construct with a *head*, a *content* and a *tail*. It can render in two ways, either "oneliner"::
+
+        <head><content><tail>
+
+    or "splayed"::
+
+        <head>
+            <content line 1>
+            <content line 2>
+            ...
+            <content line N>
+        <tail>
+
+    The block will always try to render as a oneliner and fall back to the "splayed" rendering if:
+
+    - The oneliner rendering doesn't fit the width
+    - The content is multiline
+    - One-liner rendering is disabled for this node using the `allow_oneliner` parameter
 
     Notes:
 
@@ -37,7 +56,7 @@ class Block(BlockLike):
         ('PARAM', 'allow_oneliner', dict(type=bool, default=True)),
     )
 
-    def render_promptable(self, context, prompt_width, tail_width):
+    def render_promptable(self, context: CodegenContext, prompt_width: int, tail_width: int) -> Iterable[str]:
         if self.allow_oneliner:
             render = self._try_render_oneliner(context, prompt_width, tail_width)
             if render is not None:
@@ -53,7 +72,7 @@ class Block(BlockLike):
             # Note that we intentionally collapse an empty tail, but not an empty head
             yield self.tail.lstrip()
 
-    def _try_render_oneliner(self, context, prompt_width, tail_width):
+    def _try_render_oneliner(self, context: CodegenContext, prompt_width: int, tail_width: int) -> Optional[str]:
         avail_width = context.width - prompt_width - tail_width - len(self.head) - len(self.tail)
         if avail_width < 0:
             return None
@@ -87,7 +106,7 @@ class Brace(BlockLike):
         ('CHILD', 'content', dict(type=PromptableNode)),
     )
 
-    def render_promptable(self, context, prompt_width, tail_width):
+    def render_promptable(self, context: CodegenContext, prompt_width: int, tail_width: int) -> Iterable[str]:
         for line, is_first, is_last in iter_with_first_last(
             self.content.render_promptable(context, prompt_width + len(self.head), tail_width + len(self.tail))
         ):
@@ -103,8 +122,9 @@ class ChainedBlocks(PromptableNode):
     """
     A construct that intelligently chains multiple blocks together.
 
-    This is highly useful for complex constructs such as if statements, methods, etc. For a function, for instance,
-    the first block would be the parameters between the (), while the second is the code between the {}.
+    This is highly useful for complex constructs such as complex ``if`` statements, methods, etc. For a function, for
+    instance, the first block would be the parameters between the ``()``, while the second is the code between the
+    ``{}``.
 
     The sequence of blocks to be rendered is described by four kinds of child nodes:
 
@@ -113,10 +133,12 @@ class ChainedBlocks(PromptableNode):
       other adjacent `Atom` nodes)
     - `NullNode`'s will simply be ignored (they are useful for when just omitting the node is inelegant)
     - `ChainedBlock` nodes will add their own blocks and delimiters to their place in the list
+
+    Note that a `ChainedBlocks` node is NOT a `BlockLike` itself.
     """
     # Note: we set AST_NODE_CONFIG after the class definition, due to the self-reference
 
-    def render_promptable(self, context, prompt_width, tail_width):
+    def render_promptable(self, context: CodegenContext, prompt_width: int, tail_width: int) -> Iterable[str]:
         blocks, delimiters = self._consolidate()
 
         last_line = delimiters[0]
