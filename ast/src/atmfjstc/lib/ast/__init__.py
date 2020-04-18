@@ -215,7 +215,7 @@ class ASTNode:
 
         result = dict(
             is_abstract=is_abstract,
-            field_defs=field_defs,
+            field_defs=tuple(field_defs),
         )
 
         cls._cached_ast_node_config = result
