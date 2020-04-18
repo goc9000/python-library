@@ -1,3 +1,5 @@
+from atmfjstc.lib.text_utils import check_single_line
+
 from atmfjstc.lib.abstract_codegen.ast.base import PromptableNode
 
 
@@ -6,11 +8,8 @@ class Atom(PromptableNode):
     A node containing a single line of text that will be returned as-is.
     """
     AST_NODE_CONFIG = (
-        ('PARAM', 'content', dict(type=str)),
+        ('PARAM', 'content', dict(type=str, check=check_single_line)),
     )
-
-    def _sanity_check_post_init(self):
-        assert "\n" not in self.content
 
     def render_promptable(self, _context, _prompt_width, _tail_width):
         yield self.content
