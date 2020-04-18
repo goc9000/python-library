@@ -105,7 +105,9 @@ class ASTNodeFieldDefBase(EZRepr):
                 self.name,
                 kw_only=self.kw_only,
                 allow_none=new_field.allow_none,
+                coerce=new_field.coerce or self.coerce,
                 allowed_type=new_field.allowed_type,
+                checks=self.checks + new_field.checks,
                 default=new_field.default,
             )
         except Exception as e:
