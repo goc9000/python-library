@@ -124,12 +124,12 @@ class ASTNodeChildFieldSpecBase(ASTNodeFieldSpec):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildFieldDef(ASTNodeChildFieldSpecBase):
+class ASTNodeSingleChildFieldSpec(ASTNodeChildFieldSpecBase):
     pass
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildListFieldDef(ASTNodeChildFieldSpecBase):
+class ASTNodeChildListFieldSpec(ASTNodeChildFieldSpecBase):
     allow_none: bool = field(init=False, default=False)
 
     def _coerce_incoming_value(self, value):
@@ -147,7 +147,7 @@ class ASTNodeChildListFieldDef(ASTNodeChildFieldSpecBase):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeParamFieldDef(ASTNodeFieldSpec):
+class ASTNodeParamFieldSpec(ASTNodeFieldSpec):
     pass
 
 
@@ -159,9 +159,9 @@ def parse_ast_node_field(field_spec):
         kind, name, options = (field_spec + (dict(),))[:3]
 
         cls = {
-            'CHILD': ASTNodeChildFieldDef,
-            'CHILD_LIST': ASTNodeChildListFieldDef,
-            'PARAM': ASTNodeParamFieldDef,
+            'CHILD': ASTNodeSingleChildFieldSpec,
+            'CHILD_LIST': ASTNodeChildListFieldSpec,
+            'PARAM': ASTNodeParamFieldSpec,
         }.get(kind)
 
         if cls is None:

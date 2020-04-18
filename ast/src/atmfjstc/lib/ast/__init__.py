@@ -132,7 +132,7 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
 
 from atmfjstc.lib.ez_repr import ez_render_object
 
-from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeChildFieldDef, ASTNodeChildListFieldDef
+from atmfjstc.lib.ast.fields import parse_ast_node_field, ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
@@ -316,10 +316,10 @@ class ASTNode:
         Iterates through this node's children (and them alone), if any exist.
         """
         for field, value in self.all_field_values():
-            if isinstance(field, ASTNodeChildFieldDef):
+            if isinstance(field, ASTNodeSingleChildFieldSpec):
                 if value is not None:
                     yield value
-            elif isinstance(field, ASTNodeChildListFieldDef):
+            elif isinstance(field, ASTNodeChildListFieldSpec):
                 yield from value
 
     def replace_subtree(self, callback, only_type=None, root_first=True):
@@ -346,10 +346,10 @@ class ASTNode:
 
         # Note that we use the replacement node's config, not our own, because the node type may have changed
         for field, value in root_replacement.all_field_values():
-            if isinstance(field, ASTNodeChildFieldDef):
+            if isinstance(field, ASTNodeSingleChildFieldSpec):
                 if value is not None:
                     replacements[field.name] = value.replace_subtree(callback, root_first=root_first)
-            elif isinstance(field, ASTNodeChildListFieldDef):
+            elif isinstance(field, ASTNodeChildListFieldSpec):
                 replacements[field.name] = tuple(
                     replacement
                     for replacement in (
