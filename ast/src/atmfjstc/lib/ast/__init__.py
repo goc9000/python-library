@@ -88,12 +88,45 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
   - ``'name'`` is the field name
   - ``dict(..)`` specifies extra options for the field (can be absent if there are none):
 
-    - ``type``: Restricts the type of value/node that can go into the field. Must be an extended type specification
-      (see the ``xtd_type_spec`` package for details). Note that in addition to this restriction, items in a child/
-      child-list field must also be AST nodes.
-    - ``allow_none``: Allows params or single child slots to accept the value ``None`` (which is normally not the case).
-    - ``default``: Specifies a default value for this field
-    - ``kw_only``: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
+    - `allowed_type`: Specifies the type of the values/node that should be allowed to go in the field.
+
+      Notes:
+
+      - You can also use the shorter alias `type` for this parameter.
+      - To check for more than one type, or complex types, you can use an extended type specification (see the
+        `xtd_type_spec` package for details).
+      - In addition to this restriction, items in a child/child-list field must also be AST nodes.
+      - For a child list field, the `type` check (and any other check) is applied to each child, not to the
+        iterable of children itself.
+
+    - `allow_none`: Allows params or single child slots to accept the value None (which is normally not the case).
+
+      This field cannot be set for child list fields. Those never accept None values in the child list.
+
+    - `check`: A function that will be called on an incoming value to ensure that it meets semantic checks (e.g.
+      strings that should be non-empty or match some regex). If the check fails, the function should either return False
+      or throw an exception, preferably a `TypeError` or `ValueError`.
+
+      Notes:
+
+      - The value None, if allowed, is NOT checked.
+      - The semantic check is called after the type check, so the function can rely on the value being the appropriate
+        type.
+      - Instead of a single function, you can specify a tuple of functions (and name the parameter `checks`, although
+        this is not mandatory). They will be called in order, so each can rely on the previous one having passed.
+
+    - `coerce`: A function that is called on an incoming value before any other checks are made, so as to try to
+      convert it to the accepted type if it is compatible (e.g. allowing lists for a parameter that accepts only
+      tuples). Should be used sparingly.
+
+      Note that unlike the other checks, the coerce function can be called with a None value if one is supplied.
+
+    - `default`: Specifies a default value for this field.
+
+      Note: no checks are performed for the default value. It must be of the same type and nature that would pass the
+      node's `type` and `checks` verifications.
+
+    - `kw_only`: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
       positional)
 """
 

@@ -19,43 +19,7 @@ class ASTNodeFieldDefBase(EZRepr):
     - Child List: A list of children (AST nodes)
     - Param: Any other kind of parameter that is not an AST node
 
-    Attributes:
-        name: The name of the field
-        allowed_type: Restricts the type of value/node that can go into the field. Must be an extended type
-            specification (see the ``xtd_type_spec`` package for details).
-
-            Notes:
-
-            - In addition to this restriction, items in a child/child-list field must also be AST nodes.
-            - For a child list field, the `type` check (and any other check) is applied to each child, not to the
-              iterable of children itself.
-
-        allow_none: Allows params or single child slots to accept the value None (which is normally not the case).
-
-            This field is always locked to False for child list fields.
-
-        checks: A tuple of functions that are called on an incoming value to ensure that it meets semantic checks (e.g.
-            strings that should be non-empty or match some regex). If a check fails, the function should either return
-            False or throw an exception, preferably a `TypeError` or `ValueError`.
-
-            Notes:
-
-            - The functions are called in order, after the value has passed the type check
-            - The value None, if allowed, is NOT checked
-
-        coerce: A function that is called on an incoming value before any other checks are made, so as to try to
-            convert it to the accepted type if it is compatible (e.g. allowing lists for a parameter that accepts only
-            tuples). Should be used sparingly.
-
-            Note that unlike the other checks, the coerce function can be called with a None value if one is supplied.
-
-        default: Specifies a default value for this field.
-
-            Note: no checks are performed for the default value. It must be of the same type that would pass the node's
-            `type` check.
-
-        kw_only: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
-            positional)
+    For an explanation of the attributes here, consult the package documentation.
     """
 
     name: str
