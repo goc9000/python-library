@@ -33,16 +33,16 @@ It's easiest to start with an example::
 Features provided by this system
 --------------------------------
 
-- Nodes act like strictly typed structures. Only the fields defined in the ``AST_NODE_CONFIG`` can be set, and only
+- Nodes act like strictly typed structures. Only the fields defined in the `AST_NODE_CONFIG` can be set, and only
   with values respecting the defined types.
 - Nodes are immutable, allowing trees and parts thereof to be easily passed as if they were value types. To change an
-  AST node, use the ``.alter`` function to provide a modified copy (similar to how ``._replace()`` is used in named
-  tuples).
+  AST node, use its `alter` function to provide a modified copy (similar to how `_replace()` is used in named tuples).
 - Node fields have the full set of features typical of function parameters: positional vs. keyword specification,
   default values etc.
-- Nodes differentiate between fields that define a node's identity (PARAMs) versus those that act as slots for child
-  nodes and thus define the tree structure (CHILD and CHILD_LIST fields)
-- Each node comes with a set of methods for iterating and modifying the whole subtree
+- Nodes differentiate between fields that define a node's identity (`PARAM`s) versus those that act as slots for child
+  nodes (`CHILD` and `CHILD_LIST` fields) and thus define the tree structure and are recognized by the node's tree
+  traversal methods.
+- Each node comes with a powerful set of methods for iterating and modifying the whole subtree
 - Inheritance is supported (and recommended)
 - Nodes (and thus subtrees) are hashable and can be tested for equality
 
@@ -53,7 +53,8 @@ Although development of this package predates the standard Python `dataclasses` 
 similarities between the two. Dataclasses also offer field management and immutability. However, ASTNode still presents
 several unique features in addition:
 
-- Distinguishes between non-tree and tree fields
+- Distinguishes between non-tree and tree fields, enabling easy tree traversal, substitution and other tree-specific
+  operations that would require extra support in a dataclass.
 - Runtime typechecking - vital for complex ASTs where you can easily make a mistake when doing alterations deep in the
   tree
 
@@ -65,11 +66,10 @@ It is best to start with creating a base node type that will identify all nodes 
     class MyNode(ASTNode):
         AST_NODE_CONFIG = ('abstract',)
 
-All other node types for this kind of tree will derive from ``MyNode`` and define their own fields etc.
+All other node types for this kind of tree will derive from `MyNode` and define their own fields etc.
 
-Each node class should have an ``AST_NODE_CONFIG`` tuple that defines the node's *specific* fields (i.e. other than
-those inherited from a parent) and whether it is abstract or not. To wit, each item in the ``AST_NODE_CONFIG`` can be
-either:
+Each node class should have an `AST_NODE_CONFIG` tuple that defines the node's *specific* fields (i.e. other than those
+inherited from a parent) and whether it is abstract or not. To wit, each item in the `AST_NODE_CONFIG` can be either:
 
 - The string ``'abstract'``: Marks this node type as abstract. It cannot be instantiated by itself but can only serve
   as a base for other node types.
