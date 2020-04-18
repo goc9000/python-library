@@ -75,7 +75,7 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
 
         try:
             value = self._coerce_incoming_value(value)
-            self._type_check_value(value)
+            self._check_value(value)
         except Exception as e:
             raise TypeError(f"Invalid value provided for field '{self.name}'") from e
 
@@ -85,7 +85,7 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
         return value   # Do nothing by default
 
     @abstractmethod
-    def _type_check_value(self, value):
+    def _check_value(self, value):
         pass
 
     def _final_typecheck(self, value):
@@ -122,7 +122,7 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
-    def _type_check_value(self, value):
+    def _check_value(self, value):
         from atmfjstc.lib.ast import ASTNode
 
         if value is None:
@@ -143,7 +143,7 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
 
         return tuple(value)
 
-    def _type_check_value(self, value):
+    def _check_value(self, value):
         from atmfjstc.lib.ast import ASTNode
 
         for child_index, child in enumerate(value):
@@ -159,7 +159,7 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeParamFieldDef(ASTNodeFieldDefBase):
-    def _type_check_value(self, value):
+    def _check_value(self, value):
         if value is None:
             if self.allow_none:
                 return
