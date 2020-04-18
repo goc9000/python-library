@@ -1,6 +1,5 @@
 from typing import Any
 from collections.abc import Iterable
-from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 
 from atmfjstc.lib.ez_repr import EZRepr
@@ -10,7 +9,7 @@ from atmfjstc.lib.ast._initialization import NVP
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
+class ASTNodeFieldDefBase(EZRepr):
     """
     This represents the definition of a field in an AST node.
 
@@ -84,9 +83,14 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
     def _coerce_incoming_value(self, value):
         return value   # Do nothing by default
 
-    @abstractmethod
     def _check_value(self, value):
-        pass
+        if value is None:
+            if self.allow_none:
+                return
+
+            raise TypeError("May not be None")
+
+        self._final_typecheck(value)
 
     def _final_typecheck(self, value):
         typecheck(value, self.allowed_type)
@@ -131,14 +135,7 @@ class ASTNodeChildFieldDefBase(ASTNodeFieldDefBase):
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeChildFieldDef(ASTNodeChildFieldDefBase):
-    def _check_value(self, value):
-        if value is None:
-            if self.allow_none:
-                return
-
-            raise TypeError("May not be None")
-
-        self._final_typecheck(value)
+    pass
 
 
 @dataclass(frozen=True, repr=False)
@@ -154,24 +151,14 @@ class ASTNodeChildListFieldDef(ASTNodeChildFieldDefBase):
     def _check_value(self, value):
         for child_index, child in enumerate(value):
             try:
-                if child is None:
-                    raise TypeError("May not be None")
-
-                self._final_typecheck(child)
+                super()._check_value(child)
             except Exception as e:
                 raise TypeError(f"Error for child #{child_index}") from e
 
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeParamFieldDef(ASTNodeFieldDefBase):
-    def _check_value(self, value):
-        if value is None:
-            if self.allow_none:
-                return
-
-            raise TypeError("May not be None")
-
-        self._final_typecheck(value)
+    pass
 
 
 def parse_ast_node_field(field_spec):
