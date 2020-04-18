@@ -90,5 +90,37 @@ the full rendered code text while taking care of all the details and subtle inte
 - You can do post-processing on the AST before it gets rendered, so as to eliminate empty methods etc. Since the output
   is well-structured, this is far easier than post-processing text.
 
-TODO: insert example
+
+Example
+-------
+
+::
+
+    def render_squares_array(n):
+        ast = Block(
+            ItemsList(
+                (Atom(str(i*i)) for i in range(1, n+1)),
+                joiner=', '
+            ),
+            'var squares = [', '];'
+        )
+
+        print('-' * 60)
+        for line in ast.render(CodegenContext(width=60)):
+            print(line)
+
+
+    render_squares_array(10)
+    render_squares_array(30)
+
+Result::
+
+    ------------------------------------------------------------
+    var squares = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100];
+    ------------------------------------------------------------
+    var squares = [
+      1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196,
+      225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625,
+      676, 729, 784, 841, 900
+    ];
 """
