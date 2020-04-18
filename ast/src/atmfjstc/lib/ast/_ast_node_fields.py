@@ -77,7 +77,7 @@ class ASTNodeFieldDefBase(EZRepr):
         Returns the adjusted value or throws an exception.
         """
         if value == NVP:
-            value = self.default
+            return self.default
 
         if value == NVP:
             raise ValueError(f"No value provided and no default for field '{self.name}'")
