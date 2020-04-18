@@ -192,3 +192,40 @@ class ASTNodeConfig(EZRepr):
 
     is_abstract: bool
     fields: Tuple[ASTNodeFieldSpec, ...]
+
+    def extend(self, child_config):
+        """
+        Adds the fields and configuration of another config to this one and returns the result.
+
+        Fields in the child config will override those in the parent having the same name.
+        """
+        field_indexes = {field.name: index for index, field in enumerate(self.fields)}
+        new_fields = list(self.fields)
+
+        for field in child_config.fields:
+            old_field_index = field_indexes.get(field.name)
+            if old_field_index is not None:
+                new_fields[old_field_index] = new_fields[old_field_index].override(field)
+            else:
+                new_fields.append(field)
+
+        return ASTNodeConfig(
+            is_abstract=child_config.is_abstract,
+            fields=tuple(new_fields),
+        )
+
+    @staticmethod
+    def parse(raw_config):
+        is_abstract = False
+        fields = []
+
+        for item in raw_config:
+            if item == 'abstract':
+                is_abstract = True
+            else:
+                fields.append(ASTNodeFieldSpec.parse(item))
+
+        return ASTNodeConfig(
+            is_abstract=is_abstract,
+            fields=tuple(fields),
+        )

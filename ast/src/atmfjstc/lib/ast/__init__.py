@@ -190,38 +190,14 @@ class ASTNode:
         if cached is not None:
             return cached
 
-        is_abstract = False
-        field_defs = []
-        field_indexes = dict()
+        node_config = ASTNodeConfig(is_abstract=True, fields=())
 
         for parent in reversed(cls.__mro__[:-1]):
-            is_abstract = False
+            node_config = node_config.extend(ASTNodeConfig.parse(parent.__dict__.get('AST_NODE_CONFIG', ())))
 
-            node_config = parent.__dict__.get('AST_NODE_CONFIG')
-            if node_config is None:
-                continue
+        cls._cached_ast_node_config = node_config
 
-            for item in node_config:
-                if item == 'abstract':
-                    is_abstract = True
-                else:
-                    field_def = ASTNodeFieldSpec.parse(item)
-
-                    old_field_index = field_indexes.get(field_def.name)
-                    if old_field_index is not None:
-                        field_defs[old_field_index] = field_defs[old_field_index].override(field_def)
-                    else:
-                        field_indexes[field_def.name] = len(field_defs)
-                        field_defs.append(field_def)
-
-        result = ASTNodeConfig(
-            is_abstract=is_abstract,
-            fields=tuple(field_defs),
-        )
-
-        cls._cached_ast_node_config = result
-
-        return result
+        return node_config
 
     @classmethod
     def is_abstract_node_type(cls):
