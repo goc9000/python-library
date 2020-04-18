@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,15 @@ class CodegenContext:
     indent: int = 2
     oneliner: bool = False
 
-    def derive(self, width=None, indent=None, add_width=0, sub_width=0, sub_one_indent=False, oneliner=None):
+    def derive(
+        self,
+        width: Optional[int] = None,
+        indent: Optional[int] = None,
+        add_width: int = 0,
+        sub_width: int = 0,
+        sub_one_indent: Optional[bool] = False,
+        oneliner: Optional[bool] = None
+    ) -> 'CodegenContext':
         """
         Creates a modified copy of this rendering context (contexts are otherwise immutable).
 
