@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, Tuple, Optional
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -34,6 +34,15 @@ class ASTNodeFieldDefBase(EZRepr):
 
             This field is always locked to False for child list fields.
 
+        checks: A tuple of functions that are called on an incoming value to ensure that it meets semantic checks (e.g.
+            strings that should be non-empty or match some regex). If a check fails, the function should either return
+            False or throw an exception, preferably a `TypeError` or `ValueError`.
+
+            Notes:
+
+            - The functions are called in order, after the value has passed the type check
+            - The value None, if allowed, is NOT checked
+
         default: Specifies a default value for this field.
 
             Note: no checks are performed for the default value. It must be of the same type that would pass the node's
@@ -48,6 +57,7 @@ class ASTNodeFieldDefBase(EZRepr):
     kw_only: bool = False
     allow_none: bool = False
     allowed_type: XtdTypeSpec = AnyType
+    checks: Tuple[Callable[[Any], Optional[bool]], ...] = ()
     default: Any = NVP
 
     def __post_init__(self):
@@ -91,6 +101,10 @@ class ASTNodeFieldDefBase(EZRepr):
             raise TypeError("May not be None")
 
         self._final_typecheck(value)
+
+        for checker in self.checks:
+            if checker(value) is False:
+                raise ValueError(f"Failed check '{checker.__name__}'")
 
     def _final_typecheck(self, value):
         typecheck(value, self.allowed_type)
@@ -177,10 +191,17 @@ def parse_ast_node_field(field_spec):
         if cls is None:
             raise TypeError("Field kind must be CHILD, CHILD_LIST or PARAM")
 
-        def _adjust_name(key):
-            return 'allowed_type' if key == 'type' else key
+        init_params = dict()
+        for key, value in options.items():
+            if key == 'check':
+                key = 'checks'
+            if key == 'type':
+                key = 'allowed_type'
 
-        init_params = {_adjust_name(key): value for key, value in options.items()}
+            if key == 'checks':
+                value = tuple(value) if isinstance(value, Iterable) else (value,)
+
+            init_params[key] = value
 
         return cls(name, **init_params)
     except Exception as e:
