@@ -130,6 +130,8 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
       positional)
 """
 
+from typing import List, Tuple, Any, Iterable, Optional, Callable
+
 from atmfjstc.lib.ez_repr import ez_render_object
 
 from atmfjstc.lib.ast.fields import ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec, ASTNodeConfig, \
@@ -178,7 +180,7 @@ class ASTNode:
         pass   # Do nothing by default
 
     @classmethod
-    def ast_node_config(cls):
+    def ast_node_config(cls) -> ASTNodeConfig:
         """
         Returns the complete set of fields and abstract status in effect for this node type. Fields are presented in
         reverse MRO order (i.e. from `ASTNode` through all the ancestors up to the current node type).
@@ -200,20 +202,20 @@ class ASTNode:
         return node_config
 
     @classmethod
-    def is_abstract_node_type(cls):
+    def is_abstract_node_type(cls) -> bool:
         """
         Returns True if this is an abstract node type (i.e. only meant to serve as an ancestor for concrete nodes)
         """
         return cls.ast_node_config().is_abstract
 
     @classmethod
-    def field_defs(cls):
+    def field_defs(cls) -> Tuple[ASTNodeFieldSpec]:
         """
         A list of field definitions applicable to this AST node class, in reverse MRO order (ancestor -> child)
         """
         return cls.ast_node_config().fields
 
-    def all_field_values(self):
+    def all_field_values(self) -> List[Tuple[ASTNodeFieldSpec, Any]]:
         """
         A list of (field_definition, field_value) pairs, presented in reverse MRO order.
         """
@@ -261,7 +263,7 @@ class ASTNode:
 
         return hash(tuple(hashable_data))
 
-    def alter(self, **kwargs):
+    def alter(self, **kwargs) -> 'ASTNode':
         """
         Returns a copy of this node/subtree with the specified fields modified.
         """
@@ -270,7 +272,9 @@ class ASTNode:
 
         return self.__class__(**values)
 
-    def iter_subtree(self, only_type=None, root_first=True, include_root=True):
+    def iter_subtree(
+        self, only_type: Optional[type] = None, root_first: bool = True, include_root: bool = True
+    ) -> Iterable['ASTNode']:
         """
         Iterates through this node and all of its children, and all of their children etc.
         """
@@ -288,7 +292,7 @@ class ASTNode:
                 if only_type is None or isinstance(self, only_type):
                     yield self
 
-    def iter_children(self):
+    def iter_children(self) -> Iterable['ASTNode']:
         """
         Iterates through this node's children (and them alone), if any exist.
         """
@@ -299,7 +303,10 @@ class ASTNode:
             elif isinstance(field, ASTNodeChildListFieldSpec):
                 yield from value
 
-    def replace_subtree(self, callback, only_type=None, root_first=True):
+    def replace_subtree(
+        self, callback: Callable[['ASTNode'], Optional['ASTNode']],
+        only_type: Optional[type] = None, root_first: bool = True
+    ) -> Optional['ASTNode']:
         """
         Recursively replaces data throughout this node and its children, their children etc. and returns the modified
         subtree (the original is of course unaffected, as per the immutable nature of ASTs).

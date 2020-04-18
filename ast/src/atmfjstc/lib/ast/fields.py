@@ -1,4 +1,4 @@
-from typing import Any, Callable, Tuple, Optional
+from typing import Any, Callable, Tuple, Optional, Union, Dict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -6,6 +6,11 @@ from atmfjstc.lib.ez_repr import EZRepr
 from atmfjstc.lib.xtd_type_spec import typecheck, issubclass_ex, AnyType, XtdTypeSpec
 
 from atmfjstc.lib.ast._initialization import NVP
+
+
+ASTNodeRawFieldSpec = Union[Tuple[str, str], Tuple[str, str, Dict]]
+ASTNodeRawConfigItem = Union[str, ASTNodeRawFieldSpec]
+ASTNodeRawConfig = Tuple[ASTNodeRawConfigItem, ...]
 
 
 @dataclass(frozen=True, repr=False)
@@ -83,7 +88,7 @@ class ASTNodeFieldSpec(EZRepr):
     def _final_typecheck(self, value):
         typecheck(value, self.allowed_type)
 
-    def override(self, new_field):
+    def override(self, new_field: 'ASTNodeFieldSpec') -> 'ASTNodeFieldSpec':
         """
         Returns a field definition that is the result of overriding this definition with one in a subclass.
 
@@ -114,7 +119,7 @@ class ASTNodeFieldSpec(EZRepr):
             raise TypeError(f"Cannot override AST node field {self} with {new_field}") from e
 
     @staticmethod
-    def parse(raw_field_spec):
+    def parse(raw_field_spec: ASTNodeRawFieldSpec) -> 'ASTNodeFieldSpec':
         try:
             if not isinstance(raw_field_spec, tuple) or len(raw_field_spec) not in [2, 3]:
                 raise TypeError("Field spec must be a tuple of length 2 or 3")
@@ -193,7 +198,7 @@ class ASTNodeConfig(EZRepr):
     is_abstract: bool
     fields: Tuple[ASTNodeFieldSpec, ...]
 
-    def extend(self, child_config):
+    def extend(self, child_config: 'ASTNodeConfig') -> 'ASTNodeConfig':
         """
         Adds the fields and configuration of another config to this one and returns the result.
 
@@ -215,7 +220,7 @@ class ASTNodeConfig(EZRepr):
         )
 
     @staticmethod
-    def parse(raw_config):
+    def parse(raw_config: ASTNodeRawConfig) -> 'ASTNodeConfig':
         is_abstract = False
         fields = []
 
