@@ -74,16 +74,12 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
             raise ValueError(f"No value provided and no default for field '{self.name}'")
 
         try:
-            self._pre_coerce_type_check_value(value)
             value = self._coerce_incoming_value(value)
             self._type_check_value(value)
         except Exception as e:
             raise TypeError(f"Invalid value provided for field '{self.name}'") from e
 
         return value
-
-    def _pre_coerce_type_check_value(self, value):
-        pass  # Do nothing by default
 
     def _coerce_incoming_value(self, value):
         return value   # Do nothing by default
@@ -141,11 +137,10 @@ class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
-    def _pre_coerce_type_check_value(self, value):
+    def _coerce_incoming_value(self, value):
         if not isinstance(value, Iterable):
             raise TypeError("Must provide an iterable (list, tuple, stream etc)")
 
-    def _coerce_incoming_value(self, value):
         return tuple(value)
 
     def _type_check_value(self, value):
