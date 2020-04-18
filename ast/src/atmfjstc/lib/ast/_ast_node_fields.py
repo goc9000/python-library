@@ -121,22 +121,28 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildFieldDef(ASTNodeFieldDefBase):
-    def _check_value(self, value):
+class ASTNodeChildFieldDefBase(ASTNodeFieldDefBase):
+    def _final_typecheck(self, value):
         from atmfjstc.lib.ast import ASTNode
 
+        typecheck(value, ASTNode, value_name='child')
+        super()._final_typecheck(value)
+
+
+@dataclass(frozen=True, repr=False)
+class ASTNodeChildFieldDef(ASTNodeChildFieldDefBase):
+    def _check_value(self, value):
         if value is None:
             if self.allow_none:
                 return
 
             raise TypeError("May not be None")
 
-        typecheck(value, ASTNode, value_name='child')
         self._final_typecheck(value)
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
+class ASTNodeChildListFieldDef(ASTNodeChildFieldDefBase):
     def _coerce_incoming_value(self, value):
         if not isinstance(value, Iterable):
             raise TypeError("Must provide an iterable (list, tuple, stream etc)")
@@ -144,14 +150,11 @@ class ASTNodeChildListFieldDef(ASTNodeFieldDefBase):
         return tuple(value)
 
     def _check_value(self, value):
-        from atmfjstc.lib.ast import ASTNode
-
         for child_index, child in enumerate(value):
             try:
                 if child is None:
                     raise TypeError("May not be None")
 
-                typecheck(child, ASTNode, value_name='child')
                 self._final_typecheck(child)
             except Exception as e:
                 raise TypeError(f"Error for child #{child_index}") from e
