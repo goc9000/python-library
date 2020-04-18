@@ -26,23 +26,23 @@ things in advance, all sorts of problems start to pop up:
 - The exact rendering of a structure will be influenced (sometimes drastically) by various factors, particularly the
   available horizontal space. For instance, a simple array declaration might look like::
 
-    a = ["one", "two", "three"]
+      a = ["one", "two", "three"]
 
   But if horizontal space is limited (when there are many items and/or the construct occurs nested deep inside some
   other code), we might need a rendering like::
 
-    a = [
-      "one", "two",
-      "three"
-    ]
+      a = [
+          "one", "two",
+          "three"
+      ]
 
   Or even::
 
-    a = [
-      "one",
-      "two",
-      "three"
-    ]
+      a = [
+          "one",
+          "two",
+          "three"
+      ]
 
   Note that the indent size or nature (spaces vs tabs) might also be a configurable option for the generating program,
   which further complicates the rendering.
@@ -50,13 +50,13 @@ things in advance, all sorts of problems start to pop up:
 - The nature of the items inside an array, declaration etc. can also affect the rendering. In particular, if the items
   inside an array are themselves multi-line, then the array itself can only be rendered multi-line, e.g.::
 
-    a = [
-       "item",
-       {
-          "complex": "item",
-          "other": "prop
-       }
-    ]
+      a = [
+          "item",
+          {
+              "complex": "item",
+              "other": "prop
+          }
+      ]
 
 - When the generation of some bit of code is turned on and off by a runtime option, the effects may be more profound
   than just the deletion of some lines. Whitespace margins around the structure may need to be intelligently collapsed.
