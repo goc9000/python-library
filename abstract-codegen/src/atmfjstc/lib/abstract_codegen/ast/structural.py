@@ -1,7 +1,9 @@
 from abc import abstractmethod
+from typing import Iterable, Tuple
 
 from atmfjstc.lib.text_utils import iter_wrap_items
 
+from atmfjstc.lib.abstract_codegen.CodegenContext import CodegenContext
 from atmfjstc.lib.abstract_codegen.ast.base import AbstractCodegenASTNode, PromptableNode
 
 
@@ -30,7 +32,7 @@ class Sequence(AbstractCodegenASTNode):
         ('PARAM', 'items_margin', dict(type=int, default=0)),
     )
 
-    def render(self, context):
+    def render(self, context: CodegenContext) -> Iterable[str]:
         filtered_sections = []
 
         for section in self.content:
@@ -66,13 +68,13 @@ class Section(AbstractCodegenASTNode):
     )
 
     @property
-    def effective_margins(self):
+    def effective_margins(self) -> Tuple[int, int]:
         return (
             self.margin if self.margin_top is None else self.margin_top,
             self.margin if self.margin_bottom is None else self.margin_bottom
         )
 
-    def render(self, context):
+    def render(self, context: CodegenContext) -> Iterable[str]:
         yield from self.content.render(context)
 
 
@@ -82,7 +84,7 @@ class NullNode(PromptableNode):
     """
     AST_NODE_CONFIG = ()
 
-    def render_promptable(self, _context, _prompt_width, _tail_width):
+    def render_promptable(self, _context: CodegenContext, _prompt_width: int, _tail_width: int) -> Iterable[str]:
         yield from []
 
 
@@ -101,7 +103,7 @@ class ItemsListBase(AbstractCodegenASTNode):
     def _post_init(self):
         self._joiner1, self._joiner2 = self._split_joiner()
 
-    def render(self, context):
+    def render(self, context: CodegenContext) -> Iterable[str]:
         item_renders = self._prepare_item_renders(context)
 
         allow_horiz = self.allow_horiz or (context.oneliner and self.allow_horiz_if_oneliner)
@@ -239,11 +241,11 @@ class UnionItemsList(ItemsListBase):
         return render
 
 
-def seq0(*items):
+def seq0(*items: AbstractCodegenASTNode) -> Sequence:
     """Convenience function for instantiating a 0-margin Sequence"""
     return Sequence(items)
 
 
-def seq1(*items):
+def seq1(*items: AbstractCodegenASTNode) -> Sequence:
     """Convenience function for instantiating a 1-margin Sequence"""
     return Sequence(items, items_margin=1)
