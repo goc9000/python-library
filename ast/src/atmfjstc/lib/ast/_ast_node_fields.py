@@ -62,7 +62,8 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
 
         try:
             self._pre_coerce_type_check_value(value)
-            self._type_check_value(self._coerce_incoming_value(value))
+            value = self._coerce_incoming_value(value)
+            self._type_check_value(value)
         except Exception as e:
             raise TypeError(f"Invalid value provided for field '{self.name}'") from e
 
