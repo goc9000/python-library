@@ -1,7 +1,7 @@
 from typing import Any
 from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from atmfjstc.lib.ez_repr import EZRepr
 from atmfjstc.lib.xtd_type_spec import typecheck, issubclass_ex, AnyType, XtdTypeSpec
@@ -33,7 +33,7 @@ class ASTNodeFieldDefBase(EZRepr, metaclass=ABCMeta):
 
         allow_none: Allows params or single child slots to accept the value None (which is normally not the case).
 
-            Children in a child list field can never be None.
+            This field is always locked to False for child list fields.
 
         default: Specifies a default value for this field.
 
@@ -143,6 +143,8 @@ class ASTNodeChildFieldDef(ASTNodeChildFieldDefBase):
 
 @dataclass(frozen=True, repr=False)
 class ASTNodeChildListFieldDef(ASTNodeChildFieldDefBase):
+    allow_none: bool = field(init=False, default=False)
+
     def _coerce_incoming_value(self, value):
         if not isinstance(value, Iterable):
             raise TypeError("Must provide an iterable (list, tuple, stream etc)")
