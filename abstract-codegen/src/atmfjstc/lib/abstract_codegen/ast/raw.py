@@ -29,7 +29,7 @@ class PreformattedLines(PromptableNode):
     being refactored.
     """
     AST_NODE_CONFIG = (
-        ('PARAM', 'lines', dict(type=(list, tuple))),
+        ('PARAM', 'lines', dict(type=tuple)),
     )
 
     def render_promptable(self, _context: CodegenContext, _prompt_width: int, _tail_width: int) -> Iterable[str]:
@@ -40,4 +40,4 @@ def pre(lines_iterable: Iterable[str]) -> PreformattedLines:
     """
     Convenience function for instantiationg a PreformattedLines node using an iterable of lines (list, generator etc.)
     """
-    return PreformattedLines(list(lines_iterable))
+    return PreformattedLines(tuple(lines_iterable))
