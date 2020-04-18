@@ -24,7 +24,7 @@ class Sequence(AbstractCodegenASTNode):
 
     - This is the main workhorse that is generally used to organize the top-level content of a file, or the code inside
       methods, procedures etc.
-    - Margins do not apply between an item and the top/bottom of the Sequence itself.
+    - Margins do not apply between an item and the top/bottom of the `Sequence` itself.
     - Margins are ignored for an item that is empty (produces no lines)
     """
     AST_NODE_CONFIG = (
@@ -80,7 +80,10 @@ class Section(AbstractCodegenASTNode):
 
 class NullNode(PromptableNode):
     """
-    A node that renders nothing. You can substitute nodes in a sequence with NullNode to make them disappear.
+    A node that renders nothing and is, in general, equivalent to no node at all being present in its position.
+
+    You can substitute child nodes in a `Sequence`, `ChainedBlocks`, `ItemsList`, `Brace` etc. with `NullNode` to make
+    them disappear when it is inelegant to just omit the node upon some condition being true.
     """
     AST_NODE_CONFIG = ()
 
@@ -156,18 +159,18 @@ class ItemsList(ItemsListBase):
     A highly versatile construct used for rendering array items, object properties, method parameters, etc.
 
     Depending on the available space, and the nature of the items, the construct will choose between two possible
-    representations (example is for joiner=", "):
+    representations (example is for joiner=``", "``):
 
     - Horizontal::
 
-      item, item, item,
-      item, item
+          item, item, item,
+          item, item
 
     - Vertical::
 
-      item,
-      item,
-      item
+          item,
+          item,
+          item
 
     Note: If any of the items is multiline, the vertical representation is the only one available.
     """
@@ -195,26 +198,26 @@ class ItemsList(ItemsListBase):
 
 class UnionItemsList(ItemsListBase):
     """
-    A variant of ItemsList with some display quirks suitable for rendering union/intersection items.
+    A variant of ItemsList with some display tweaks suitable for rendering union/intersection items.
 
-    Possible representations will look like this (example is for joiner=' | '):
+    Possible representations will look like this (example is for joiner=``' | '``):
 
     - Horizontal, one-liner::
 
-      item | item | item
+          item | item | item
 
     - Horizontal, block/multiline::
 
-      | item | item | item
-      | item | item
+          | item | item | item
+          | item | item
 
     - Vertical::
 
-      | item
-      | item
-      | (big..
-        ..item)
-      | item
+          | item
+          | item
+          | (big..
+            ..item)
+          | item
 
     Note: If any of the items is multiline, the vertical representation is the only one available.
     """
