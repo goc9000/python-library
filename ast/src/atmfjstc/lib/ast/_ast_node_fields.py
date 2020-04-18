@@ -9,7 +9,7 @@ from atmfjstc.lib.ast._initialization import NVP
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeFieldDefBase(EZRepr):
+class ASTNodeFieldSpec(EZRepr):
     """
     This represents the definition of a field in an AST node.
 
@@ -115,7 +115,7 @@ class ASTNodeFieldDefBase(EZRepr):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildFieldDefBase(ASTNodeFieldDefBase):
+class ASTNodeChildFieldSpecBase(ASTNodeFieldSpec):
     def _final_typecheck(self, value):
         from atmfjstc.lib.ast import ASTNode
 
@@ -124,12 +124,12 @@ class ASTNodeChildFieldDefBase(ASTNodeFieldDefBase):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildFieldDef(ASTNodeChildFieldDefBase):
+class ASTNodeChildFieldDef(ASTNodeChildFieldSpecBase):
     pass
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeChildListFieldDef(ASTNodeChildFieldDefBase):
+class ASTNodeChildListFieldDef(ASTNodeChildFieldSpecBase):
     allow_none: bool = field(init=False, default=False)
 
     def _coerce_incoming_value(self, value):
@@ -147,7 +147,7 @@ class ASTNodeChildListFieldDef(ASTNodeChildFieldDefBase):
 
 
 @dataclass(frozen=True, repr=False)
-class ASTNodeParamFieldDef(ASTNodeFieldDefBase):
+class ASTNodeParamFieldDef(ASTNodeFieldSpec):
     pass
 
 
