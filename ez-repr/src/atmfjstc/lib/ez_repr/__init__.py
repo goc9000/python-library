@@ -88,6 +88,9 @@ def ez_render_object(name, fields, max_width=120, indent=2, renderers=None):
       so that it can adapt to the available width in the same way. Naive single-parameter renderers will also be
       accepted.
     """
+
+    fields = list(fields)  # Capture fields (we may only be able to iterate through them once)
+
     return _render_block(
         name + '(', ')', [value for _, value in fields],
         item_prompts=[field + '=' for field, _ in fields],
