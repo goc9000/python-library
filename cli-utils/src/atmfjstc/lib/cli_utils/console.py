@@ -77,7 +77,7 @@ class Console:
         Print a progress message.
 
         This is a message that shows the progress of an operation, either as a percentage, progress bar, etc., or even
-        just as a phase indicator, e.g. "Loading data..."
+        just as a phase indicator, e.g. ``"Loading data..."``
         """
         return self.print_message('progress', message)
 
@@ -194,8 +194,13 @@ class Console:
         """
         Prints a message of a programmatically specified type.
 
-        :param kind: Can be 'info', 'prompt', 'progress', 'success', 'warning', 'error' with the meanings as described
-                     by the respective ``print_*`` methods.
+        Args:
+            kind: Can be 'info', 'prompt', 'progress', 'success', 'warning', 'error' with the meanings as described
+                by the respective `print_*` methods.
+            message: The message to print. Can be multiline.
+
+        Returns:
+            The console object (to enable a fluent interface)
         """
         props = _PROPS_BY_MSG_TYPE.get(kind)
         if props is None:
