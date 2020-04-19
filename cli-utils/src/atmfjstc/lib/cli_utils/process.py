@@ -39,16 +39,46 @@ def run_external(
     timeout: Optional[float] = None, check_retcode: bool = True, check_stderr: bool = True
 ) -> subprocess.CompletedProcess:
     """
-    Calls an external utility in a manner similar to ``subprocess.run()``, with some extra niceties:
+    Calls an external utility in a manner similar to `subprocess.run()`, with some extra niceties:
 
-    - The exceptions thrown by ``subprocess.run()`` (OSError for non-accessible executables, vs SubprocessError for
-      bad returncodes and timeouts) are replaced by the overarching class RunExternalError and its subclasses. These
+    - The exceptions thrown by `subprocess.run()` (`OSError` for non-accessible executables, vs `SubprocessError` for
+      bad returncodes and timeouts) are replaced by the overarching class `RunExternalError` and its subclasses. These
       exceptions also present much richer info by default.
-    - ``capture_output=`` defaults to True
-    - ``check=`` is now named ``check_retcode=`` and defaults to True
-    - An option ``check_stderr=`` that causes an error to be thrown if the called process writes anything to stderr
-      (defaults to True). The stderr output is automatically decoded regardless of the ``text=`` setting and a limited
+    - `capture_output` defaults to True
+    - `check` is now named `check_retcode` and defaults to True
+    - An option `check_stderr` that causes an error to be thrown if the called process writes anything to stderr
+      (defaults to True). The stderr output is automatically decoded regardless of the `text` setting and a limited
       amount of it is included in the exception.
+
+    Args:
+        command: The command to run. Must be either a binary name, or, if `shell` is True, can be a complete command
+           line.
+        *args: The arguments to the command. They will be automatically coerced to strings.
+        stdin: See `subprocess.run`.
+        input: See `subprocess.run`.
+        stdout: See `subprocess.run`.
+        stderr: See `subprocess.run`.
+        capture_output: See `subprocess.run`.
+        text: See `subprocess.run`.
+        encoding: See `subprocess.run`.
+        errors: See `subprocess.run`.
+        shell: See `subprocess.run`.
+        cwd: See `subprocess.run`.
+        env: See `subprocess.run`.
+        timeout: The number of seconds to wait for the command to complete before timing out.
+        check_retcode: If True, a non-zero return code will be interpreted as an error.
+        check_stderr: If True, anything being written to stderr will be interpreted as an error (capturing stderr must
+            be enabled for this)
+
+    Returns:
+        A `CompletedProcess` object containing the captured program output, return code, etc. (see the builtin
+        `subprocess.CompletedProcess` class for details)
+
+    Raises:
+        RunExternalLaunchError: If the command could not be launched
+        RunExternalCalledProcessError: If the command reported an error (either through the returncode or stderr)
+        RunExternalTimeoutError: If the command timed out
+        RunExternalOtherError: For any other unexpected error
     """
 
     try:
