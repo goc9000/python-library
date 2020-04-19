@@ -10,9 +10,16 @@ import textwrap
 from atmfjstc.lib.text_utils import ucfirst, add_prompt, iter_wrap_items, iter_limit_text
 
 
-def command_exists(command):
+def command_exists(command: str) -> bool:
     """
     Checks whether some external utility is installed and accessible to this script.
+
+    Args:
+        command: The name of the binary/command to look for. It must be a single name; arguments and shell command lines
+            are not accepted.
+
+    Returns:
+        True if the command exists and is accessible (as per `which`).
     """
     return shutil.which(command) is not None
 
