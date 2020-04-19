@@ -8,7 +8,7 @@ import re
 import textwrap
 
 from os import PathLike
-from typing import Any, AnyStr, Optional, Mapping, IO, Union, Type
+from typing import Any, AnyStr, Optional, Mapping, IO, Union
 
 from atmfjstc.lib.text_utils import ucfirst, add_prompt, iter_wrap_items, iter_limit_text
 
@@ -27,7 +27,7 @@ def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
 
-Handle = Union[IO, int, Type[subprocess.PIPE], None]
+Handle = Union[IO, int, type(subprocess.PIPE), None]
 PathType = Union[PathLike, bytes, str]
 
 
