@@ -1,22 +1,23 @@
 """
-Base class that provides a smarter __repr__() function for your objects.
+Base class that provides a smarter `__repr__` function for your objects.
 
-This package provides a base class, ``EZRepr``, that automatically provides your objects and their descendants with a
-``repr()`` implementation that works reasonably well in most cases, saving you the trouble of the usual boilerplate.
+This package provides a base class, `EZRepr`, that automatically provides your objects and their descendants with a
+`repr()` implementation that works reasonably well in most cases, saving you the trouble of typing the usual
+boilerplate.
 
-EZRepr's ``__repr__`` implementation will try to automatically figure out the minimal set of fields it should render.
+EZRepr's `__repr__` implementation will try to automatically figure out the minimal set of fields it should render.
 Specifically, it will render all fields that are explicitly initialized in the class body, as long as their current
 value is different from the default with which they were initialized. Note that this does not handle defaults provided
 in the constructor. For dataclasses, the list of fields will be queried using `dataclasses.fields`, eliminating the
 guesswork.
 
-You can tweak various aspects of the rendering (as well as add extra fields) by overriding the ``_ez_repr_head``,
-``ez_repr_fields`` etc. methods.
+You can tweak various aspects of the rendering (as well as add extra fields) by overriding the `_ez_repr_head`,
+`ez_repr_fields` etc. methods.
 
-The EZRepr renderer also handles nesting and multiline values better than Python's native ``repr()``. It will try to
+The EZRepr renderer also handles nesting and multiline values better than Python's native `repr()`. It will try to
 break arrays, dicts and object contents over several lines so as to keep the output within a specified number of
-columns. You can use this more advanced renderer in your projects by calling the functions ``ez_render_object``,
-``ez_render_value`` and ``as_is``.
+columns. You can use this more advanced renderer in your projects by calling the functions `ez_render_object`,
+`ez_render_value` and `as_is`.
 """
 
 import dataclasses
@@ -29,7 +30,8 @@ from collections import OrderedDict
 class EZRepr:
     def __repr__(self, **kwargs):
         """
-        For the extra parameters accepted by this generated repr(), refer to the ``ez_render_object`` function.
+        For the extra parameters accepted by this generated `repr()` implementation, refer to the `ez_render_object`
+        function.
         """
         return ez_render_object(self._ez_repr_head(), self._ez_repr_fields().items(), **kwargs)
 
