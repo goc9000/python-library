@@ -176,7 +176,7 @@ class Console:
         self._interactive = True
         return self
 
-    def pipe_mode(self):
+    def pipe_mode(self) -> 'Console':
         """
         Enables "pipe mode", i.e. disables stdout and interactivity.
 
@@ -184,6 +184,7 @@ class Console:
         """
         self.disable_stdout()
         self.disable_interactive()
+        return self
 
     def print_message(self, kind: str, message: str):
         """
