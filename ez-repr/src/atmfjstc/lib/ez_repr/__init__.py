@@ -78,22 +78,27 @@ def ez_render_object(
     max_width: Optional[int] = 120, indent: int = 2, renderers: Optional[Renderers] = None
 ) -> str:
     """
-    Helper for rendering an arbitrary class instance in the same way as a EZRepr-enabled class, provided you can
+    Helper for rendering an arbitrary class instance in the same way as a `EZRepr`-enabled class, provided you can
     supply the class name and the fields to be rendered.
 
-    The rendering is further controlled by these parameters:
+    Args:
+        name: The name rendererd for the object (usually a class name)
+        fields: An iterable of (key, value) tuples describing the object's fields. The order of the fields will be
+            preserved in the output.
+        max_width: If not None, the renderer will try to make the representation fit the given number of columns by
+            breaking up properties, lists and dicts over multiple lines if necessary. Otherwise, everything will be
+            rendered on a single line as long as no value deep down has a multiline `repr()`.
+        indent: How many columns to indent by when rendering the content of a multi-line object, array etc.
+        renderers: A mapping from types to renderer functions that controls how values deep inside the object will
+            be rendered. Normally `ez_render_value` would be called, but if a type in this dict matches (even as an
+            ancestor), the corresponding function will be called instead.
 
-    - `max_width`: Tries to render items so as to fit a given number of columns (breaking up properties, lists and
-      dicts over multiple lines if necessary). If this is set to None, everything will be rendered on a single line
-      as long as no value deep down has a multiline repr().
-    - `indent`: How many columns to indent by when rendering the content of a multi-line object, array etc
-    - `renderers`: A mapping from types to renderer functions that controls how values deep inside the object will
-      be rendered. Normally ``ez_render_value`` would be called, but if a type in this dict matches (even as an
-      ancestor), the corresponding function will be called instead.
+            Note: The renderer function will receive the same parameters as `ez_render_value` (including `max_width`,
+            etc) so that it can adapt to the available width in the same way. Naive single-parameter renderers will
+            also be accepted.
 
-      Note: The renderer function will receive the same parameters as ``ez_render_value`` (including max_width, etc)
-      so that it can adapt to the available width in the same way. Naive single-parameter renderers will also be
-      accepted.
+    Returns:
+        The (possibly multiline) string representation of the object.
     """
 
     fields = list(fields)  # Capture fields (we may only be able to iterate through them once)
@@ -112,11 +117,13 @@ def ez_render_value(
     Renders an arbitrary value using EZRepr's advanced renderer.
 
     - For native Python dicts, lists and tuples (but not their subclasses!), this renders them in a nice way that
-      breaks them over multiple lines in order to fit the maximum width or accomodate multi-line values
+      breaks them over multiple lines in order to fit the maximum width or accommodate multi-line values
     - For EZRepr-enabled values, this ensures that the user-supplied indent, etc. params are passed to the underlying
-      renderer (it may seem useless to call ez_render_value directly just for that, but note that ez_render_value is
+      renderer (it may seem useless to call `ez_render_value` directly just for that, but note that `ez_render_value` is
       called automatically for each value in a list etc.)
-    - Other values will just be rendered using repr().
+    - Other values will just be rendered using `repr()`.
+
+    The `max_width`, `indent` and `renderers` parameters are the same as for `ez_render_object`.
     """
     if renderers is not None:
         for cls in value.__class__.__mro__:
