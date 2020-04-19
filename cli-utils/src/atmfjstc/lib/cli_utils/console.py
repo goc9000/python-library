@@ -27,6 +27,7 @@ import sys
 import shutil
 import subprocess
 
+from typing import Optional, List, TextIO
 from getpass import getpass
 from termcolor import cprint
 
@@ -41,11 +42,11 @@ class Console:
     _interactive = None
     _stdout_enabled = None
 
-    def __init__(self, enable_stdout=True, interactive=True):
+    def __init__(self, enable_stdout: bool = True, interactive: bool = True):
         self._stdout_enabled = enable_stdout
         self._interactive = interactive
 
-    def print_info(self, message_format, *args, **kwargs):
+    def print_info(self, message_format: str, *args, **kwargs):
         """
         Print an informational message.
 
@@ -53,7 +54,7 @@ class Console:
         """
         self.print_message('info', message_format, *args, **kwargs)
 
-    def print_prompt(self, message_format, *args, **kwargs):
+    def print_prompt(self, message_format: str, *args, **kwargs):
         """
         Print a prompt message.
 
@@ -67,7 +68,7 @@ class Console:
         """
         self.print_message('prompt', message_format, *args, **kwargs)
 
-    def print_progress(self, message_format, *args, **kwargs):
+    def print_progress(self, message_format: str, *args, **kwargs):
         """
         Print a progress message.
 
@@ -76,7 +77,7 @@ class Console:
         """
         self.print_message('progress', message_format, *args, **kwargs)
 
-    def print_success(self, message_format, *args, **kwargs):
+    def print_success(self, message_format: str, *args, **kwargs):
         """
         Print a success message.
 
@@ -85,7 +86,7 @@ class Console:
         """
         self.print_message('success', message_format, *args, **kwargs)
 
-    def print_warning(self, message_format, *args, **kwargs):
+    def print_warning(self, message_format: str, *args, **kwargs):
         """
         Print a warning message.
 
@@ -93,7 +94,7 @@ class Console:
         """
         self.print_message('warning', message_format, *args, **kwargs)
 
-    def print_error(self, message_format, *args, **kwargs):
+    def print_error(self, message_format: str, *args, **kwargs):
         """
         Print an error message.
 
@@ -101,7 +102,7 @@ class Console:
         """
         self.print_message('error', message_format, *args, **kwargs)
 
-    def input_password(self, prompt):
+    def input_password(self, prompt: str) -> str:
         """
         Asks for a password from the user. An error is thrown if the console is not in interactive mode.
 
@@ -112,7 +113,7 @@ class Console:
 
         return getpass(prompt)
 
-    def notify_desktop(self, text, title=None):
+    def notify_desktop(self, text: str, title: str = None) -> bool:
         """
         Attempts to show a desktop notification. A terminal application that has been running in the background can use
         this to signal to the user the end of a long running operation (or some other update).
@@ -135,13 +136,13 @@ class Console:
 
         return False
 
-    def is_interactive(self):
+    def is_interactive(self) -> bool:
         """
         True if the console is in interactive mode (i.e. input can be asked from the user)
         """
         return self._interactive
 
-    def disable_stdout(self):
+    def disable_stdout(self) -> 'Console':
         """
         Disables messages that would normally go to stdout (i.e. anything except warnings and errors).
 
@@ -151,14 +152,14 @@ class Console:
         self._stdout_enabled = False
         return self
 
-    def enable_stdout(self):
+    def enable_stdout(self) -> 'Console':
         """
         Re-enables messages to stdout (the normal state of the console)
         """
         self._stdout_enabled = True
         return self
 
-    def disable_interactive(self):
+    def disable_interactive(self) -> 'Console':
         """
         Disables interactivity (i.e. signals that the program cannot stop to ask the user for input).
 
@@ -168,7 +169,7 @@ class Console:
         self._interactive = False
         return self
 
-    def enable_interactive(self):
+    def enable_interactive(self) -> 'Console':
         """
         Re-enables interactivity (the normal state of the console)
         """
@@ -184,7 +185,7 @@ class Console:
         self.disable_stdout()
         self.disable_interactive()
 
-    def print_message(self, kind, message_format, *args, **kwargs):
+    def print_message(self, kind: str, message_format: str, *args, **kwargs):
         """
         Prints a message of a programmatically specified type.
 
@@ -205,7 +206,7 @@ class Console:
 
         _print_maybe_with_color(text, props.get('color'), props.get('attrs'), channel)
 
-    def _format_message(self, message_format, *args, **kwargs):
+    def _format_message(self, message_format: str, *args, **kwargs) -> str:
         # Trick to prevent errors when we don't actually want any formatting done
         if len(args) == 0 and len(kwargs) == 0:
             return message_format
@@ -213,7 +214,9 @@ class Console:
         return message_format.format(*args, **kwargs)
 
 
-def _print_maybe_with_color(text, color, attrs, channel):
+def _print_maybe_with_color(
+    text: str, color: Optional[str], attrs: Optional[List[str]], channel: TextIO
+):
     if (color is None) and (len(attrs or []) == 0):
         print(text, file=channel)
     else:
