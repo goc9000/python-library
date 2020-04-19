@@ -4,6 +4,7 @@ Utilities for working with temporary files.
 
 import os
 
+from typing import IO, ContextManager, Optional, AnyStr
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from shutil import copyfileobj
 from contextlib import contextmanager, suppress
@@ -11,8 +12,10 @@ from contextlib import contextmanager, suppress
 
 @contextmanager
 def specifically_named_temp_file(
-    name, suffix=None, prefix=None, dir=None, mode='w+b', buffering=-1, encoding=None, newline=None, errors=None
-):
+    name: AnyStr, suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[os.PathLike] = None,
+    mode: str = 'w+b', buffering: int = -1,
+    encoding: Optional[str] = None, newline: Optional[str] = None, errors: Optional[str] = None
+) -> ContextManager[IO]:
     """
     Similar to `tempfile.NamedTemporaryFile` but creates a temporary file with a specific name.
 
@@ -36,10 +39,10 @@ def specifically_named_temp_file(
 
 
 class FileTooBigError(ValueError):
-    actual_size = None
-    allowed_size = None
+    actual_size: int
+    allowed_size: int
 
-    def __init__(self, actual_size, allowed_size):
+    def __init__(self, actual_size: int, allowed_size: int):
         super().__init__(
             f"Cannot write temporary file, size ({round(actual_size / 1000000)} MB) exceeds limit "
             f"({round(allowed_size / 1000000)} MB)"
@@ -50,7 +53,9 @@ class FileTooBigError(ValueError):
 
 
 @contextmanager
-def temp_drop_file_obj_to_disk(fileobj, safety_limit_mb=None, rewind=False, specific_name=None):
+def temp_drop_file_obj_to_disk(
+    fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
+) -> ContextManager[AnyStr]:
     """
     Temporarily copies the contents of an arbitrary file object to disk.
 
