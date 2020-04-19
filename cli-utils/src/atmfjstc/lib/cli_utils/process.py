@@ -26,9 +26,10 @@ def command_exists(command: str) -> bool:
 
 def run_external(
     command, *args,
-    stdin=None, input=None, capture_output=True, stdout=None, stderr=None, shell=False,
-    cwd=None, timeout=None, encoding=None, errors=None, text=False, env=None,
-    check_retcode=True, check_stderr=True
+    stdin=None, input=None, stdout=None, stderr=None,
+    capture_output=True, text=False, encoding=None, errors=None,
+    shell=False, cwd=None, env=None,
+    timeout=None, check_retcode=True, check_stderr=True
 ):
     """
     Calls an external utility in a manner similar to ``subprocess.run()``, with some extra niceties:
