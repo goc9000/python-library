@@ -125,6 +125,10 @@ def check_external_cmd_result(
 
 
 class RunExternalError(Exception):
+    """
+    Base class for all exceptions thrown by the `run_external` function.
+    """
+
     command = None
     args = None
     return_code = None
@@ -159,6 +163,10 @@ class RunExternalError(Exception):
 
 
 class RunExternalLaunchError(RunExternalError):
+    """
+    This exception is thrown if the utility failed to launch (e.g. because the program is not installed)
+    """
+
     error = None
 
     def __init__(self, underlying_error, command, args):
@@ -172,6 +180,10 @@ class RunExternalLaunchError(RunExternalError):
 
 
 class RunExternalCalledProcessError(RunExternalError):
+    """
+    This exception is thrown when the called process reports an error (either through its return code or stderr)
+    """
+
     def __init__(self, called_proc_result_or_error):
         cpr = called_proc_result_or_error  # Shortcut
         if isinstance(cpr, subprocess.CompletedProcess):
@@ -200,6 +212,10 @@ class RunExternalCalledProcessError(RunExternalError):
 
 
 class RunExternalTimeoutError(RunExternalError):
+    """
+    This exception is thrown when a call to an external program times out.
+    """
+
     def __init__(self, from_error):
         assert isinstance(from_error, subprocess.TimeoutExpired)
 
@@ -212,6 +228,10 @@ class RunExternalTimeoutError(RunExternalError):
 
 
 class RunExternalOtherError(RunExternalError):
+    """
+    This exception is thrown when calling an external utility failed for some unexpected reason.
+    """
+
     error = None
 
     def __init__(self, from_error, command, args):
