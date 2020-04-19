@@ -6,8 +6,8 @@ available) and on the appropriate stream (stdout vs stderr), as well as requesti
 the user. Interactivity can easily be suspended, e.g. if the caller is used to feed a pipe to another program, via a
 simple call, without any further modifications being required in the caller code.
 
-The abstraction is provided as an object of type ``Console``, a singleton(-ish) instance of which is available through
-the ``console`` property of this module. Thus one can use::
+The abstraction is provided as an object of type `Console`, a singleton(-ish) instance of which is available through
+the `console` property of this module. Thus one can use::
 
     from [...].console import console
 
@@ -15,10 +15,10 @@ the ``console`` property of this module. Thus one can use::
 
 Notes:
 
-- All communication with the user should be done using this abstraction. Don't use regular ``print()`` functions beside
-  it (unless they are specifically directed to a file or some other stream).
+- All communication with the user should be done using this abstraction. Don't use regular `print()` functions beside it
+  (unless they are specifically directed to a file or some other stream).
 - This abstraction is specifically intended for communication with a *human user* via *a terminal*, not for
-  noninteractive communication between scripts. Use regular ``print()`` and ``.read()`` functions for that.
+  noninteractive communication between scripts. Use regular `print()` and `read()` functions for that.
 - The module is not specifically designed to be thread-safe, but nothing extremely disastrous should occur if multiple
   threads use the console (other than the interleaving of messages or parts thereof)
 """
@@ -63,8 +63,8 @@ class Console:
 
         Example (the first line is the prompt message, the second is the actual prompt)::
 
-          Archive entry 'a/b/c/d' is encrypted. Input the password, or leave blank to skip.
-          Password: _
+            Archive entry 'a/b/c/d' is encrypted. Input the password, or leave blank to skip.
+            Password: _
         """
         self.print_message('prompt', message)
 
@@ -106,7 +106,7 @@ class Console:
         """
         Asks for a password from the user. An error is thrown if the console is not in interactive mode.
 
-        The ``getpass`` module will be used so that the password can be entered in a secure way.
+        The `getpass` module will be used so that the password can be entered in a secure way.
         """
         if not self._interactive:
             raise AssertionError("Tried to ask for a password but session is not interactive")
