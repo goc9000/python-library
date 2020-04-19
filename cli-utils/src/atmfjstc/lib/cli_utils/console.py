@@ -205,13 +205,6 @@ class Console:
 
         _print_maybe_with_color(message, props.get('color'), props.get('attrs'), channel)
 
-    def _format_message(self, message_format: str, *args, **kwargs) -> str:
-        # Trick to prevent errors when we don't actually want any formatting done
-        if len(args) == 0 and len(kwargs) == 0:
-            return message_format
-
-        return message_format.format(*args, **kwargs)
-
 
 def _print_maybe_with_color(
     text: str, color: Optional[str], attrs: Optional[List[str]], channel: TextIO
