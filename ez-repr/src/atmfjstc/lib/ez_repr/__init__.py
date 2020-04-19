@@ -24,7 +24,7 @@ import dataclasses
 import textwrap
 
 import typing
-from typing import Any, Iterable, Tuple
+from typing import Any, Iterable, Tuple, Optional, Mapping, Callable, Union, ItemsView, Sequence
 
 from inspect import isroutine, isdatadescriptor
 from collections import OrderedDict
@@ -69,7 +69,14 @@ class EZRepr:
                     yield field, default_value
 
 
-def ez_render_object(name, fields, max_width=120, indent=2, renderers=None):
+RendererFunc = Union[Callable[[Any], str], Callable[..., str]]
+Renderers = Mapping[type, RendererFunc]
+
+
+def ez_render_object(
+    name: str, fields: Union[Iterable[Tuple[str, Any]], ItemsView[str, Any]],
+    max_width: Optional[int] = 120, indent: int = 2, renderers: Optional[Renderers] = None
+) -> str:
     """
     Helper for rendering an arbitrary class instance in the same way as a EZRepr-enabled class, provided you can
     supply the class name and the fields to be rendered.
@@ -98,7 +105,9 @@ def ez_render_object(name, fields, max_width=120, indent=2, renderers=None):
     )
 
 
-def ez_render_value(value, max_width=120, indent=2, renderers=None):
+def ez_render_value(
+    value: Any, max_width: Optional[int] = 120, indent: int = 2, renderers: Optional[Renderers] = None
+) -> str:
     """
     Renders an arbitrary value using EZRepr's advanced renderer.
 
@@ -147,7 +156,10 @@ def ez_render_value(value, max_width=120, indent=2, renderers=None):
     return repr(value)
 
 
-def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple_mode=False, renderers=None):
+def _render_block(
+    head: str, tail: str, items: Sequence[Any], max_width: Optional[int], indent: int,
+    item_prompts: Sequence[str] = None, tuple_mode: bool = False, renderers: Optional[Renderers] = None
+) -> str:
     if item_prompts is None:
         item_prompts = [''] * len(items)
 
@@ -183,11 +195,11 @@ def _render_block(head, tail, items, max_width, indent, item_prompts=None, tuple
     return '\n'.join(out_parts)
 
 
-def _test_oneliner(candidate, max_width):
+def _test_oneliner(candidate: str, max_width: Optional[int]) -> bool:
     return ('\n' not in candidate) and ((max_width is None) or (len(candidate) <= max_width))
 
 
-def as_is(repr_value):
+def as_is(repr_value: str) -> '_AsIs':
     """
     Takes a string and returns an object whose repr() will resolve to that string. Useful for injecting your own text in
     some other repr().
@@ -198,8 +210,8 @@ def as_is(repr_value):
 class _AsIs:
     _repr = None
 
-    def __init__(self, repr_vaue):
-        self._repr = repr_vaue
+    def __init__(self, repr_value: str):
+        self._repr = repr_value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self._repr
