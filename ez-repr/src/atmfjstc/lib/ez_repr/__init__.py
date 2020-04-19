@@ -23,22 +23,25 @@ columns. You can use this more advanced renderer in your projects by calling the
 import dataclasses
 import textwrap
 
+import typing
+from typing import Any, Iterable, Tuple
+
 from inspect import isroutine, isdatadescriptor
 from collections import OrderedDict
 
 
 class EZRepr:
-    def __repr__(self, **kwargs):
+    def __repr__(self, **kwargs) -> str:
         """
         For the extra parameters accepted by this generated `repr()` implementation, refer to the `ez_render_object`
         function.
         """
         return ez_render_object(self._ez_repr_head(), self._ez_repr_fields().items(), **kwargs)
 
-    def _ez_repr_head(self):
+    def _ez_repr_head(self) -> str:
         return self.__class__.__name__
 
-    def _ez_repr_fields(self):
+    def _ez_repr_fields(self) -> typing.OrderedDict[str, Any]:
         data = OrderedDict()
 
         for field, default_value in self._ez_repr_iter_fields_and_defaults():
@@ -53,7 +56,7 @@ class EZRepr:
 
         return data
 
-    def _ez_repr_iter_fields_and_defaults(self):
+    def _ez_repr_iter_fields_and_defaults(self) -> Iterable[Tuple[str, Any]]:
         if dataclasses.is_dataclass(self):
             for field in dataclasses.fields(self):
                 yield field.name, field.default
