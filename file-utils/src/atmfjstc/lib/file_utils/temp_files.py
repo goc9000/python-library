@@ -20,7 +20,21 @@ def specifically_named_temp_file(
     Similar to `tempfile.NamedTemporaryFile` but creates a temporary file with a specific name.
 
     The `suffix`, `prefix` and `dir` parameters apply to a temporary directory created to contain the file. There is
-    no `delete=` option - the file and its containing directory are always deleted when the context is closed.
+    no `delete` option - the file and its containing directory are always deleted when the context is closed.
+
+    Args:
+        name: The name with which the temporary file will be created.
+        suffix: The desired suffix for the temporary directory holding the temporary file.
+        prefix: The desired prefix for the temporary directory holding the temporary file.
+        dir: The path of the parent directory for the temporary directory holding the temporary file.
+        mode: See the `open` function.
+        buffering: See the `open` function.
+        encoding: See the `open` function.
+        newline: See the `open` function.
+        errors: See the `open` function.
+
+    Returns:
+        The context manager will return the temporary file as an open file object.
     """
 
     assert name == os.path.basename(name), "Must provide a basename, not a path"
@@ -66,20 +80,30 @@ def temp_drop_file_obj_to_disk(
     necessary copying and returns the visible file name of the saved data, which will exist for as long as the context
     is open.
 
-    If `specific_name` is provided, the data will be saved under that exact filename (required for some utilities which
-    take the filename into account).
+    Note that if the file object is seekable, the function will ensure that it is rewound to its original position
+    whenever control leaves this function, so that other functions may use the data as well.
 
-    If `safety_limit_mb` is provided, the function will check for the size of the file (the fileobj needs to be seekable
-    for this) that would be written and throw a FileTooBig error if it exceeds the stated limit.
+    Args:
+        fileobj: A file object containing the data we need to save to disk
+        safety_limit_mb: If provided, the function will check for the size of the file that would be written (the
+            fileobj needs to be seekable for this) and throw a `FileTooBig` error if it exceeds the stated limit. The
+            value is provided in megabytes.
+        rewind: By default, this function does not automatically rewind the file object to 0 before copying - it will
+            copy only the data from the current position of the file object to the end. Set this to True to have the
+            function do this rewinding for you. Note that the file object will still regain its original position
+            afterwards.
+        specific_name: If provided, the data will be saved with the given filename (required for some utilities which
+            take the filename into account).
 
-    Notes:
+    Returns:
+        The context manager returns the path of the file to which the data was saved. The file will disappear with the
+        closing of the context.
 
-    - If the file object is seekable, the function will ensure that it is rewound to its original position whenever
-      control leaves this function, so that other functions may use the data as well
-    - By default, this function does not automatically rewind the file object to 0 before copying - it will copy only
-      the data from the current position of the file object to the end. Set rewind=True to have the function do this
-      rewinding for you. Note that the file object will still regain its original position afterwards.
+    Raises:
+        FileTooBig: Thrown if the safety limit is enabled, and the size of the file that would be written exceeds the
+            stated amount.
     """
+
     assert (safety_limit_mb is None) or fileobj.seekable(), "File obj must be seekable if safety_limit_mb is provided"
     assert (not rewind) or fileobj.seekable(), "File obj must be seekable if rewind=True"
 
