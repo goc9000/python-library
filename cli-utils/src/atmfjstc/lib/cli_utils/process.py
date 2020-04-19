@@ -97,14 +97,27 @@ def run_external(
     return result
 
 
-def check_external_cmd_result(result, check_retcode=True, check_stderr=True):
+def check_external_cmd_result(
+    result: subprocess.CompletedProcess, check_retcode: bool = True, check_stderr: bool = True
+) -> subprocess.CompletedProcess:
     """
-    Analyzes a CompletedProcess result and throws an error if the return code or stderr indicate the program failed.
+    Analyzes a `CompletedProcess` result and throws an error if the return code or stderr indicate the program failed.
 
-    Basically this does the check at the end of ``run_external`` in case you didn't check the return code or stderr
+    Basically this does the check at the end of `run_external` in case you didn't check the return code or stderr
     immediately (e.g. because you had to do some processing on the result first).
 
+    Args:
+        result: A `CompletedProcess` object containing a program result
+        check_retcode: If True, a non-zero return code will be interpreted as an error.
+        check_stderr: If True, a non-empty stderr capture will be interpreted as an error
+
+    Returns:
+        The same `CompletedProcess` result.
+
+    Raises:
+        RunExternalCalledProcessError: If the command reported an error (either through the returncode or stderr)
     """
+
     if (check_retcode and (result.returncode != 0)) or (check_stderr and len(result.stderr or '') > 0):
         raise RunExternalCalledProcessError(result)
 
