@@ -46,15 +46,15 @@ class Console:
         self._stdout_enabled = enable_stdout
         self._interactive = interactive
 
-    def print_info(self, message: str):
+    def print_info(self, message: str) -> 'Console':
         """
         Print an informational message.
 
         An informational message is basically any message that does not fit into the other types.
         """
-        self.print_message('info', message)
+        return self.print_message('info', message)
 
-    def print_prompt(self, message: str):
+    def print_prompt(self, message: str) -> 'Console':
         """
         Print a prompt message.
 
@@ -66,41 +66,41 @@ class Console:
             Archive entry 'a/b/c/d' is encrypted. Input the password, or leave blank to skip.
             Password: _
         """
-        self.print_message('prompt', message)
+        return self.print_message('prompt', message)
 
-    def print_progress(self, message: str):
+    def print_progress(self, message: str) -> 'Console':
         """
         Print a progress message.
 
         This is a message that shows the progress of an operation, either as a percentage, progress bar, etc., or even
         just as a phase indicator, e.g. "Loading data..."
         """
-        self.print_message('progress', message)
+        return self.print_message('progress', message)
 
-    def print_success(self, message: str):
+    def print_success(self, message: str) -> 'Console':
         """
         Print a success message.
 
         This is useful for signaling the end of a long operation. The message will be highlighted if the terminal
         supports colors.
         """
-        self.print_message('success', message)
+        return self.print_message('success', message)
 
-    def print_warning(self, message: str):
+    def print_warning(self, message: str) -> 'Console':
         """
         Print a warning message.
 
         The message will be highlighted in yellow and normally sent to stderr.
         """
-        self.print_message('warning', message)
+        return self.print_message('warning', message)
 
-    def print_error(self, message: str):
+    def print_error(self, message: str) -> 'Console':
         """
         Print an error message.
 
         The message will be highlighted in red and normally sent to stderr.
         """
-        self.print_message('error', message)
+        return self.print_message('error', message)
 
     def input_password(self, prompt: str) -> str:
         """
@@ -186,7 +186,7 @@ class Console:
         self.disable_interactive()
         return self
 
-    def print_message(self, kind: str, message: str):
+    def print_message(self, kind: str, message: str) -> 'Console':
         """
         Prints a message of a programmatically specified type.
 
@@ -199,11 +199,13 @@ class Console:
 
         channel_name = props.get('channel', 'stdout')
         if channel_name == 'stdout' and not self._stdout_enabled:
-            return
+            return self
 
         channel = sys.stderr if channel_name == 'stderr' else sys.stdout
 
         _print_maybe_with_color(message, props.get('color'), props.get('attrs'), channel)
+
+        return self
 
 
 def _print_maybe_with_color(
