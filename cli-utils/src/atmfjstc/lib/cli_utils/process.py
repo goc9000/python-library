@@ -7,6 +7,9 @@ import subprocess
 import re
 import textwrap
 
+from os import PathLike
+from typing import Any, AnyStr, Optional, Mapping, IO, Union, Type
+
 from atmfjstc.lib.text_utils import ucfirst, add_prompt, iter_wrap_items, iter_limit_text
 
 
@@ -24,13 +27,17 @@ def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
 
+Handle = Union[IO, int, Type[subprocess.PIPE], None]
+PathType = Union[PathLike, bytes, str]
+
+
 def run_external(
-    command, *args,
-    stdin=None, input=None, stdout=None, stderr=None,
-    capture_output=True, text=False, encoding=None, errors=None,
-    shell=False, cwd=None, env=None,
-    timeout=None, check_retcode=True, check_stderr=True
-):
+    command: str, *args: Any,
+    stdin: Handle = None, input: AnyStr = None, stdout: Handle = None, stderr: Handle = None,
+    capture_output: bool = True, text: bool = False, encoding: Optional[str] = None, errors: Optional[str] = None,
+    shell: bool = False, cwd: Optional[PathType] = None, env: Optional[Mapping[str, str]] = None,
+    timeout: Optional[float] = None, check_retcode: bool = True, check_stderr: bool = True
+) -> subprocess.CompletedProcess:
     """
     Calls an external utility in a manner similar to ``subprocess.run()``, with some extra niceties:
 
