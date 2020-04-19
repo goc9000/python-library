@@ -27,7 +27,7 @@ def command_exists(command: str) -> bool:
 def run_external(
     command, *args,
     stdin=None, input=None, capture_output=True, stdout=None, stderr=None, shell=False,
-    cwd=None, timeout=None, encoding=None, errors=None, text=None, env=None,
+    cwd=None, timeout=None, encoding=None, errors=None, text=False, env=None,
     check_retcode=True, check_stderr=True
 ):
     """
