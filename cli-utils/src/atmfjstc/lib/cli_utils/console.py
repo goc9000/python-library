@@ -21,6 +21,10 @@ Notes:
   noninteractive communication between scripts. Use regular `print()` and `read()` functions for that.
 - The module is not specifically designed to be thread-safe, but nothing extremely disastrous should occur if multiple
   threads use the console (other than the interleaving of messages or parts thereof)
+- Most methods of the console that just perform an action will return the console object itself. This enables fluent
+  interface calls like::
+
+      console.enable_stdout().print_progress("File saved").print_success("Done")
 """
 
 import sys
