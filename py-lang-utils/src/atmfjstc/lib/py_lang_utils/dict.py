@@ -9,31 +9,35 @@ from atmfjstc.lib.py_lang_utils.empty import make_null_test
 
 def copy_only_fields(source_dict, fields):
     """
-    Creates a copy of a dict with only certain fields preserved.
+    Creates a copy of a dict or mapping with only certain fields preserved.
 
-    Other types of mappings will work too, but they must have a dict-like constructor that accepts an iterable of
-    key-value pairs.
+    Args:
+        source_dict: A dict, or a mapping that has a dict-like constructor that accepts an iterable of key-value pairs.
+        fields: A list/set/etc. of the fields to keep
+
+    Returns:
+        A (shallow) copy of the mapping with the filtered fields. It will be of the same class as the input mapping.
 
     For more advanced processing, consider the `convert_struct` module in the same package.
     """
+
     return source_dict.__class__((k, v) for k, v in source_dict.items() if k in fields)
 
 
 def filter_dict_nulls(source_dict, nulls=None):
     """
-    Creates a copy of a dict with only non-null fields preserved. By default, a field is null if it is None.
+    Creates a copy of a dict or mapping with only non-null fields preserved. By default, a field is null if it is None.
 
-    To specify other values that should be considered null (e.g. False, 0, etc.), put them in a sequence and pass it
-    via the ``nulls=`` parameter. Note that you will have to re-specify None if you still want it to be a null
-    indicator. As an extra, you can specify an empty dict or an empty list as null values to filter out any empty
-    Mapppings or Sequences (even if they are not hashable). Finally, you can also pass a function in the ``nulls=``
-    parameter that should return True for null values.
+    Args:
+        source_dict: A dict, or a mapping that has a dict-like constructor that accepts an iterable of key-value pairs.
+        nulls: A specification of which values should be considered null. See `make_null_test` for details.
 
-    Other types of mappings will work too, but they must have a dict-like constructor that accepts an iterable of
-    key-value pairs.
+    Returns:
+        A (shallow) copy of the mapping with the filtered fields. It will be of the same class as the input mapping.
 
     For more advanced processing, consider the `convert_struct` module in the same package.
     """
+
     null_test = make_null_test(nulls)
 
     return source_dict.__class__((k, v) for k, v in source_dict.items() if not null_test(v))
@@ -41,11 +45,17 @@ def filter_dict_nulls(source_dict, nulls=None):
 
 def dict_no_nulls(*args, nulls_=None, **kwargs):
     """
-    Drop-in replacement for the dict constructor that filters out null values. By default, null means None.
+    Drop-in replacement for the `dict` constructor that filters out null values. By default, null means None.
 
-    To specify other values that be considered null, use the ``nulls_=`` parameter (note the trailing underscore). The
-    significance is the same as for the ``filter_dict_nulls`` function.
+    Args:
+        *args: Same as for `dict`: nothing, an iterable of key-value pairs, or a mapping to copy items from
+        nulls_: A specification of which values should be considered null. See `make_null_test` for details.
+        **kwargs: Same as for `dict`: more key-value pairs to add to the dict.
+
+    Returns:
+        The constructed dict.
     """
+
     null_test = make_null_test(nulls_)
 
     # Reproduce the logic of the dict constructor
