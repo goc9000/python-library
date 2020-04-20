@@ -223,12 +223,19 @@ class ASTNodeConfig(EZRepr):
     def parse(raw_config: ASTNodeRawConfig) -> 'ASTNodeConfig':
         is_abstract = False
         fields = []
+        names_seen = set()
 
         for item in raw_config:
             if item == 'abstract':
                 is_abstract = True
             else:
-                fields.append(ASTNodeFieldSpec.parse(item))
+                field = ASTNodeFieldSpec.parse(item)
+
+                if field.name in names_seen:
+                    raise AssertionError(f"Duplicate field '{field.name}' in AST node config")
+
+                fields.append(field)
+                names_seen.add(field.name)
 
         return ASTNodeConfig(
             is_abstract=is_abstract,
