@@ -196,6 +196,28 @@ class ASTNode:
         pass   # Do nothing by default
 
     @classmethod
+    def ast_node_local_config(cls) -> ASTNodeConfig:
+        """
+        Returns a configuration object containing the fields defined specifically for this node (not the parents).
+
+        It is basically a parsed version of what was specified in AST_NODE_CONFIG.
+
+        For most purposes you will probably want `ast_node_config` instead.
+        """
+
+        # Note: we are using .__dict__.get() to ensure that we only get the value for this class, not inherit it from
+        # its parent.
+        cached = cls.__dict__.get('_cached_ast_node_local_config')
+        if cached is not None:
+            return cached
+
+        parsed_config = ASTNodeConfig.parse(cls.__dict__.get('AST_NODE_CONFIG', ()))
+
+        cls._cached_ast_node_local_config = parsed_config
+
+        return parsed_config
+
+    @classmethod
     def ast_node_config(cls) -> ASTNodeConfig:
         """
         Returns the complete set of fields and abstract status in effect for this node type. Fields are presented in
@@ -211,7 +233,7 @@ class ASTNode:
         node_config = ASTNodeConfig(is_abstract=True, fields=())
 
         for parent in reversed(cls.__mro__[:-1]):
-            node_config = node_config.extend(ASTNodeConfig.parse(parent.__dict__.get('AST_NODE_CONFIG', ())))
+            node_config = node_config.extend(parent.ast_node_local_config())
 
         cls._cached_ast_node_config = node_config
 
