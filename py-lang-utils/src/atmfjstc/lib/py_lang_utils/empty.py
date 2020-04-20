@@ -12,8 +12,8 @@ def make_null_test(nulls):
     - If ``nulls`` is None, only None values are considered null
     - Otherwise, ``nulls`` must be a sequence of values that are considered null. The items must be Hashable, and only
       Hashable values will be tested, with two exceptions:
-    - You can specify an empty list() or an empty dict() as null values. In this case, non-Hashable Sequences and
-      Mappings, respectively, will also be considered null.
+    - You can specify the type `list` or `dict` as null values. In this case, non-Hashable Sequences and Mappings,
+      respectively, will also be considered null.
     """
     if nulls is None:
         return _is_none
@@ -23,16 +23,12 @@ def make_null_test(nulls):
     empty_maps_are_null = False
 
     for null in nulls:
-        if isinstance(null, Hashable):
-            nulls_set.add(null)
-        elif isinstance(null, list):
-            if len(null) > 0:
-                raise TypeError("lists passed as nulls must be empty")
+        if null is list:
             empty_seqs_are_null = True
-        elif isinstance(null, dict):
-            if len(null) > 0:
-                raise TypeError("dicts passed as nulls must be empty")
+        elif null is dict:
             empty_maps_are_null = True
+        elif isinstance(null, Hashable):
+            nulls_set.add(null)
         else:
             raise TypeError(f"Invalid null value (not hashable): {null!r}")
 
