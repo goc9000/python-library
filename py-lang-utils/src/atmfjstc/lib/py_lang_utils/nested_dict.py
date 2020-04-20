@@ -14,7 +14,7 @@ def get_in_nested_dict(source_dict: Any, path: Sequence, fallback_value: Any = N
     """
     Gets a value in a nested dict (or Mapping), given its path.
 
-    If the path does not exist, returns fallback_value (default None)
+    If the path does not exist, returns `fallback_value` (default None)
 
     If the path is empty, the source value itself will be returned, in which case it can be of any type.
     """
@@ -35,9 +35,9 @@ def set_in_nested_dict(mut_dict: Mapping, path: Sequence, value: Any, factory: O
     """
     Sets a value in a nested dict, at a given path. Inner dicts will automatically be created as needed.
 
-    The function works for other kinds of MutableMapping's too. In this case, when the function needs to create a
+    The function works for other kinds of `MutableMapping`'s too. In this case, when the function needs to create a
     nested mapping in some other mapping of type A, it will try to instantiate an A() class too. To override this, use
-    the `factory=` parameter to specify the class that will be called instead.
+    the `factory` parameter to specify the class that will be called instead.
 
     It is acceptable for the path to traverse read-only mappings if the structure is already created (thus, it can
     write to mutable dict-likes nested inside read-only dict-likes)
