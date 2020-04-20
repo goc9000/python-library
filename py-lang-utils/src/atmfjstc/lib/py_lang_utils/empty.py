@@ -2,12 +2,19 @@
 Utilities for working with nulls, empty values etc.
 """
 
+import typing
+
+from typing import Callable, Any, Union
 from collections.abc import Mapping, Sequence, Hashable, Iterable
 
 from atmfjstc.lib.py_lang_utils.functions import seems_callback
 
 
-def make_null_test(nulls):
+NullTestCallback = Callable[[Any], bool]
+NullsSpec = Union[Hashable, NullTestCallback, typing.Sequence[Hashable]]
+
+
+def make_null_test(nulls: NullsSpec) -> NullTestCallback:
     """
     Helper that creates a function that tests whether values are null (or 'empty').
 
@@ -50,5 +57,5 @@ def make_null_test(nulls):
     return _test
 
 
-def _is_none(value):
+def _is_none(value: Any) -> bool:
     return value is None
