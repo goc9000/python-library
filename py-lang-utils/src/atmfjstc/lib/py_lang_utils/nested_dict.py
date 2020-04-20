@@ -2,10 +2,15 @@
 Miscellaneous utilities for working with nested dict (or Mapping in general) structures.
 """
 
-from collections.abc import Mapping, MutableMapping
+from typing import Any, Callable, Optional
+
+from collections.abc import Mapping, MutableMapping, Sequence
 
 
-def get_in_nested_dict(source_dict, path, fallback_value=None):
+DictFactory = Callable[[], MutableMapping]
+
+
+def get_in_nested_dict(source_dict: Any, path: Sequence, fallback_value: Any = None) -> Any:
     """
     Gets a value in a nested dict (or Mapping), given its path.
 
@@ -26,7 +31,7 @@ def get_in_nested_dict(source_dict, path, fallback_value=None):
     return ptr.get(path[-1], fallback_value)
 
 
-def set_in_nested_dict(mut_dict, path, value, factory=None):
+def set_in_nested_dict(mut_dict: Mapping, path: Sequence, value: Any, factory: Optional[DictFactory] = None):
     """
     Sets a value in a nested dict, at a given path. Inner dicts will automatically be created as needed.
 
@@ -62,7 +67,9 @@ def set_in_nested_dict(mut_dict, path, value, factory=None):
     ptr[path[-1]] = value
 
 
-def get_or_init_in_nested_dict(mut_dict, path, constructor, dict_factory=None):
+def get_or_init_in_nested_dict(
+    mut_dict: Mapping, path: Sequence, constructor: Callable[[], Any], dict_factory: Optional[DictFactory] = None
+) -> Any:
     """
     Gets a value at a certain path in a nested dict/mapping, creating it and all parent dicts if missing.
     """
@@ -77,7 +84,9 @@ def get_or_init_in_nested_dict(mut_dict, path, constructor, dict_factory=None):
     return value
 
 
-def accumulate_in_nested_dict(mut_dict, path, value, dict_factory=None):
+def accumulate_in_nested_dict(
+    mut_dict: Mapping, path: Sequence, value: Any, dict_factory: Optional[DictFactory] = None
+):
     """
     Convenience function for creating and adding value to a list inside a nested dict.
     """
