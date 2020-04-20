@@ -90,7 +90,7 @@ def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
         return True
     elif xtd_type_spec == VoidType:
         return False
-    elif _is_sequence(xtd_type_spec):
+    elif _is_proper_sequence(xtd_type_spec):
         return any(isinstance_ex(value, alt) for alt in xtd_type_spec)
     elif isinstance(xtd_type_spec, Hashable):
         return value == xtd_type_spec
@@ -112,9 +112,9 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
     if (parent_type_spec == VoidType) or (xtd_type_spec == AnyType):
         return False
 
-    if _is_sequence(xtd_type_spec):
+    if _is_proper_sequence(xtd_type_spec):
         return all(issubclass_ex(alt, parent_type_spec) for alt in xtd_type_spec)
-    if _is_sequence(parent_type_spec):
+    if _is_proper_sequence(parent_type_spec):
         return any(issubclass_ex(xtd_type_spec, alt) for alt in parent_type_spec)
 
     if isinstance(parent_type_spec, type):
@@ -136,7 +136,7 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
     raise TypeError(f"Invalid extended type specification: {parent_type_spec!r}")
 
 
-def _is_sequence(value):
+def _is_proper_sequence(value):
     return isinstance(value, Sequence) and not isinstance(value, str)
 
 
@@ -148,7 +148,7 @@ def render_xtd_type_spec(xtd_type_spec: XtdTypeSpec, dequalify: bool = False) ->
     as it decreases readability whereas such conflicts are rare in practice. To keep the type names qualifies, set
     ``dequalify=`` to False.
     """
-    if _is_sequence(xtd_type_spec):
+    if _is_proper_sequence(xtd_type_spec):
         return '(' + (' | '.join(render_xtd_type_spec(alt) for alt in xtd_type_spec)) + ')'
     if xtd_type_spec is AnyType:
         return '<any>'
