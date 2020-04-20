@@ -2,7 +2,7 @@
 Utilities for working with nulls, empty values etc.
 """
 
-from collections.abc import Mapping, Sequence, Hashable
+from collections.abc import Mapping, Sequence, Hashable, Iterable
 
 
 def make_null_test(nulls):
@@ -22,26 +22,17 @@ def make_null_test(nulls):
     if nulls is None:
         return _is_none
 
-    nulls_set = set()
-    empty_seqs_are_null = False
-    empty_maps_are_null = False
+    if not isinstance(nulls, Iterable):
+        raise TypeError("Expecting an iterable of values to be considered null")
 
-    for null in nulls:
-        if null is list:
-            empty_seqs_are_null = True
-        elif null is dict:
-            empty_maps_are_null = True
-        elif isinstance(null, Hashable):
-            nulls_set.add(null)
-        else:
-            raise TypeError(f"Invalid null value (not hashable): {null!r}")
+    nulls_set = set(nulls)
 
     def _test(value):
         if isinstance(value, Hashable):
             return value in nulls_set
-        if isinstance(value, Sequence) and empty_seqs_are_null and len(value) == 0:
+        if isinstance(value, Sequence) and (list in nulls_set) and len(value) == 0:
             return True
-        if isinstance(value, Mapping) and empty_maps_are_null and len(value) == 0:
+        if isinstance(value, Mapping) and (dict in nulls_set) and len(value) == 0:
             return True
 
         return False
