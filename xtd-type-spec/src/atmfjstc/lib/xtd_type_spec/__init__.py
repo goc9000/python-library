@@ -78,11 +78,11 @@ XtdTypeSpec = typing.Union[
 
 def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
     """
-    Checks whether the given value conforms to the type described by ``xtd_type_spec``.
+    Checks whether the given value conforms to the type described by `xtd_type_spec`.
 
     See the module description for details on the format of the extended type specification.
 
-    Designed as a drop-in replacement for ``isinstance()``
+    Designed as a drop-in replacement for `isinstance`.
     """
     if isinstance(xtd_type_spec, type):
         return isinstance(value, xtd_type_spec)
@@ -100,12 +100,12 @@ def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
 
 def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> bool:
     """
-    Checks whether the given type is a subtype of another, i.e. all values that would fit ``xtd_type_spec`` will also
-    fit ``parent_type_spec``
+    Checks whether the given type is a subtype of another, i.e. all values that would fit `xtd_type_spec` will also
+    fit `parent_type_spec`.
 
     See the module description for details on the format of the extended type specification.
 
-    Designed as a drop-in replacement for ``issubclass()``
+    Designed as a drop-in replacement for `issubclass`.
     """
     if (parent_type_spec == AnyType) or (xtd_type_spec == VoidType):
         return True  # Note that this also covers Any vs Any and Void vs Void (both true)
@@ -146,7 +146,7 @@ def render_xtd_type_spec(xtd_type_spec: XtdTypeSpec, dequalify: bool = False) ->
 
     By default, type names are de-qualified, i.e. the prefix indicating the specific package they belong to is removed,
     as it decreases readability whereas such conflicts are rare in practice. To keep the type names qualifies, set
-    ``dequalify=`` to False.
+    `dequalify` to False.
     """
     if _is_proper_sequence(xtd_type_spec):
         return '(' + (' | '.join(render_xtd_type_spec(alt) for alt in xtd_type_spec)) + ')'
@@ -166,7 +166,7 @@ T = typing.TypeVar('T')
 
 def typecheck(value: T, xtd_type_spec: XtdTypeSpec, value_name: str = 'value', dequalify: bool = False) -> T:
     """
-    Convenience function that does an ``isinstance_ex`` check and throws a descriptive TypeCheckError if the type does
+    Convenience function that does an `isinstance_ex` check and throws a descriptive `TypeCheckError` if the type does
     not match.
 
     If the type does match, the function returns the value that was passed, such that one may use this in fluent code
