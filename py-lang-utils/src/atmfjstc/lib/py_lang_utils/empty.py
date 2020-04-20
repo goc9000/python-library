@@ -7,13 +7,17 @@ from collections.abc import Mapping, Sequence, Hashable
 
 def make_null_test(nulls):
     """
-    Helper that creates a function that tests whether its value is null, according to the following rules:
+    Helper that creates a function that tests whether values are null (or 'empty').
 
-    - If ``nulls`` is None, only None values are considered null
-    - Otherwise, ``nulls`` must be a sequence of values that are considered null. The items must be Hashable, and only
-      Hashable values will be tested, with two exceptions:
-    - You can specify the type `list` or `dict` as null values. In this case, non-Hashable Sequences and Mappings,
-      respectively, will also be considered null.
+    The created callback will decide whether values are null based upon the specification in `nulls`:
+
+    - If `nulls` is None, only None values are considered null
+    - If `nulls` is an iterable (list, etc), it will be treated as a sequence of values that are considered null.
+
+      - The items must be `Hashable`
+      - Only `Hashable` values will be tested against the items, with two exceptions: if you specify the types `list`
+        or `dict` as null values, then non-Hashable `Sequence`'s and `Mapping`'s, respectively, will also be considered
+        null.
     """
     if nulls is None:
         return _is_none
