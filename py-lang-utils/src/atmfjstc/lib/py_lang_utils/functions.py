@@ -2,8 +2,10 @@
 Utilities for working with functions.
 """
 
+from typing import Any
 
-def seems_callback(value):
+
+def seems_callback(value: Any) -> bool:
     """
     Checks whether a value looks like a callback.
 
