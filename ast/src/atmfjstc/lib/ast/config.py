@@ -106,15 +106,19 @@ class ASTNodeFieldSpec(EZRepr):
             if not issubclass_ex(new_field.allowed_type, self.allowed_type):
                 raise TypeError("New field type is not a subtype of the old field type")
 
-            return self.__class__(
-                self.name,
+            init_data = dict(
+                name=self.name,
                 kw_only=self.kw_only,
-                allow_none=new_field.allow_none,
                 coerce=new_field.coerce or self.coerce,
                 allowed_type=new_field.allowed_type,
                 checks=self.checks + new_field.checks,
                 default=new_field.default,
             )
+
+            if not isinstance(self, ASTNodeChildListFieldSpec):
+                init_data['allow_none'] = new_field.allow_none
+
+            return self.__class__(**init_data)
         except Exception as e:
             raise TypeError(f"Cannot override AST node field {self} with {new_field}") from e
 
