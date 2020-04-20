@@ -1,4 +1,5 @@
-from typing import Callable, Optional, Hashable
+import typing
+from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
 from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
 
@@ -8,7 +9,16 @@ from atmfjstc.lib.py_lang_utils.token import Token
 _NO_VALUE = Token()
 
 
-def make_struct_converter(source_type, dest_type, fields, return_unparsed=False, ignore=(), none_means_missing=True):
+NormalizedRawFieldSpec = typing.Mapping[str, Any]
+RawFieldSpec = Union[None, bool, str, NormalizedRawFieldSpec, typing.Sequence['RawFieldSpec', ...]]
+RawFieldSpecs = typing.Mapping[str, RawFieldSpec]
+StructConverter = Callable
+
+
+def make_struct_converter(
+    source_type: str, dest_type: str, fields: RawFieldSpecs,
+    return_unparsed: bool = False, ignore: Iterable[str] = (), none_means_missing: bool = True
+) -> StructConverter:
     """
     General purpose utility for making functions that convert from a simple structure in class or dict format, to a
     dict format with similar fields, optionally renaming, converting or checking fields as they are accessed.
@@ -138,7 +148,16 @@ def make_struct_converter(source_type, dest_type, fields, return_unparsed=False,
     return _setup_conversion_core(field_specs, source_dest_finder, getter, setter, result_extractor)
 
 
-def _parse_fields(fields):
+ParsedFieldSpecs = List[Tuple[str,'FieldSpec']]
+UnhandledGetter = Callable[[Mapping], dict]
+SourceDestFinder = Callable[..., Tuple[Any, Any]]
+FieldGetter = Callable[[Any, str], Any]
+FieldSetter = Callable[[Any, str, Any], None]
+ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
+ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
+
+
+def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
     out_fields = []
     ignored_fields = set()
 
@@ -156,7 +175,9 @@ def _parse_fields(fields):
     return out_fields, ignored_fields
 
 
-def _parse_fields_and_setup_unhandled_getter(fields, ignore_fields_option):
+def _parse_fields_and_setup_unhandled_getter(
+    fields: RawFieldSpecs, ignore_fields_option: Iterable[str]
+) -> Tuple[ParsedFieldSpecs, UnhandledGetter]:
     field_specs, ignored = _parse_fields(fields)
 
     all_srcs = set(field_specs.source for _, field_specs in field_specs) | set(ignore_fields_option or set()) | ignored
@@ -170,7 +191,7 @@ def _parse_fields_and_setup_unhandled_getter(fields, ignore_fields_option):
     return field_specs, unhandled_getter
 
 
-def _setup_source_dest_finder(destination_type):
+def _setup_source_dest_finder(destination_type: str) -> SourceDestFinder:
     def _get_with_dest_by_reference(mut_dest, source):
         return source, mut_dest
 
@@ -185,7 +206,7 @@ def _setup_source_dest_finder(destination_type):
         raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
 
 
-def _setup_field_getter(source_type, none_means_missing):
+def _setup_field_getter(source_type: str, none_means_missing: bool) -> FieldGetter:
     def _dict_getter(source_dict, field):
         return source_dict.get(field, _NO_VALUE)
 
@@ -209,7 +230,7 @@ def _setup_field_getter(source_type, none_means_missing):
     return _adjust_nones
 
 
-def _setup_field_setter(destination_type):
+def _setup_field_setter(destination_type: str) -> FieldSetter:
     def _dict_setter(dest_dict, field, value):
         dest_dict[field] = value
 
@@ -224,7 +245,9 @@ def _setup_field_setter(destination_type):
         raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
 
 
-def _setup_result_extractor(source_type, destination_type, return_unparsed_option, unhandled_getter):
+def _setup_result_extractor(
+    source_type: str, destination_type: str, return_unparsed_option: bool, unhandled_getter: UnhandledGetter
+) -> ResultExtractor:
     def _return_none(_source, _dest):
         return None
 
@@ -248,7 +271,10 @@ def _setup_result_extractor(source_type, destination_type, return_unparsed_optio
         raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
 
 
-def _setup_conversion_core(fields, source_dest_finder, getter, setter, result_extractor):
+def _setup_conversion_core(
+    fields: ParsedFieldSpecs, source_dest_finder: SourceDestFinder, getter: FieldGetter, setter: FieldSetter,
+    result_extractor: ResultExtractor
+) -> StructConverter:
     def _convert_core(*args):
         source, destination = source_dest_finder(*args)
 
@@ -273,7 +299,7 @@ class ConvertStructFieldSpec:
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
 
-    def do_convert(self, field_getter):
+    def do_convert(self, field_getter: Callable[[str], Any]) -> Any:
         value = field_getter(self.source)
 
         if value is _NO_VALUE:
@@ -293,7 +319,7 @@ class ConvertStructFieldSpec:
         return value
 
     @staticmethod
-    def parse(raw_field_spec, default_source):
+    def parse(raw_field_spec: RawFieldSpec, default_source: str) -> Optional['ConvertStructFieldSpec']:
         if isinstance(raw_field_spec, ConvertStructFieldSpec):
             return raw_field_spec
 
@@ -344,7 +370,7 @@ class ConvertStructFieldSpec:
         return ConvertStructFieldSpec(**init_params)
 
 
-def _normalize_raw_field_spec(raw_field_spec):
+def _normalize_raw_field_spec(raw_field_spec: RawFieldSpec) -> NormalizedRawFieldSpec:
     if (raw_field_spec is None) or (raw_field_spec is True):
         return dict()
     if raw_field_spec is False:
@@ -367,7 +393,7 @@ def _normalize_raw_field_spec(raw_field_spec):
     raise ConvertStructCompileError(f"Can't parse field spec of type {type(raw_field_spec).__name__}")
 
 
-def _expect_field_name(value):
+def _expect_field_name(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError(f"Field name expected, got {type(value).__name__}")
     if str == '':
@@ -376,24 +402,27 @@ def _expect_field_name(value):
     return value
 
 
-def _typecheck(value, expected_type):
+T = TypeVar('T')
+
+
+def _typecheck(value: T, expected_type) -> T:
     if not isinstance(value, expected_type):
         raise TypeError(f"Expected {expected_type}, got {type(value).__name__}")
 
     return value
 
 
-def _is_nonempty(value):
+def _is_nonempty(value: Any) -> bool:
     return not (
         (value is 0) or (value is False) or (value is None) or (hasattr(value, '__len__') and (len(value) == 0))
     )
 
 
-def _make_not_eq_filter(value):
+def _make_not_eq_filter(value: Any) -> Callable[[Any], bool]:
     return lambda x: x != value
 
 
-def _parse_converter(converter_spec):
+def _parse_converter(converter_spec: Union[Callable[[Any], Any], str]) -> Callable[[Any], Any]:
     _typecheck(converter_spec, (str, Callable))
 
     if not isinstance(converter_spec, str):
@@ -407,7 +436,7 @@ def _parse_converter(converter_spec):
     raise ValueError(f"Unknown built-in converter: '{converter_spec}'")
 
 
-def _parse_store(value):
+def _parse_store(value: Hashable) -> Callable[[Any], Any]:
     _typecheck(value, Hashable)
 
     try:
