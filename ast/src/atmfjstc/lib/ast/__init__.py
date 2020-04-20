@@ -128,6 +128,18 @@ inherited from a parent) and whether it is abstract or not. To wit, each item in
 
     - `kw_only`: Specifies that this field can only be initialized using keyword parameter syntax (as opposed to
       positional)
+
+Exceptions
+----------
+
+- `ASTNodeSetupError` will be thrown when there are errors in a node's configuration, i.e. "compile-time" errors. E.g.
+  invalid field specifications, duplicate field names etc.
+
+  - Note that due to the way AST nodes are implemented, even such errors will only be thrown when attempting to
+    instantiate a node of the offending type
+
+- `ASTNodeInitError` will be thrown when there are errors with initializing a node instance, i.e. "run-time" errors.
+  E.g. wrong values for the fields, missing parameters, etc.
 """
 
 from typing import List, Tuple, Any, Iterable, Optional, Callable
@@ -150,18 +162,22 @@ class ASTNode:
 
     def __init__(self, *args, **kwargs):
         try:
+            node_config = self.ast_node_config()
+        except Exception as e:
+            raise ASTNodeSetupError(f"Error setting up AST node class '{self.__class__.__name__}'") from e
+        try:
             self._ast_data = dict()
 
-            if self.is_abstract_node_type():
+            if node_config.is_abstract:
                 raise TypeError("Node type is abstract")
 
-            self._ast_data = parse_ast_node_args(self.field_defs(), args, kwargs)
+            self._ast_data = parse_ast_node_args(node_config.fields, args, kwargs)
 
             self._sanity_check_post_init()
             self._post_init()
             self._locked = True
         except Exception as e:
-            raise ValueError(f"Error instantiating {self.__class__.__name__}") from e
+            raise ASTNodeInitError(f"Error instantiating AST node of type '{self.__class__.__name__}'") from e
 
     def _sanity_check_post_init(self):
         """
@@ -361,3 +377,21 @@ def _compute_hash(value):
         return hash(tuple(hashable_data))
 
     return hash(value)
+
+
+class ASTNodeSetupError(ValueError):
+    """
+    Exceptions of this kind are thrown when there are errors in a node's configuration, i.e. "compile-time" errors.
+    E.g. invalid field specifications, duplicate field names etc.
+
+    Usually more specific errors are linked to in the `__cause__` field of this object.
+    """
+
+
+class ASTNodeInitError(ValueError):
+    """
+    Exceptions of this kind will be thrown when there are errors with initializing a node instance, i.e. "run-time"
+    errors. E.g. wrong values for the fields, missing parameters, etc.
+
+    Usually more specific errors are linked to in the `__cause__` field of this object.
+    """
