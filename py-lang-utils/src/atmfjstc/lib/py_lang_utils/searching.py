@@ -1,12 +1,17 @@
+from typing import Iterable, TypeVar, Optional, Callable
+
 from collections.abc import Sequence
 
 
-def index_where(seq, callback):
+T = TypeVar('T')
+
+
+def index_where(seq: Iterable[T], callback: Callable[[T], bool]) -> Optional[int]:
     """
     Returns the first index in a sequence (list, tuple, stream etc) for which a callback applied to its element holds
     true. If the callback never holds true for any item in the sequence, returns None.
 
-    This is somewhat similar to list.index() but searches for a condition, not a specific value.
+    This is somewhat similar to `list.index()` but searches for a condition, not a specific value.
 
     Note that the function also works on streams, including infinite ones. If the condition never holds true, it may
     cause an infinite loop.
@@ -18,7 +23,7 @@ def index_where(seq, callback):
     return None
 
 
-def last_index_where(seq, callback):
+def last_index_where(seq: Iterable[T], callback: Callable[[T], bool]) -> Optional[int]:
     """
     Returns the last index in a sequence (list, tuple, stream etc) for which a callback applied to its element holds
     true. If the callback never holds true for any item in the sequence, returns None.
