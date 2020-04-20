@@ -219,7 +219,7 @@ def limit_text(text: str, *args, **kwargs) -> str:
 
 
 def convert_indent(text: str, old_indent: str, new_indent: str) -> str:
-    def convert_line(line):
+    def _convert_line(line):
         if line == '' or line == '\n':
             return line
 
@@ -227,7 +227,7 @@ def convert_indent(text: str, old_indent: str, new_indent: str) -> str:
 
         return new_indent + line[len(old_indent):]
 
-    return ''.join(convert_line(line) for line in text.splitlines(True))
+    return ''.join(_convert_line(line) for line in text.splitlines(True))
 
 
 def iter_wrap_items(items: Iterable[str], max_width: Optional[int], separator: str = ' ') -> Iterable[str]:
