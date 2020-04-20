@@ -22,6 +22,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Text Processing",
+        "Typing :: Typed",
     ],
     python_requires='>=3.7',
 )
