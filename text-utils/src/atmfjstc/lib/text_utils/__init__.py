@@ -4,15 +4,17 @@ A collection of utilities for working with plain text.
 
 import re
 
+from typing import Tuple, Any, Iterable, Optional, List
+
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 
 
-def ucfirst(word):
+def ucfirst(word: str) -> str:
     """Capitalize the first letter of a word (while leaving the rest alone, unlike ``str.capitalize``)"""
     return '' if len(word) == 0 else (word[0].upper() + word[1:])
 
 
-def check_nonempty_str(value, value_name='value'):
+def check_nonempty_str(value: str, value_name: str = 'value') -> str:
     """Checks that a string is not empty and returns it, otherwise throws a `ValueError`"""
     if value == '':
         raise ValueError(ucfirst(f"{value_name} must be a non-empty string".lstrip()))
@@ -20,7 +22,7 @@ def check_nonempty_str(value, value_name='value'):
     return value
 
 
-def check_single_line(value, value_name='value'):
+def check_single_line(value: str, value_name: str = 'value') -> str:
     """Checks that a string does not contain newlines and returns it, otherwise throws a `ValueError`"""
     if '\n' in value:
         raise ValueError(ucfirst(f"{value_name} must be a single-line string".lstrip()))
@@ -28,7 +30,7 @@ def check_single_line(value, value_name='value'):
     return value
 
 
-def find_line_col(text, offset):
+def find_line_col(text: str, offset: int) -> Tuple[int, int]:
     """
     Returns the line and column corresponding to an offset in a given text (i.e. the position of the character at
     ``text[offset]``).
@@ -65,7 +67,7 @@ def find_line_col(text, offset):
     return cur_line_no, 1 + offset - cur_line_start
 
 
-def add_prompt(prompt, value):
+def add_prompt(prompt: str, value: Any) -> str:
     """
     Returns the ``str()`` of a value with a prompt prepended. The prompt will clear all space below it, such that a
     multiline representation of the value will not be disrupted.
@@ -77,9 +79,10 @@ def add_prompt(prompt, value):
 
 
 def iter_limit_text(
-    lines, max_lines=20, max_width=120, long_lines='chop',
-    long_line_ellipsis='...({} more chars)', bulk_ellipsis='...({} more lines)...', count_all_lines=True,
-):
+    lines: Iterable[str], max_lines: Optional[int] = 20, max_width: Optional[int] = 120, long_lines: str = 'chop',
+    long_line_ellipsis: str = '...({} more chars)', bulk_ellipsis: str = '...({} more lines)...',
+    count_all_lines: bool = True,
+) -> Iterable[str]:
     """
     Filters a text given as an iterable of lines, so as to limit it to a given number of lines and columns.
 
@@ -151,7 +154,7 @@ def iter_limit_text(
         yield buffered_last_line
 
 
-def _chop_line(line, max_width, ellipsis_format):
+def _chop_line(line: str, max_width: int, ellipsis_format: str) -> str:
     line_len = len(line)
     if line_len <= max_width:
         return line
@@ -205,7 +208,7 @@ def _chop_line(line, max_width, ellipsis_format):
     return line[:best_x] + ellipsis_format.format(line_len - best_x)
 
 
-def limit_text(text, *args, **kwargs):
+def limit_text(text: str, *args, **kwargs) -> str:
     """
     Convenience function for using ``iter_limit_text`` on a text stored as a string instead of lines. See that
     function for details.
@@ -215,7 +218,7 @@ def limit_text(text, *args, **kwargs):
     return '\n'.join(iter_limit_text(text.splitlines(False), *args, **kwargs)) + last_nl
 
 
-def convert_indent(text, old_indent, new_indent):
+def convert_indent(text: str, old_indent: str, new_indent: str) -> str:
     def convert_line(line):
         if line == '' or line == '\n':
             return line
@@ -227,7 +230,7 @@ def convert_indent(text, old_indent, new_indent):
     return ''.join(convert_line(line) for line in text.splitlines(True))
 
 
-def iter_wrap_items(items, max_width, separator=' '):
+def iter_wrap_items(items: Iterable[str], max_width: Optional[int], separator: str = ' ') -> Iterable[str]:
     """
     Wraps items over multiple lines so as to fit within a given width.
 
@@ -265,7 +268,7 @@ def iter_wrap_items(items, max_width, separator=' '):
         yield buffer
 
 
-def split_paragraphs(text, keep_separators=False):
+def split_paragraphs(text: str, keep_separators: bool = False) -> List[str]:
     """
     Roughly splits a text into paragraphs, i.e. areas separated by more than one newline.
 
