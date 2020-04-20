@@ -5,7 +5,7 @@ Rationale
 ---------
 
 Normally, in Python, when we want to programmatically specify a type against which a value can be typechecked at
-runtime, we can just use a <type> instance and then use ``isinstance(value, type)``. E.g::
+runtime, we can just use a `type` instance and then use ``isinstance(value, type)``. E.g::
 
     ALLOWED_TYPE = str
 
@@ -13,29 +13,29 @@ runtime, we can just use a <type> instance and then use ``isinstance(value, type
     if not isinstance(value, ALLOWED_TYPE):
         raise TypeError("Value type is incorrect")
 
-There are, however, some type specifications that a <type> object cannot represent:
+There are, however, some type specifications that a `type` object cannot represent:
 
-- Union types, i.e. where a value is allowed to be either of a number of types. E.g. "int | string | float"
-- Constant types, where a variable must have a specific value to fit the "type". This is mostly useful when combined
-  with the union type, as we can thus limit a value to any of a number of choices, e.g. "1 | 2 | 3". This can also
-  represent optional types, e.g. "str | None"
+- Union types, i.e. where a value is allowed to be either of a number of types. E.g. ``int | string | float``
+- Literal types, where a variable must have a specific value to fit the "type". This is mostly useful when combined
+  with the union type, as we can thus limit a value to any of a number of choices, e.g. ``1 | 2 | 3``. This can also
+  represent optional types, e.g. ``str | None``
 
-Python's built-in ``isinstance`` and ``issubclass`` offer some support for union types, but not for constant types and
-combinations thereof. Additionally, ``issubclass`` only allows a regular (non-union) type on the left side.
+Python's built-in `isinstance` and `issubclass` offer some support for union types, but not for literal types and
+combinations thereof. Additionally, `issubclass` only allows a regular (non-union) type on the left side.
 
 Solution
 --------
 
 This module provides some utilities for working with an "extended" way of specifying types. Specifically, it offers
-the ``isinstance_ex`` and ``issubclass_ex`` functions, that mimic the interface of the builtins but support a richer
+the `isinstance_ex` and `issubclass_ex` functions, that mimic the interface of the builtins but support a richer
 syntax for expressing types:
 
-- a normal type like ``str``, ``list`` etc. will stand for itself as before
-- lists or tuples will be treated as union types, e.g. ``(list, str)`` means list|str
-- a hashable, non-class value will be treated as a constant type, e.g. ``(bool, "other")`` will produce a type that
-  accepts ``True``, ``False`` or the string ``'other'``
-- the tokens ``AnyType`` and ``VoidType`` stand for the universal type (any value matches) and null type (no
-  value matches) respectively.
+- a normal type like `str`, `list` etc. will stand for itself as before
+- lists or tuples will be treated as union types, e.g. ``(list, str)`` means ``list | str``
+- a hashable, non-class value will be treated as a literal type, e.g. ``(bool, "other")`` will produce a type that
+  accepts `True`, `False` or the string ``'other'``
+- the tokens `AnyType` and `VoidType` stand for the universal type (any value matches) and null type (no value matches)
+  respectively.
 - these idioms can be combined recursively, e.g. ``(list, (1, 2, bool))`` although it should be noted that all such
   expressions ultimately reduce to a flat tuple under this simple type system
 - one can use an idiom like ``(type, None)`` to represent an optional type
@@ -45,9 +45,9 @@ Extras
 
 Other features provided in this module:
 
-- ``XtdTypeSpec``, a type hint for marking values in your code that are extended type specifications
-- ``render_xtd_type_spec``, a function for formatting extended type specs in a readable way
-- ``typecheck``, a convenience function for easily throwing descriptive errors when type checks fail
+- `XtdTypeSpec`, a type hint for marking values in your code that are extended type specifications
+- `render_xtd_type_spec`, a function for formatting extended type specs in a readable way
+- `typecheck`, a convenience function for easily throwing descriptive errors when type checks fail
 """
 
 import typing
