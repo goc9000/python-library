@@ -146,8 +146,8 @@ from typing import List, Tuple, Any, Iterable, Optional, Callable
 
 from atmfjstc.lib.ez_repr import ez_render_object
 
-from atmfjstc.lib.ast.fields import ASTNodeSingleChildFieldSpec, ASTNodeChildListFieldSpec, ASTNodeConfig, \
-    ASTNodeFieldSpec
+from atmfjstc.lib.ast.config import ASTNodeConfig, ASTNodeFieldSpec, ASTNodeSingleChildFieldSpec, \
+    ASTNodeChildListFieldSpec
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
