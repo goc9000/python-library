@@ -10,7 +10,7 @@ _NO_VALUE = Token()
 
 
 NormalizedRawFieldSpec = typing.Mapping[str, Any]
-RawFieldSpec = Union[None, bool, str, NormalizedRawFieldSpec, typing.Sequence['RawFieldSpec', ...]]
+RawFieldSpec = Union[None, bool, str, NormalizedRawFieldSpec, typing.Sequence['RawFieldSpec']]
 RawFieldSpecs = typing.Mapping[str, RawFieldSpec]
 StructConverter = Callable
 
