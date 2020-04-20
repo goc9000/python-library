@@ -10,11 +10,18 @@ KeyFunc = Callable[[T], Hashable]
 
 def iter_dedup(seq: Iterable[T], key: Optional[KeyFunc] = None) -> Iterable[T]:
     """
-    Streams elements from a sequence (list, tuple, stream etc.) with duplicates eliminated (the first element is kept).
+    Remove duplicates from a sequence (list, tuple, stream etc.) of elements.
 
-    By default, the elements must be hashable. If they are not, or if only some aspect of them must be unique, you can
-    use the `key` parameter to supply a lambda function that will be called on each element to provide its hash.
+    Args:
+        seq: An iterable of elements to deduplicate. They must either be hashable, or `key` must be provided.
+        key: A function that, applied to each element, provides a hashable representation of its aspect that must be
+            unique.
+
+    Returns:
+        A stream of deduplicated elements, in their original order. Only the first item is kept out of all its
+        duplicates.
     """
+
     get_key = key or (lambda x: x)
     seen = set()
 
@@ -28,9 +35,9 @@ def iter_dedup(seq: Iterable[T], key: Optional[KeyFunc] = None) -> Iterable[T]:
 
 def dedup(seq: Iterable[T], key: Optional[KeyFunc] = None) -> List[T]:
     """
-    Convenience function. Like `iter_dedup()` but returns a list.
+    Convenience function. Like `iter_dedup` but returns a list.
 
-    Note that this differs from simply using `list(set(iterable))` in that it preserves the order of the elements and
+    Note that this differs from simply using ``list(set(iterable))`` in that it preserves the order of the elements and
     also allows a key= function.
     """
     return list(iter_dedup(seq, key=key))
@@ -46,14 +53,18 @@ def find_duplicates(seq: Iterable[T], key: Optional[KeyFunc] = None) -> Optional
     """
     Checks whether there are any duplicate elements in a sequence (list, tuple, stream etc.).
 
-    Returns None if the elements are unique, or a DuplicateItemInfo structure with info on the fist pair of duplicates
-    found.
+    Args:
+        seq: An iterable of elements to check. They must either be hashable, or `key` must be provided.
+        key: A function that, applied to each element, provides a hashable representation of its aspect that must be
+            unique.
 
-    By default, the elements must be hashable. If they are not, or if only some aspect of them must be unique, you can
-    use the `key` parameter to supply a lambda function that will be called on each element to provide its hash.
+    Returns:
+        None if the elements are unique, or a `DuplicateItemInfo` structure with info on the fist pair of duplicates
+        found.
 
-    Warning: if the input is a stream, processing stops at the first encountered duplicate.
+    Note: if the input is a stream, reading stops at the first encountered duplicate.
     """
+
     get_key = key or (lambda x: x)
     seen = dict()
 
@@ -83,17 +94,25 @@ class DuplicateItemError(ValueError):
 
 def check_unique(seq: Iterable[T], key: Optional[KeyFunc] = None, item_name: str = 'item') -> Iterable[T]:
     """
-    Throws an exception if there are any duplicate elements in a sequence (list, tuple, stream etc.).
+    Verifies there are no duplicate elements in a sequence (list, tuple, stream etc.).
 
-    Useful as a sanity check routine. Returns the original sequence such that the function may be used in a fluent
-    manner, e.g. `items = check_unique(obtain_items())`.
+    Useful as a sanity check routine.
 
-    By default, the elements must be hashable. If they are not, or if only some aspect of them must be unique, you can
-    use the `key` parameter to supply a lambda function that will be called on each element to provide its hash.
+    Args:
+        seq: An iterable of elements to check. They must either be hashable, or `key` must be provided.
+        key: A function that, applied to each element, provides a hashable representation of its aspect that must be
+            unique.
+        item_name: A descriptive name for the kind of elements in the sequence, as it will appear in the thrown
+            exception (e.g. 'Duplicate XXX')
 
-    Warning: if the input is a stream, processing stops at the first encountered duplicate. The return value will also
-    be meaningless.
+    Returns:
+        The original sequence, such that the function may be used in a fluent manner, e.g.
+        ``items = check_unique(obtain_items())``. Meaningless if the input is a stream.
+
+    Raises:
+        DuplicateItemError: If duplicates were found.
     """
+
     dupes = find_duplicates(seq, key=key)
 
     if dupes is None:
