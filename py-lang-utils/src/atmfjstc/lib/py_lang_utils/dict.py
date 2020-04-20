@@ -4,7 +4,6 @@ Miscellaneous utilities for working with dicts and mappings.
 
 from collections.abc import Mapping
 
-from atmfjstc.lib.py_lang_utils.functions import seems_callback
 from atmfjstc.lib.py_lang_utils.empty import make_null_test
 
 
@@ -35,7 +34,7 @@ def filter_dict_nulls(source_dict, nulls=None):
 
     For more advanced processing, consider the `convert_struct` module in the same package.
     """
-    null_test = nulls if seems_callback(nulls) else make_null_test(nulls)
+    null_test = make_null_test(nulls)
 
     return source_dict.__class__((k, v) for k, v in source_dict.items() if not null_test(v))
 
@@ -47,7 +46,7 @@ def dict_no_nulls(*args, nulls_=None, **kwargs):
     To specify other values that be considered null, use the ``nulls_=`` parameter (note the trailing underscore). The
     significance is the same as for the ``filter_dict_nulls`` function.
     """
-    null_test = nulls_ if seems_callback(nulls_) else make_null_test(nulls_)
+    null_test = make_null_test(nulls_)
 
     # Reproduce the logic of the dict constructor
     if len(args) == 0:

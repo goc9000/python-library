@@ -4,6 +4,8 @@ Utilities for working with nulls, empty values etc.
 
 from collections.abc import Mapping, Sequence, Hashable, Iterable
 
+from atmfjstc.lib.py_lang_utils.functions import seems_callback
+
 
 def make_null_test(nulls):
     """
@@ -18,9 +20,13 @@ def make_null_test(nulls):
       - Only `Hashable` values will be tested against the items, with two exceptions: if you specify the types `list`
         or `dict` as null values, then non-Hashable `Sequence`'s and `Mapping`'s, respectively, will also be considered
         null.
+
+    - If `nulls` is a function (assumed to be itself a null test), it will be returned as-is
     """
-    if nulls is None:
+    if nulls is None:  # Treat this case quickly as it is the default
         return _is_none
+    if seems_callback(nulls):
+        return nulls
 
     if not isinstance(nulls, Iterable):
         raise TypeError("Expecting an iterable of values to be considered null")
