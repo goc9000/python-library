@@ -22,16 +22,20 @@ def make_null_test(nulls):
         null.
 
     - If `nulls` is a function (assumed to be itself a null test), it will be returned as-is
+    - If `nulls` is a single Hashable item, it will be treated as the value to be considered null, as per list item #2
+      above.
+    - Any other specification is invalid.
     """
     if nulls is None:  # Treat this case quickly as it is the default
         return _is_none
     if seems_callback(nulls):
         return nulls
-
-    if not isinstance(nulls, Iterable):
-        raise TypeError("Expecting an iterable of values to be considered null")
-
-    nulls_set = set(nulls)
+    if isinstance(nulls, Iterable):
+        nulls_set = set(nulls)
+    elif isinstance(nulls, Hashable):
+        nulls_set = {nulls}
+    else:
+        raise TypeError(f"Invalid nulls specification: {nulls!r}")
 
     def _test(value):
         if isinstance(value, Hashable):
