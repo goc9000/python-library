@@ -9,13 +9,13 @@ def make_null_test(nulls):
     """
     Helper that creates a function that tests whether its value is null, according to the following rules:
 
-    - If ``nulls`` is None or empty, only None values are considered null
+    - If ``nulls`` is None, only None values are considered null
     - Otherwise, ``nulls`` must be a sequence of values that are considered null. The items must be Hashable, and only
       Hashable values will be tested, with two exceptions:
     - You can specify an empty list() or an empty dict() as null values. In this case, non-Hashable Sequences and
       Mappings, respectively, will also be considered null.
     """
-    if (nulls is None) or len(nulls) == 0:
+    if nulls is None:
         return _is_none
 
     nulls_set = set()
