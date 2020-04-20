@@ -13,7 +13,7 @@ def iter_with_first_last(seq):
         for item, is_first, is_last in iter_with_first_last(range(10)):
             ...
 
-    Note that the usage pattern is similar to ``enumerate()``. Sequences of any length can be handled, even infinite.
+    Note that the usage pattern is similar to `enumerate`. Sequences of any length can be handled, even infinite.
     """
 
     for (item, is_first), is_last in iter_with_last(iter_with_first(seq)):
@@ -30,7 +30,7 @@ def iter_with_first(seq):
         for item, is_first in iter_with_first(range(10)):
             ...
 
-    Note that the usage pattern is similar to ``enumerate()``. Sequences of any length can be handled, even infinite.
+    Note that the usage pattern is similar to `enumerate`. Sequences of any length can be handled, even infinite.
     """
     is_first = True
 
@@ -49,7 +49,7 @@ def iter_with_last(seq):
         for item, is_last in iter_with_last(range(10)):
             ...
 
-    Note that the usage pattern is similar to ``enumerate()``. Sequences of any length can be handled, even infinite.
+    Note that the usage pattern is similar to `enumerate`. Sequences of any length can be handled, even infinite.
     """
     buffer = None
     buffer_used = False
