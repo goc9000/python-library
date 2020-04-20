@@ -2,12 +2,19 @@
 Miscellaneous utilities for working with dicts and mappings.
 """
 
+import typing
+from typing import TypeVar
+
 from collections.abc import Mapping
 
-from atmfjstc.lib.py_lang_utils.empty import make_null_test
+from atmfjstc.lib.py_lang_utils.empty import make_null_test, NullsSpec
 
 
-def copy_only_fields(source_dict, fields):
+K = TypeVar('K')
+V = TypeVar('V')
+
+
+def copy_only_fields(source_dict: typing.Mapping[K, V], fields: typing.Sequence[K]) -> typing.Mapping[K, V]:
     """
     Creates a copy of a dict or mapping with only certain fields preserved.
 
@@ -24,7 +31,7 @@ def copy_only_fields(source_dict, fields):
     return source_dict.__class__((k, v) for k, v in source_dict.items() if k in fields)
 
 
-def filter_dict_nulls(source_dict, nulls=None):
+def filter_dict_nulls(source_dict: typing.Mapping[K, V], nulls: NullsSpec = None) -> typing.Mapping[K, V]:
     """
     Creates a copy of a dict or mapping with only non-null fields preserved. By default, a field is null if it is None.
 
@@ -43,7 +50,7 @@ def filter_dict_nulls(source_dict, nulls=None):
     return source_dict.__class__((k, v) for k, v in source_dict.items() if not null_test(v))
 
 
-def dict_no_nulls(*args, nulls_=None, **kwargs):
+def dict_no_nulls(*args, nulls_: NullsSpec = None, **kwargs) -> dict:
     """
     Drop-in replacement for the `dict` constructor that filters out null values. By default, null means None.
 
