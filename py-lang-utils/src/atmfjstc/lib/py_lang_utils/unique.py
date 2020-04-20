@@ -1,7 +1,14 @@
+from typing import Optional, TypeVar, Callable, Iterable, Hashable, List
+
 from collections import namedtuple
 
 
-def iter_dedup(seq, key=None):
+T = TypeVar('T')
+
+KeyFunc = Callable[[T], Hashable]
+
+
+def iter_dedup(seq: Iterable[T], key: Optional[KeyFunc] = None) -> Iterable[T]:
     """
     Streams elements from a sequence (list, tuple, stream etc.) with duplicates eliminated (the first element is kept).
 
@@ -19,7 +26,7 @@ def iter_dedup(seq, key=None):
             seen.add(key)
 
 
-def dedup(seq, key=None):
+def dedup(seq: Iterable[T], key: Optional[KeyFunc] = None) -> List[T]:
     """
     Convenience function. Like `iter_dedup()` but returns a list.
 
@@ -35,7 +42,7 @@ DuplicateItemInfo = namedtuple('DuplicateItemInfo', [
 """A structure that holds information about a pair of duplicate items in a collection."""
 
 
-def find_duplicates(seq, key=None):
+def find_duplicates(seq: Iterable[T], key: Optional[KeyFunc] = None) -> Optional[DuplicateItemInfo]:
     """
     Checks whether there are any duplicate elements in a sequence (list, tuple, stream etc.).
 
@@ -74,7 +81,7 @@ class DuplicateItemError(ValueError):
         self.dupe_info = dupe_info
 
 
-def check_unique(seq, key=None, item_name='item'):
+def check_unique(seq: Iterable[T], key: Optional[KeyFunc] = None, item_name: str = 'item') -> Iterable[T]:
     """
     Throws an exception if there are any duplicate elements in a sequence (list, tuple, stream etc.).
 
