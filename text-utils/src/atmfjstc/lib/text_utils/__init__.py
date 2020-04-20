@@ -4,7 +4,7 @@ A collection of utilities for working with plain text.
 
 import re
 
-from typing import Tuple, Any, Iterable, Optional, List
+from typing import Tuple, Any, Iterable, Optional, List, Union
 
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 
@@ -218,7 +218,12 @@ def limit_text(text: str, *args, **kwargs) -> str:
     return '\n'.join(iter_limit_text(text.splitlines(False), *args, **kwargs)) + last_nl
 
 
-def convert_indent(text: str, old_indent: str, new_indent: str) -> str:
+def convert_indent(text: str, old_indent: Union[int, str], new_indent: Union[int, str]) -> str:
+    if isinstance(old_indent, int):
+        old_indent = ' ' * old_indent
+    if isinstance(new_indent, int):
+        new_indent = ' ' * new_indent
+
     def _convert_line(line):
         if line == '' or line == '\n':
             return line
