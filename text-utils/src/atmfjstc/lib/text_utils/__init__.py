@@ -32,21 +32,32 @@ def check_single_line(value: str, value_name: str = 'value') -> str:
 
 def find_line_col(text: str, offset: int) -> Tuple[int, int]:
     """
-    Returns the line and column corresponding to an offset in a given text (i.e. the position of the character at
-    ``text[offset]``).
+    Returns the line and column corresponding to an offset in a given text.
+
+    Args:
+        text: The text to search.
+        offset: The 0-based character offset. The function will essentially look for the position of the character
+            at ``text[offset]``. It can also be equal to ``len(text)`` in which case the function will report the
+            position of a potential character after the last character in the text.
+
+    Returns:
+        A (line, column) tuple corresponding to `offset`. The line and column are 1-based.
 
     Notes:
-    - The reported line and column are 1-based. The offset is 0-based.
+
     - The offset, line and column all refer to character, not byte, offsets.
-    - If text[offset] is a newline, its reported column will be 1 more than the position of the last character in the
+    - This only handles input where the lines are separated by a single ``\\n`` character.
+    - If ``text[offset]`` is a newline, its reported column will be 1 more than the position of the last character in the
       line. Thus, for a file of 80-column text, the column may be 81.
-    - Offset can be between 0 and the length of the text. An offset of len(text) refers to a potential character after
-      the last character in the text, and can thus occur either one column to the right of it, or on the next line
-      number, if the last character was a newline.
-    - This only handles input where the lines are separated by a single \n character.
+    - If `offset` is ``len(text)``, the virtual character is placed either:
+
+      - One column to the right of the last character in the last line, if it does not end with a newline
+      - On the first column of the next line number, if it does
+
     - The function is not particularly optimized for working with huge data and cannot use a prebuilt line index, etc.
       It is meant for one-off analyses such as when building an exception text for a syntax error in a config file.
     """
+
     if (offset < 0) or (offset > len(text)):
         raise IndexError(f"Offset {offset} lies outside text of length {len(text)}")
 
@@ -86,26 +97,30 @@ def iter_limit_text(
     """
     Filters a text given as an iterable of lines, so as to limit it to a given number of lines and columns.
 
-    :param lines: An iterable going over the lines of the text to be limited. The lines MUST have had their newline
-                  characters stripped!
-    :param max_lines: The maximum number of lines allowed. If the text has more lines, only max_lines-1 lines will be
-                      returned, followed a special ellipsis line indicating how many more lines would follow (subject
-                      to certain limitations, see below). Specify max_lines=None to allow any number of lines.
-    :param max_width: The maximum width (number of columns) allowed. Lines exceeding this will be either wrapped or
-                      truncated depending on the ``long_lines=`` option. A truncated line will also end in a special
-                      ellipsis text indicating how many characters were not displayed.
-    :param long_lines: Specify 'chop' to truncate long lines, 'wrap' to wrap them.
-    :param long_line_ellipsis: The text that will be appear at the end of an elided line. It should contain a format
-                               specifier that will receive the number of characters not displayed (it can be absent if
-                               you want the ellipsis to always look the same).
-    :param bulk_ellipsis: The line that will appear at the end of an elided text. As for the long line ellipsis, it
-                          can contain a format specifier that will receive the number of lines not displayed.
-    :param count_all_lines: Normally the function will go through all the text so as to get its complete line count.
-                            Specify False here to cause the function to stop reading as soon as the line limit has
-                            been reached. In this case the bulk ellipsis will receive the string '?' for its format
-                            specifier, as the number of lines hidden is unknown.
-    :return: The function returns a stream of each line in the filtered text (without ending newlines)
+    Args:
+        lines: An iterable going over the lines of the text to be limited. The lines MUST have had their newline
+            characters stripped!
+        max_lines: The maximum number of lines allowed. If the text has more lines, only `max_lines-1` lines will be
+            returned, followed a special ellipsis line indicating how many more lines would follow (subject to certain
+            limitations, see below). Specify a value of None to allow any number of lines.
+        max_width: The maximum width (number of columns) allowed. Lines exceeding this will be either wrapped or
+            truncated depending on the `long_lines` option.
+        long_lines: Specify ``'wrap'`` to wrap long lines, ``'chop'`` to truncate them.
+        long_line_ellipsis: When a line is truncated, its end will be replaced by this text, formatted so as to contain
+            the number of characters that were omitted. The format specifier can be omitted, e.g. the text can just
+            be ``'...'`` if you want.
+        bulk_ellipsis: The line that appears at the end of the text, if any lines were omitted. As for
+            `long_line_ellipsis`, it can contain a format specifier that will receive the number of lines not displayed.
+        count_all_lines: Normally the function will go through all the text so as to get its complete line count.
+            Specify False here to cause the function to stop reading as soon as the line limit has been reached. In this
+            case the bulk ellipsis will receive the string ``'?'`` for its format specifier, as the number of lines
+            hidden is unknown.
+
+    Returns:
+        A stream of the lines in the limited text, no more than `max_lines` in height and `max_width` in width. The
+        lines will feature no terminating newline.
     """
+
     assert (max_lines is None) or (max_lines > 0), "max_lines must be >= 1"
     assert (long_lines in ['chop', 'wrap']), "long_lines= must be either 'chop' or 'wrap'"
 
@@ -210,8 +225,8 @@ def _chop_line(line: str, max_width: int, ellipsis_format: str) -> str:
 
 def limit_text(text: str, *args, **kwargs) -> str:
     """
-    Convenience function for using ``iter_limit_text`` on a text stored as a string instead of lines. See that
-    function for details.
+    Convenience function for using `iter_limit_text` on a text stored as a string instead of lines. See that function
+    for details.
     """
     last_nl = '\n' if text.endswith('\n') else ''
 
@@ -219,6 +234,20 @@ def limit_text(text: str, *args, **kwargs) -> str:
 
 
 def convert_indent(text: str, old_indent: Union[int, str], new_indent: Union[int, str]) -> str:
+    """
+    Changes the indent of the lines in a text.
+
+    Note: empty lines will be unaffected.
+
+    Args:
+        text: The text to be processed.
+        old_indent: The indent to remove, given either as a number of columns, or a specific string
+        new_indent: The indent to add, given either as a number of columns, or a specific string
+
+    Returns:
+        The text with the indent replaced.
+    """
+
     if isinstance(old_indent, int):
         old_indent = ' ' * old_indent
     if isinstance(new_indent, int):
@@ -239,14 +268,17 @@ def iter_wrap_items(items: Iterable[str], max_width: Optional[int], separator: s
     """
     Wraps items over multiple lines so as to fit within a given width.
 
-    :param items: An iterable of "items", sort of like words but really they can be any string that must be presented
-                  unbroken. Items can contain newlines, which will cause them to appear on their own set of lines,
-                  breaking the flow of the other elements.
-    :param max_width: The maximum width allowed for a line. Use None to disable the limit.
-    :param separator: A string that will be inserted between any two items that appear on the same line.
-    :return: The function will generate the resulting lines as items stream in. Note that this potentially means it can
-             handle an infinite stream.
+    Args:
+        items: An iterable of "items", sort of like words but really they can be any string that must be presented
+            unbroken. Items can contain newlines, which will cause them to appear on their own set of lines, breaking
+            the flow of the other elements.
+        max_width: The maximum width allowed for a line. Use None to disable the limit.
+        separator: A string that will be inserted between any two items that appear on the same line.
+
+    Returns:
+        A stream of the resulting lines (with no terminating newlines)
     """
+
     buffer = ''
 
     for item in items:
@@ -277,7 +309,7 @@ def split_paragraphs(text: str, keep_separators: bool = False) -> List[str]:
     """
     Roughly splits a text into paragraphs, i.e. areas separated by more than one newline.
 
-    If ``keep_separators=`` is true, the newline sequences that separate the paragraphs will also be returned. They
+    If `keep_separators` is true, the newline sequences that separate the paragraphs will also be returned. They
     will always occur on odd indexes in the returned list.
     """
     pattern = r'\n\s*\n'
