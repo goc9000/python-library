@@ -136,7 +136,7 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
     raise TypeError(f"Invalid extended type specification: {parent_type_spec!r}")
 
 
-def _is_proper_sequence(value):
+def _is_proper_sequence(value: typing.Any) -> bool:
     return isinstance(value, Sequence) and not isinstance(value, str)
 
 
