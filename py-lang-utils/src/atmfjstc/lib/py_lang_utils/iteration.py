@@ -2,8 +2,13 @@
 General purpose utilities for help with iteration.
 """
 
+from typing import Iterable, Tuple, TypeVar
 
-def iter_with_first_last(seq):
+
+T = TypeVar('T')
+
+
+def iter_with_first_last(seq: Iterable[T]) -> Iterable[Tuple[T, bool, bool]]:
     """
     Iterates over a sequence (list, tuple, generator etc) and adds to each value an indication of whether it is the
     first or last in the sequence.
@@ -20,7 +25,7 @@ def iter_with_first_last(seq):
         yield item, is_first, is_last
 
 
-def iter_with_first(seq):
+def iter_with_first(seq: Iterable[T]) -> Iterable[Tuple[T, bool]]:
     """
     Iterates over a sequence (list, tuple, generator etc) and adds to each value an indication of whether it is the
     first in the sequence.
@@ -39,7 +44,7 @@ def iter_with_first(seq):
         is_first = False
 
 
-def iter_with_last(seq):
+def iter_with_last(seq: Iterable[T]) -> Iterable[Tuple[T, bool]]:
     """
     Iterates over a sequence (list, tuple, generator etc) and adds to each value an indication of whether it is the
     last in the sequence.
