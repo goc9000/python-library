@@ -28,24 +28,24 @@ def make_struct_converter(
 
     - `source_type` can be one of:
 
-      - `dict`: Any type whose fields can be read with `obj.get('field_name')`, such as a `dict` or, more generally, a
-        `Mapping`.
-      - `class`: Any type whose fields can be read with `obj.field_name`, such as any class.
+      - ``'dict'``: Any type whose fields can be read with ``obj.get('field_name')``, such as a `dict` or, more
+        generally, a `Mapping`.
+      - ``'class'``: Any type whose fields can be read with ``obj.field_name``, such as any class.
 
     - `destination_type` can be one of:
 
-      - `dict`: The converter will return a new `dict` containing the converted fields.
-      - `dict-by-reference`, `class-by-reference`: The converter will receive an existing `dict` or class and write
-        converted fields to it accordingly.
+      - ``'dict'``: The converter will return a new `dict` containing the converted fields.
+      - ``'dict-by-reference'``, ``'class-by-reference'``: The converter will receive an existing dict or class and
+        write converted fields to it accordingly.
 
     Field Specifications
     --------------------
 
-    The `fields` parameter shapes the heart of the conversion algorithm. It is a `dict` where the keys are the names
-    of the fields that are to be written to the destination, linked to field specification descriptions that describe
-    how to obtain the converted value for each field.
+    The `fields` parameter shapes the heart of the conversion algorithm. It is a dict/mapping where the keys are the
+    names of the fields that are to be written to the destination, linked to field specification descriptions that
+    describe how to obtain the converted value for each field.
 
-    A field specification is normally a `dict` with one or more of these fields:
+    A field specification is normally a dict with one or more of these fields:
 
     - `src`: Specifies which field in the source we will be getting the value from. By default, a field will try to
       get its value from a source field of the same name.
@@ -62,45 +62,45 @@ def make_struct_converter(
 
       You can also specify the following strings that refer to built-in converters:
 
-      - `utf8`: Decodes strings encoded as UTF-8 in a `bytes` value
-      - `hex`: Converts a `bytes` value to a hex string
+      - ``'utf8'``: Decodes strings encoded as UTF-8 in a `bytes` value
+      - ``'hex'``: Converts a `bytes` value to a hex string
 
     - `store`: Any value specified here will be stored at the destination regardless of what the value read from the
       source was. Equivalent to a converter that only returns a fixed value. Mutually exclusive with `convert`.
 
-    Alternatively, one can instead provide a dict like `dict(ignore=True)` which will cause the field in the source
+    Alternatively, one can instead provide a dict like ``dict(ignore=True)`` which will cause the field in the source
     with that name to be ignored. This has the same effect as not specifying the field at all, but this affects the
     set of fields that are considered to be 'unparsed' (see the `return_unparsed` options).
 
     Field Specification Shortcuts
     -----------------------------
 
-    Instead of specifying the full `dict`-based field specification, you can save typing by using these shortcuts
-    when appropriate:
+    Instead of specifying the full dict-based field descriptor, you can save typing by using these shortcuts when
+    appropriate:
 
-    - `True` or `None` or `''`: Equivalent to `dict()` (a field with all the default options)
-    - `False`: Equivalent to `dict(ignore=True)`
-    - `'option'`: Equivalent to `dict(option=True)`. Often use as `'req'` to specify fields that are required but have
-      no other special processing.
-    - `(shortcut, shortcut, ...)`: Equivalent to combining the other shortcuts into a single dict. E.g.::
+    - ``True`` or ``None`` or ``''``: Equivalent to ``dict()`` (a field with all the default options)
+    - ``False``: Equivalent to ``dict(ignore=True)``
+    - ``'option'``: Equivalent to ``dict(option=True)``. Often used as ``'req'`` to specify fields that are required but
+      have no other options.
+    - ``(shortcut, shortcut, ...)``: Equivalent to combining the other shortcuts into a single dict. E.g.::
 
-      ('req', 'skip_empty', dict(convert='hex'))
+          ('req', 'skip_empty', dict(convert='hex'))
 
       is equivalent to::
 
-      dict(req=True, skip_empty=True, convert='hex')
+          dict(req=True, skip_empty=True, convert='hex')
 
     Other Options
     -------------
 
-    - `none_means_missing`: If True (the default), a field is also considered 'missing' (for the purposes of `req`,
+    - `none_means_missing`: If True (the default), a field is also considered 'missing' (for the purposes of ``req``,
       etc.) if it has a value of None, which is a common convention in classes.
 
     - `return_unparsed`: If True, the converter will keep track of all the fields in the source that it has no
       instructions on how to parse, and report them alongside the normal result. This is useful for detecting unexpected
       data that one might want to add processing for in the future, or decide to ignore explicitly.
 
-      Note that this only works for `dict`-type sources, as classes do not have a standardized way of getting a list
+      Note that this only works for mapping-type sources, as classes do not have a standardized way of getting a list
       of all their fields which are intended to represent data.
 
     - `ignore`: A list of additional field names that should be ignored, in addition to those marked as such in the
@@ -111,25 +111,25 @@ def make_struct_converter(
 
     The function returns a converter function that can be called like this:
 
-    - For destinations of type 'dict':
+    - For destinations of type ``'dict'``:
 
       - With `return_unparsed` unset::
 
-        result_dict = convert(source_class_or_dict)
+            result_dict = convert(source_class_or_dict)
 
       - With `return_unparsed` set::
 
-        result_dict, unparsed_fields = convert(source_class_or_dict)
+            result_dict, unparsed_fields = convert(source_class_or_dict)
 
-    - For destinations of type '*-by-reference':
+    - For destinations of type ``'*-by-reference'``:
 
       - With `return_unparsed` unset::
 
-        convert(dest_class_or_dict, source_class_or_dict)
+            convert(dest_class_or_dict, source_class_or_dict)
 
       - With `return_unparsed` set::
 
-        unparsed_fields = convert(dest_class_or_dict, source_class_or_dict)
+            unparsed_fields = convert(dest_class_or_dict, source_class_or_dict)
 
     Exceptions
     ----------
