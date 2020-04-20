@@ -67,11 +67,13 @@ VoidType = Token(repr_='VoidType')
 
 # This specification is imperfect, might want to revisit it
 XtdTypeSpec_Proper = type
-XtdTypeSpec_Const = typing.Hashable
+XtdTypeSpec_Literal = typing.Hashable
 XtdTypeSpec_Union = typing.Sequence['XtdTypeSpec']
 XtdTypeSpec_Any = Token
 XtdTypeSpec_Void = Token
-XtdTypeSpec = typing.Union[XtdTypeSpec_Proper, XtdTypeSpec_Const, XtdTypeSpec_Union, XtdTypeSpec_Any, XtdTypeSpec_Void]
+XtdTypeSpec = typing.Union[
+    XtdTypeSpec_Proper, XtdTypeSpec_Literal, XtdTypeSpec_Union, XtdTypeSpec_Any, XtdTypeSpec_Void
+]
 
 
 def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
