@@ -9,7 +9,8 @@ from textwrap import dedent, indent
 from functools import wraps
 from contextlib import contextmanager
 
-from atmfjstc.lib.error_utils import full_format_exception, format_exception_head
+from atmfjstc.lib.error_utils import format_exception_head, format_exception_trace
+from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 from atmfjstc.lib.cli_utils.console import console
 
 
@@ -78,7 +79,15 @@ def pretty_print_exception(exception: BaseException, follow_cause: bool = True, 
         )
         return
 
-    console.print_error(full_format_exception(exception, follow_cause=follow_cause))
+    for cause, is_first in iter_with_first(_causal_chain(exception, follow_cause=follow_cause)):
+        base_indent = '' if is_first else '  '
+
+        if not is_first:
+            console.print_error("Cause:", minor=True)
+
+        console.print_error(indent(format_exception_head(cause), base_indent))
+        console.print_error(base_indent + "Traceback:", minor=True)
+        console.print_error(indent(format_exception_trace(cause), base_indent + '  '), minor=True)
 
 
 def short_format_exception(exception: BaseException, follow_cause: bool = True, force_descriptive: bool = False) -> str:
