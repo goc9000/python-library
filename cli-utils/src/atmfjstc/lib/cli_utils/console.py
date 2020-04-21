@@ -31,7 +31,7 @@ import sys
 import shutil
 import subprocess
 
-from typing import Optional, List, TextIO
+from typing import Optional, Tuple, TextIO
 from getpass import getpass
 from termcolor import cprint
 
@@ -218,7 +218,7 @@ class Console:
 
 
 def _print_maybe_with_color(
-    text: str, color: Optional[str], attrs: Optional[List[str]], channel: TextIO
+    text: str, color: Optional[str], attrs: Optional[Tuple[str]], channel: TextIO
 ):
     if (color is None) and (len(attrs or []) == 0):
         print(text, file=channel)
@@ -231,9 +231,9 @@ _PROPS_BY_MSG_TYPE = {
     'info': dict(),
     'prompt': dict(),
     'progress': dict(),
-    'success': dict(color='green', attrs=['bold']),
-    'warning': dict(color='yellow', attrs=['bold'], channel='stderr'),
-    'error': dict(color='red', attrs=['bold'], channel='stderr'),
+    'success': dict(color='green', attrs=('bold',)),
+    'warning': dict(color='yellow', attrs=('bold',), channel='stderr'),
+    'error': dict(color='red', attrs=('bold',), channel='stderr'),
 }
 
 
