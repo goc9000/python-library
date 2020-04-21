@@ -50,15 +50,17 @@ class Console:
         self._stdout_enabled = enable_stdout
         self._interactive = interactive
 
-    def print_info(self, message: str) -> 'Console':
+    def print_info(self, message: str, **kwargs) -> 'Console':
         """
         Print an informational message.
 
         An informational message is basically any message that does not fit into the other types.
-        """
-        return self.print_message('info', message)
 
-    def print_prompt(self, message: str) -> 'Console':
+        See `print_message` for info on general use guidelines and keyword parameters.
+        """
+        return self.print_message('info', message, **kwargs)
+
+    def print_prompt(self, message: str, **kwargs) -> 'Console':
         """
         Print a prompt message.
 
@@ -69,42 +71,52 @@ class Console:
 
             Archive entry 'a/b/c/d' is encrypted. Input the password, or leave blank to skip.
             Password: _
-        """
-        return self.print_message('prompt', message)
 
-    def print_progress(self, message: str) -> 'Console':
+        See `print_message` for info on general use guidelines and keyword parameters.
+        """
+        return self.print_message('prompt', message, **kwargs)
+
+    def print_progress(self, message: str, **kwargs) -> 'Console':
         """
         Print a progress message.
 
         This is a message that shows the progress of an operation, either as a percentage, progress bar, etc., or even
         just as a phase indicator, e.g. ``"Loading data..."``
-        """
-        return self.print_message('progress', message)
 
-    def print_success(self, message: str) -> 'Console':
+        See `print_message` for info on general use guidelines and keyword parameters.
+        """
+        return self.print_message('progress', message, **kwargs)
+
+    def print_success(self, message: str, **kwargs) -> 'Console':
         """
         Print a success message.
 
         This is useful for signaling the end of a long operation. The message will be highlighted if the terminal
         supports colors.
-        """
-        return self.print_message('success', message)
 
-    def print_warning(self, message: str) -> 'Console':
+        See `print_message` for info on general use guidelines and keyword parameters.
+        """
+        return self.print_message('success', message, **kwargs)
+
+    def print_warning(self, message: str, **kwargs) -> 'Console':
         """
         Print a warning message.
 
         The message will be highlighted in yellow and normally sent to stderr.
-        """
-        return self.print_message('warning', message)
 
-    def print_error(self, message: str) -> 'Console':
+        See `print_message` for info on general use guidelines and keyword parameters.
+        """
+        return self.print_message('warning', message, **kwargs)
+
+    def print_error(self, message: str, **kwargs) -> 'Console':
         """
         Print an error message.
 
         The message will be highlighted in red and normally sent to stderr.
+
+        See `print_message` for info on general use guidelines and keyword parameters.
         """
-        return self.print_message('error', message)
+        return self.print_message('error', message, **kwargs)
 
     def input_password(self, prompt: str) -> str:
         """
@@ -190,7 +202,7 @@ class Console:
         self.disable_interactive()
         return self
 
-    def print_message(self, kind: str, message: str) -> 'Console':
+    def print_message(self, kind: str, message: str, major: bool = False, minor: bool = False) -> 'Console':
         """
         Prints a message of a programmatically specified type.
 
@@ -198,6 +210,10 @@ class Console:
             kind: Can be 'info', 'prompt', 'progress', 'success', 'warning', 'error' with the meanings as described
                 by the respective `print_*` methods.
             message: The message to print. Can be multiline.
+            major: Signals that this message is somehow more important than others of its kind. The console might try
+                to render it using a different color scheme.
+            minor: Signals that this message is somehow less important than others of its kind. The console might try
+                to render it using a different color scheme.
 
         Returns:
             The console object (to enable a fluent interface)
@@ -212,7 +228,14 @@ class Console:
 
         channel = sys.stderr if channel_name == 'stderr' else sys.stdout
 
-        _print_maybe_with_color(message, props.get('color'), props.get('attrs'), channel)
+        # For now we use this simple algorithm. Might revisit this later:
+        attrs = props.get('attrs', ())
+        if major and ('bold' not in attrs):
+            attrs += ('bold',)
+        if minor and ('bold' in attrs):
+            attrs = tuple(attr for attr in attrs if attr != 'bold')
+
+        _print_maybe_with_color(message, props.get('color'), attrs, channel)
 
         return self
 
