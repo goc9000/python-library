@@ -2,12 +2,16 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-file-utils',
-    version='1.0.0',
+    version='1.1.0',
 
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
     packages=['atmfjstc.lib.file_utils'],
+
+    install_requires=[
+        'atmfjstc-error-utils>=1.1, <2',
+    ],
 
     zip_safe=True,
 
