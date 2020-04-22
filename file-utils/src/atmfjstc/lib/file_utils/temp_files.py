@@ -9,10 +9,12 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 from shutil import copyfileobj
 from contextlib import contextmanager, suppress
 
+from atmfjstc.lib.file_utils import PathType
+
 
 @contextmanager
 def specifically_named_temp_file(
-    name: AnyStr, suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[os.PathLike] = None,
+    name: AnyStr, suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[PathType] = None,
     mode: str = 'w+b', buffering: int = -1,
     encoding: Optional[str] = None, newline: Optional[str] = None, errors: Optional[str] = None
 ) -> ContextManager[IO]:
