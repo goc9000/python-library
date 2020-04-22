@@ -4,7 +4,25 @@ Utilities for working with exceptions and other failure states.
 
 import traceback
 
+from typing import ContextManager
 from textwrap import dedent, indent
+from contextlib import contextmanager
+
+
+@contextmanager
+def ignore_errors() -> ContextManager[None]:
+    """
+    Use ``with ignore_errors(): <code>`` to ignore all errors in a bit of code (e.g. when making sure some file is
+    closed in a `finally` block)
+    """
+    try:
+        yield
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        raise
+    except:
+        pass
 
 
 def format_exception_head(exception: BaseException) -> str:

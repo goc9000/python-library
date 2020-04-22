@@ -172,19 +172,3 @@ def pretty_unhandled(on_crash: Optional[Callable[[], None]] = None) -> Callable:
         return wrapper
 
     return real_decorator
-
-
-@contextmanager
-def ignore_errors() -> ContextManager[None]:
-    """
-    Use ``with ignore_errors(): <code>`` to ignore all errors in a bit of code (e.g. when making sure some file is
-    closed in a `finally` block)
-    """
-    try:
-        yield
-    except SystemExit:
-        raise
-    except KeyboardInterrupt:
-        raise
-    except:
-        pass
