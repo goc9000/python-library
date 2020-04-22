@@ -28,7 +28,7 @@ def command_exists(command: str) -> bool:
 
 
 Handle = Union[IO, int, type(subprocess.PIPE), None]
-PathType = Union[PathLike, bytes, str]
+PathType = Union[PathLike, AnyStr]
 
 
 def run_external(
