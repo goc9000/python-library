@@ -71,6 +71,12 @@ class BinaryReader:
 
         return data
 
+    def maybe_read_amount(self, n_bytes: int, meaning: Optional[str] = None) -> Optional[bytes]:
+        try:
+            return self.read_amount(n_bytes, meaning)
+        except BinaryReaderMissingDataError:
+            return None
+
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
     if isinstance(input_, bytes):
