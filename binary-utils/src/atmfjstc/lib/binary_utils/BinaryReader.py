@@ -77,6 +77,21 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def expect_magic(self, magic: bytes, meaning: Optional[str] = None):
+        meaning = meaning or "magic"
+
+        data = self.read_amount(len(magic), meaning)
+
+        if data != magic:
+            raise BinaryReaderWrongMagicError(self._position - len(magic), magic, data, meaning)
+
+    def maybe_expect_magic(self, magic: bytes, meaning: Optional[str] = None) -> bool:
+        try:
+            self.expect_magic(magic, meaning)
+            return True
+        except BinaryReaderMissingDataError:
+            return False
+
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
     if isinstance(input_, bytes):
@@ -130,4 +145,22 @@ class BinaryReaderMissingDataError(BinaryReaderFormatError):
             f"At position {position}, expected {expected_length} "
             f"bytes{f' for {meaning}' if meaning is not None else ''}"
             f", but the data ends"
+        )
+
+
+class BinaryReaderWrongMagicError(BinaryReaderFormatError):
+    position: int
+    expected_magic: bytes
+    found_magic: bytes
+    meaning: Optional[str]
+
+    def __init__(self, position: int, expected_magic: bytes, found_magic: bytes, meaning: Optional[str]):
+        self.position = position
+        self.expected_magic = expected_magic
+        self.found_magic = found_magic
+        self.meaning = meaning
+
+        super().__init__(
+            f"At position {position}, expected {meaning or 'magic'} 0x{expected_magic.hex()}, but found "
+            f"0x{found_magic.hex()}"
         )
