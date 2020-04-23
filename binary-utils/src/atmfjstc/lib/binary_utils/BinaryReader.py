@@ -3,6 +3,8 @@ This module contains the `BinaryReader` class, a wrapper for binary I/O streams 
 binary-encoded data such as ints, strings, structures etc.
 """
 
+import struct
+
 from typing import Union, BinaryIO, Optional
 from io import BytesIO, IOBase, TextIOBase
 from os import SEEK_SET, SEEK_END
@@ -93,6 +95,24 @@ class BinaryReader:
             return True
         except BinaryReaderMissingDataError:
             return False
+
+    def read_struct(self, struct_format: str, meaning: Optional[str] = None) -> tuple:
+        if struct_format == '':
+            return ()
+        if struct_format[0] not in '@=<>!':
+            struct_format = ('>' if self._big_endian else '<') + struct_format
+
+        meaning = meaning or f"struct ({struct_format})"
+
+        data = self.read_amount(struct.calcsize(struct_format), meaning)
+
+        return struct.unpack(struct_format, data)
+
+    def maybe_read_struct(self, struct_format: str, meaning: Optional[str] = None) -> Optional[tuple]:
+        try:
+            return self.read_struct(struct_format, meaning)
+        except BinaryReaderMissingDataError:
+            return None
 
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
