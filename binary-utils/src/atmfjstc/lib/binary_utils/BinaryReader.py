@@ -64,6 +64,8 @@ class BinaryReader:
         data = self._fileobj.read(n_bytes)
         self._position += len(data)
 
+        if len(data) == 0:
+            raise BinaryReaderMissingDataError(self._position, n_bytes, meaning)
         if len(data) < n_bytes:
             raise BinaryReaderReadPastEndError(original_pos, n_bytes, len(data), meaning)
 
@@ -105,4 +107,21 @@ class BinaryReaderReadPastEndError(BinaryReaderFormatError):
             f"At position {position}, expected {expected_length} "
             f"bytes{f' for {meaning}' if meaning is not None else ''}"
             f", but only {actual_length} were found"
+        )
+
+
+class BinaryReaderMissingDataError(BinaryReaderFormatError):
+    position: int
+    expected_length: int
+    meaning: Optional[str]
+
+    def __init__(self, position: int, expected_length: int, meaning: Optional[str]):
+        self.position = position
+        self.expected_length = expected_length
+        self.meaning = meaning
+
+        super().__init__(
+            f"At position {position}, expected {expected_length} "
+            f"bytes{f' for {meaning}' if meaning is not None else ''}"
+            f", but the data ends"
         )
