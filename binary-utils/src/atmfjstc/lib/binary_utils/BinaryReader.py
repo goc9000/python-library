@@ -40,13 +40,13 @@ class BinaryReader:
         if not self.seekable():
             raise UnsupportedOperation("This operation can only be performed on seekable readers")
 
-    def seek(self, offset: int, whence: type(SEEK_SET)) -> 'BinaryReader':
+    def seek(self, offset: int, whence: type(SEEK_SET)) -> int:
         self._require_seekable()
 
         self._fileobj.seek(offset, whence)
         self._position = self._fileobj.tell()
 
-        return self
+        return self._position
 
     def tell(self) -> int:
         return self._position
