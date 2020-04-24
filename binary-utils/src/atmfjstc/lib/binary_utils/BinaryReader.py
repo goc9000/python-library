@@ -6,7 +6,7 @@ binary-encoded data such as ints, strings, structures etc.
 import struct
 
 from typing import Union, BinaryIO, Optional, AnyStr
-from io import BytesIO, IOBase, TextIOBase
+from io import BytesIO, IOBase, TextIOBase, UnsupportedOperation
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 
 
@@ -38,7 +38,7 @@ class BinaryReader:
 
     def _require_seekable(self):
         if not self.seekable():
-            raise ValueError("This operation can only be performed on seekable readers")
+            raise UnsupportedOperation("This operation can only be performed on seekable readers")
 
     def seek(self, offset: int, whence: type(SEEK_SET)) -> 'BinaryReader':
         self._require_seekable()
