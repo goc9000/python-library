@@ -5,7 +5,7 @@ binary-encoded data such as ints, strings, structures etc.
 
 import struct
 
-from typing import Union, BinaryIO, Optional
+from typing import Union, BinaryIO, Optional, AnyStr
 from io import BytesIO, IOBase, TextIOBase
 from os import SEEK_SET, SEEK_END
 
@@ -27,6 +27,11 @@ class BinaryReader:
         self._big_endian = big_endian
 
         self._position = self._fileobj.tell() if self._fileobj.seekable() else 0
+
+    def name(self) -> Optional[AnyStr]:
+        name = getattr(self._fileobj, 'name', None)
+
+        return None if ((name is None) or (name == '')) else name
 
     def seekable(self) -> bool:
         return self._fileobj.seekable()
