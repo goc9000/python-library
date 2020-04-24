@@ -306,6 +306,47 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def read_length_prefixed_bytes(
+        self, meaning: Optional[str] = None, length_bytes: int = 1, big_endian: Optional[bool] = None
+    ) -> bytes:
+        """
+        Reads a byte string from the file object whose length is indicated by a fixed int occurring before it.
+
+        Args:
+            meaning: An indication as to the meaning of the data being read (e.g. "file name"). It is used in the text
+                of any exceptions that may be thrown.
+            length_bytes: The number of bytes over which the length is stored.
+            big_endian: Use a non-None value here to override the `BinaryReader`'s current endianness setting, if
+                necessary.
+
+        Returns:
+            The byte string, as a `bytes` value.
+
+        Raises:
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got the
+                full string.
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+        """
+
+        length = self.read_fixed_size_int(
+            n_bytes=length_bytes, meaning=f"length of {meaning or 'string'}", big_endian=big_endian
+        )
+
+        return self.read_amount(length, meaning=meaning)
+
+    def maybe_read_length_prefixed_bytes(
+        self, meaning: Optional[str] = None, length_bytes: int = 1, big_endian: Optional[bool] = None
+    ) -> Optional[bytes]:
+        """
+        Like `read_length_prefixed_bytes`, but returns None if there is no more data to be read.
+
+        Note that an exception is still thrown if there is *some* data available short of the required amount.
+        """
+        try:
+            return self.read_length_prefixed_bytes(meaning, length_bytes=length_bytes, big_endian=big_endian)
+        except BinaryReaderMissingDataError:
+            return None
+
     def read_fixed_size_int(
         self, n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
     ) -> int:
