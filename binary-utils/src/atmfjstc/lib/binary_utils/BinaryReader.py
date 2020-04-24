@@ -63,6 +63,23 @@ class BinaryReader:
         return self.total_size() - self._position
 
     def read_amount(self, n_bytes: int, meaning: Optional[str] = None) -> bytes:
+        """
+        Reads exactly `n_bytes` from the underlying stream.
+
+        Args:
+            n_bytes: The amount of bytes to read.
+            meaning: An indication as to the meaning of the data being read (e.g. "user ID"). It is used in the text
+                of any exceptions that may be thrown.
+
+        Returns:
+            The data, as a `bytes` object `n_bytes` in length.
+
+        Raises:
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got the
+                full `n_bytes`.
+        """
+
         if n_bytes == 0:
             return b''
 
@@ -79,12 +96,34 @@ class BinaryReader:
         return data
 
     def maybe_read_amount(self, n_bytes: int, meaning: Optional[str] = None) -> Optional[bytes]:
+        """
+        Like `read_amount`, but returns None if there is no more data to be read.
+
+        Note that an exception is still thrown if there is *some* data available short of the required amount.
+        """
         try:
             return self.read_amount(n_bytes, meaning)
         except BinaryReaderMissingDataError:
             return None
 
     def expect_magic(self, magic: bytes, meaning: Optional[str] = None):
+        """
+        Verifies that a specific bytes sequence ("magic") follows in the underlying stream.
+
+        This is often used to validate that a file is of the correct type.
+
+        Args:
+            magic: A `bytes` object containing the expected sequence
+            meaning: An indication as to the meaning of the data being read (e.g. "ZIP signature"). It is used in the
+                text of any exceptions that may be thrown.
+
+        Raises:
+            BinaryReaderWrongMagicError: If the read sequence does not match the expected one.
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got the
+                full length of the magic.
+        """
+
         meaning = meaning or "magic"
 
         data = self.read_amount(len(magic), meaning)
@@ -93,6 +132,11 @@ class BinaryReader:
             raise BinaryReaderWrongMagicError(self._position - len(magic), magic, data, meaning)
 
     def maybe_expect_magic(self, magic: bytes, meaning: Optional[str] = None) -> bool:
+        """
+        Like `expect_magic`, but returns None if there is no more data to be read.
+
+        Note that other exceptions are still thrown if the magic is too short or doesn't match expectations.
+        """
         try:
             self.expect_magic(magic, meaning)
             return True
@@ -100,6 +144,25 @@ class BinaryReader:
             return False
 
     def read_struct(self, struct_format: str, meaning: Optional[str] = None) -> tuple:
+        """
+        Reads structured data from the underlying stream.
+
+        Args:
+            struct_format: The format of the structured data, as per the Python `struct` package. There is no need to
+                prepend an endianness specifier, as one will be added automatically in accordance to the
+                `BinaryReader`'s current setting, but if one is present, it will take precedence.
+            meaning: An indication as to the meaning of the data being read (e.g. "file header"). It is used in the
+                text of any exceptions that may be thrown.
+
+        Returns:
+           The data in the structure, as a tuple.
+
+        Raises:
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got a
+                complete structure.
+        """
+
         if struct_format == '':
             return ()
         if struct_format[0] not in '@=<>!':
@@ -112,6 +175,11 @@ class BinaryReader:
         return struct.unpack(struct_format, data)
 
     def maybe_read_struct(self, struct_format: str, meaning: Optional[str] = None) -> Optional[tuple]:
+        """
+        Like `read_struct`, but returns None if there is no more data to be read.
+
+        Note that an exception is still thrown if there is *some* data available short of the required amount.
+        """
         try:
             return self.read_struct(struct_format, meaning)
         except BinaryReaderMissingDataError:
