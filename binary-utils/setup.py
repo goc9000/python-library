@@ -9,6 +9,10 @@ setup(
     package_dir={'': 'src'},
     packages=['atmfjstc.lib.binary_utils'],
 
+    install_requires=[
+        'atmfjstc-file-utils>=1.2, <2',
+    ],
+
     zip_safe=True,
 
     description="Utilities for parsing binary and bit-level data",

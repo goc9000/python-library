@@ -7,7 +7,9 @@ import struct
 
 from typing import Union, BinaryIO, Optional, AnyStr
 from io import BytesIO, IOBase, TextIOBase, UnsupportedOperation
-from os import SEEK_SET, SEEK_CUR, SEEK_END
+from os import SEEK_SET, SEEK_CUR
+
+from atmfjstc.lib.file_utils.fileobj import get_fileobj_size
 
 
 class BinaryReader:
@@ -55,10 +57,7 @@ class BinaryReader:
         self._require_seekable()
 
         if self._cached_total_size is None:
-            original_position = self._fileobj.tell()
-            self._fileobj.seek(0, SEEK_END)
-            self._cached_total_size = self._fileobj.tell()
-            self._fileobj.seek(original_position, SEEK_SET)
+            self._cached_total_size = get_fileobj_size(self._fileobj)
 
         return self._cached_total_size
 
