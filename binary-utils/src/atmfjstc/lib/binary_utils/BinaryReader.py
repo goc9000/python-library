@@ -269,7 +269,7 @@ class BinaryReader:
 
             if len(data) == 0:
                 if len(data_parts) == 0:
-                    raise BinaryReaderMissingDataError(original_pos, 1, meaning)
+                    raise BinaryReaderMissingDataError(original_pos, 1, meaning or 'null-terminated string')
 
                 raise BinaryReaderNullStrReadPastEndError(original_pos, meaning)
 
