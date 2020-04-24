@@ -219,7 +219,7 @@ class BinaryReader:
 
     def maybe_expect_magic(self, magic: bytes, meaning: Optional[str] = None) -> bool:
         """
-        Like `expect_magic`, but returns None if there is no more data to be read.
+        Like `expect_magic`, but returns False if there is no more data to be read.
 
         Note that other exceptions are still thrown if the magic is too short or doesn't match expectations.
         """
