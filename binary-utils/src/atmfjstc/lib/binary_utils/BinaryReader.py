@@ -221,7 +221,7 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
-    def read_null_terminated_str(
+    def read_null_terminated_bytes(
         self, meaning: Optional[str] = None, safety_limit: Optional[int] = 65536, buffer_size: int = 65536
     ) -> bytes:
         """
@@ -241,7 +241,7 @@ class BinaryReader:
                 string to be read byte by byte even if the stream is seekable.
 
         Returns:
-            The string, as a `bytes` value, without the null terminator.
+            The byte string, as a `bytes` value, without the null terminator.
 
         Raises:
             BinaryReaderNullStrTooLong: Raised if the string is clearly longer than the `safety_limit`. Note that this
@@ -293,16 +293,16 @@ class BinaryReader:
 
         return data
 
-    def maybe_read_null_terminated_str(
+    def maybe_read_null_terminated_bytes(
         self, meaning: Optional[str] = None, safety_limit: Optional[int] = 65536, buffer_size: int = 65536
     ) -> Optional[bytes]:
         """
-        Like `read_null_terminated_str`, but returns None if there is no more data to be read.
+        Like `read_null_terminated_bytes`, but returns None if there is no more data to be read.
 
         Note that an exception is still thrown if there is *some* data available short of the required amount.
         """
         try:
-            return self.read_null_terminated_str(meaning, safety_limit=safety_limit, buffer_size=buffer_size)
+            return self.read_null_terminated_bytes(meaning, safety_limit=safety_limit, buffer_size=buffer_size)
         except BinaryReaderMissingDataError:
             return None
 
