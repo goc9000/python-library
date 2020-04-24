@@ -306,8 +306,8 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
-    def read_fixed_size_int(self,
-        n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
+    def read_fixed_size_int(
+        self, n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
     ) -> int:
         """
         Reads an integer stored in a given number of bytes.
@@ -340,8 +340,8 @@ class BinaryReader:
             signed=signed
         )
 
-    def maybe_read_fixed_size_int(self,
-        n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
+    def maybe_read_fixed_size_int(
+        self, n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
     ) -> Optional[int]:
         """
         Like `read_fixed_size_int`, but returns None if there is no more data to be read.
