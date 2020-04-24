@@ -63,6 +63,9 @@ class BinaryReader:
         return self.total_size() - self._position
 
     def read_amount(self, n_bytes: int, meaning: Optional[str] = None) -> bytes:
+        if n_bytes == 0:
+            return b''
+
         original_pos = self._position
 
         data = self._fileobj.read(n_bytes)
