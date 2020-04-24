@@ -7,7 +7,7 @@ import struct
 
 from typing import Union, BinaryIO, Optional, AnyStr
 from io import BytesIO, IOBase, TextIOBase
-from os import SEEK_SET, SEEK_END
+from os import SEEK_SET, SEEK_CUR, SEEK_END
 
 
 class BinaryReader:
@@ -141,6 +141,56 @@ class BinaryReader:
             return self.read_amount(n_bytes, meaning)
         except BinaryReaderMissingDataError:
             return None
+
+    def skip_bytes(self, n_bytes: int, meaning: Optional[str] = None):
+        """
+        Skips over a number of bytes, ignoring the data. The bytes MUST be present.
+
+        Args:
+            n_bytes: The number of bytes to skip.
+            meaning: An indication as to the meaning of the data being skipped (e.g. "compressed date"). It is used in
+                the text of any exceptions that may be thrown.
+
+        Raises:
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got the
+                full length required.
+        """
+
+        if n_bytes < 0:
+            raise ValueError("Number of bytes to skip must be non-negative")
+        if n_bytes == 0:
+            return
+
+        original_pos = self._position
+
+        if self.seekable():
+            bytes_avail = self.bytes_remaining()
+            if bytes_avail == 0:
+                raise BinaryReaderMissingDataError(original_pos, n_bytes, meaning)
+            if bytes_avail < n_bytes:
+                self.seek(bytes_avail, SEEK_CUR)
+                raise BinaryReaderReadPastEndError(original_pos, n_bytes, bytes_avail, meaning)
+
+            self.seek(n_bytes, SEEK_CUR)
+            return
+
+        # Fall back to non-seeking algorithm
+
+        BUF_SIZE = 1000000
+
+        total_read = 0
+        while total_read < n_bytes:
+            to_read = min(BUF_SIZE, n_bytes - total_read)
+
+            data = self.read_at_most(to_read)
+            total_read += len(data)
+
+            if len(data) < to_read:
+                if total_read == 0:
+                    raise BinaryReaderMissingDataError(original_pos, n_bytes, meaning)
+
+                raise BinaryReaderReadPastEndError(original_pos, n_bytes, total_read, meaning)
 
     def expect_magic(self, magic: bytes, meaning: Optional[str] = None):
         """
