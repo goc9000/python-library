@@ -306,6 +306,53 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def read_fixed_size_int(self,
+        n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
+    ) -> int:
+        """
+        Reads an integer stored in a given number of bytes.
+
+        Args:
+            n_bytes: The number of bytes the int is stored over (e.g. a 32 bit int has 4 bytes). Must be at least 1.
+            meaning: An indication as to the meaning of the data being read (e.g. "user ID"). It is used in the text
+                of any exceptions that may be thrown.
+            signed: Whether to interpret the integer as signed.
+            big_endian: Use a non-None value here to override the `BinaryReader`'s current endianness setting, if
+                necessary.
+
+        Returns:
+            The parsed integer.
+
+        Raises:
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got a
+                complete int.
+        """
+
+        if n_bytes < 1:
+            raise ValueError("Number of bytes in int must be at least 1")
+
+        big_endian = self._big_endian if big_endian is None else big_endian
+
+        return int.from_bytes(
+            self.read_amount(n_bytes, meaning=meaning or 'int'),
+            byteorder='big' if big_endian else 'little',
+            signed=signed
+        )
+
+    def maybe_read_fixed_size_int(self,
+        n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
+    ) -> Optional[int]:
+        """
+        Like `read_fixed_size_int`, but returns None if there is no more data to be read.
+
+        Note that an exception is still thrown if there is *some* data available short of the required amount.
+        """
+        try:
+            return self.read_fixed_size_int(n_bytes, meaning=meaning, signed=signed, big_endian=big_endian)
+        except BinaryReaderMissingDataError:
+            return None
+
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
     if isinstance(input_, bytes):
