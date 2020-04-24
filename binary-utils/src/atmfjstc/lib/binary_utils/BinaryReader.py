@@ -216,6 +216,91 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def read_null_terminated_str(
+        self, meaning: Optional[str] = None, safety_limit: Optional[int] = 65536, buffer_size: int = 65536
+    ) -> bytes:
+        """
+        Reads a null-terminated byte string from the file object.
+
+        If the stream is seekable, this function will attempt to read the string in larger blocks and backtrack once
+        it finds the null. Otherwise, it is reduced to reading it one byte at a time.
+
+        Args:
+            meaning: An indication as to the meaning of the data being read (e.g. "file name"). It is used in the text
+                of any exceptions that may be thrown.
+            safety_limit: The maximum expected size of the string, including the null terminator. The function will
+                raise an exception if the null terminator is not found after that many bytes. This is intended to
+                prevent trying to load huge files into memory if a null-terminated string is corrupt. Use None to
+                disable this.
+            buffer_size: The size of the chunks the string is read in, for a seekable stream. Use 0 here to force the
+                string to be read byte by byte even if the stream is seekable.
+
+        Returns:
+            The string, as a `bytes` value, without the null terminator.
+
+        Raises:
+            BinaryReaderNullStrTooLong: Raised if the string is clearly longer than the `safety_limit`. Note that this
+                is considered a format error.
+            BinaryReaderNullStrReadPastEnd: Raised if we reached the end of the data without ever encountering the
+                null terminator.
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+        """
+
+        if (safety_limit is not None) and safety_limit < 1:
+            raise ValueError(f"safety_limit must be strictly positive! (is: {safety_limit})")
+        if buffer_size < 0:
+            raise ValueError(f"buffer_size must be non-negative! (is: {buffer_size})")
+
+        original_pos = self._position
+
+        if (buffer_size < 1) or (not self.seekable()):
+            buffer_size = 1
+
+        data_parts = []
+        total_length = 0
+
+        while True:
+            data = self.read_at_most(buffer_size)
+
+            if len(data) == 0:
+                if len(data_parts) == 0:
+                    raise BinaryReaderMissingDataError(original_pos, 1, meaning)
+
+                raise BinaryReaderNullStrReadPastEndError(original_pos, meaning)
+
+            null_pos = data.find(b'\x00')
+            if null_pos != -1:
+                data_parts.append(data[:null_pos])
+                break
+
+            data_parts.append(data)
+            total_length += len(data)
+            if (safety_limit is not None) and (total_length > safety_limit):
+                break
+
+        data = b''.join(data_parts)
+
+        if (safety_limit is not None) and (total_length > safety_limit):
+            raise BinaryReaderNullStrTooLongError(original_pos, safety_limit, meaning)
+
+        if self.seekable() and (buffer_size > 1):
+            self.seek(original_pos + len(data) + 1, SEEK_SET)
+
+        return data
+
+    def maybe_read_null_terminated_str(
+        self, meaning: Optional[str] = None, safety_limit: Optional[int] = 65536, buffer_size: int = 65536
+    ) -> Optional[bytes]:
+        """
+        Like `read_null_terminated_str`, but returns None if there is no more data to be read.
+
+        Note that an exception is still thrown if there is *some* data available short of the required amount.
+        """
+        try:
+            return self.read_null_terminated_str(meaning, safety_limit=safety_limit, buffer_size=buffer_size)
+        except BinaryReaderMissingDataError:
+            return None
+
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
     if isinstance(input_, bytes):
@@ -287,4 +372,34 @@ class BinaryReaderWrongMagicError(BinaryReaderFormatError):
         super().__init__(
             f"At position {position}, expected {meaning or 'magic'} 0x{expected_magic.hex()}, but found "
             f"0x{found_magic.hex()}"
+        )
+
+
+class BinaryReaderNullStrReadPastEndError(BinaryReaderFormatError):
+    position: int
+    meaning: Optional[str]
+
+    def __init__(self, position: int, meaning: Optional[str]):
+        self.position = position
+        self.meaning = meaning
+
+        super().__init__(
+            f"At position {position}, null-terminated string{f' for {meaning}' if meaning is not None else ''} "
+            f"starts but end of the data occurs without the null terminator being found"
+        )
+
+
+class BinaryReaderNullStrTooLongError(BinaryReaderFormatError):
+    position: int
+    max_length: int
+    meaning: Optional[str]
+
+    def __init__(self, position: int, max_length: int, meaning: Optional[str]):
+        self.position = position
+        self.max_length = max_length
+        self.meaning = meaning
+
+        super().__init__(
+            f"At position {position}, null-terminated string{f' for {meaning}' if meaning is not None else ''} "
+            f"exceeds maximum length of {max_length}, possibly due to corrupt data"
         )
