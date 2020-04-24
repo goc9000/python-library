@@ -62,6 +62,38 @@ class BinaryReader:
 
         return self.total_size() - self._position
 
+    def read_at_most(self, n_bytes: int) -> bytes:
+        """
+        Try to read `n_bytes` of data, returning fewer only if the data is exhausted.
+
+        Short reads, e.g. from a socket, are handled.
+
+        Args:
+            n_bytes: The number of bytes to try to read.
+
+        Returns:
+            The read data, at most `n_bytes` in length. Note that the function never raises a format error.
+        """
+
+        if n_bytes < 0:
+            raise ValueError("The number of bytes to read cannot be negative")
+        if n_bytes == 0:
+            return b''
+
+        data = self._fileobj.read(n_bytes)
+        self._position += len(data)
+
+        while len(data) < n_bytes:
+            new_data = self._fileobj.read(n_bytes - len(data))
+
+            if len(new_data) == 0:
+                break
+
+            self._position += len(new_data)
+            data += new_data
+
+        return data
+
     def read_amount(self, n_bytes: int, meaning: Optional[str] = None) -> bytes:
         """
         Reads exactly `n_bytes` from the underlying stream.
@@ -85,8 +117,7 @@ class BinaryReader:
 
         original_pos = self._position
 
-        data = self._fileobj.read(n_bytes)
-        self._position += len(data)
+        data = self.read_at_most(n_bytes)
 
         if len(data) == 0:
             raise BinaryReaderMissingDataError(self._position, n_bytes, meaning)
