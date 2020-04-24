@@ -142,6 +142,24 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def peek(self, n_bytes: int) -> bytes:
+        """
+        Reads up to `n_bytes` of data without advancing the current position. Only for seekable inputs.
+
+        Args:
+            n_bytes: The number of bytes to read ahead.
+
+        Returns:
+            A byte string `n_bytes` in length, or less, if there is less data available.
+        """
+
+        self._require_seekable()
+
+        data = self.read_at_most(n_bytes)
+        self.seek(-len(data), SEEK_CUR)
+
+        return data
+
     def skip_bytes(self, n_bytes: int, meaning: Optional[str] = None):
         """
         Skips over a number of bytes, ignoring the data. The bytes MUST be present.
@@ -228,6 +246,23 @@ class BinaryReader:
             return True
         except BinaryReaderMissingDataError:
             return False
+
+    def peek_magic(self, magic: bytes) -> bool:
+        """
+        Checks whether the following bytes match a given sequence, without advancind the read position.
+
+        Only for seekable streams.
+
+        Args:
+            magic: A `bytes` object containing the expected sequence
+
+        Returns:
+            True if there is a match.
+        """
+
+        self._require_seekable()
+
+        return self.peek(len(magic)) == magic
 
     def read_struct(self, struct_format: str, meaning: Optional[str] = None) -> tuple:
         """
