@@ -10,6 +10,7 @@ from shutil import copyfileobj
 from contextlib import contextmanager, suppress
 
 from atmfjstc.lib.file_utils import PathType
+from atmfjstc.lib.file_utils.fileobj import get_fileobj_size
 
 
 @contextmanager
@@ -120,10 +121,7 @@ def temp_drop_file_obj_to_disk(
 
     # Do size check
     if safety_limit_mb is not None:
-        fileobj.seek(0, 2)
-        file_size = fileobj.tell() - (0 if rewind else original_position)
-        _maybe_restore_position()
-
+        file_size = get_fileobj_size(fileobj, 'start' if rewind else 'current')
         if file_size > (safety_limit_mb * 1000000):
             raise FileTooBigError(file_size, safety_limit_mb * 1000000)
 
