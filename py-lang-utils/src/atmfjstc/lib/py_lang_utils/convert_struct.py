@@ -333,7 +333,7 @@ class ConvertStructFieldSpec:
 
             return None
 
-        if ('store' in raw_field_spec) and ('convert' in raw_field_spec):
+        if ('store' in normalized_raw_field_spec) and ('convert' in normalized_raw_field_spec):
             raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
 
         init_params = dict(source=default_source)
