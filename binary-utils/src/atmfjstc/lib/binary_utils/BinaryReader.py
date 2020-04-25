@@ -16,6 +16,10 @@ class BinaryReader:
     """
     This class wraps a binary I/O file object and offers functions for extracting binary-encoded ints, strings,
     structures etc.
+
+    Note that all the functions that encounter data different than what was expected will throw an exception from a
+    subclass of `BinaryReaderFormatError`. This allows you to easily add specific processing for corrupted files vs
+    other kinds of momentary or system errors.
     """
 
     _fileobj: BinaryIO
@@ -25,6 +29,23 @@ class BinaryReader:
     _cached_total_size: Optional[int] = None
 
     def __init__(self, data_or_fileobj: Union[bytes, BinaryIO], big_endian: bool):
+        """
+        Constructor.
+
+        Args:
+            data_or_fileobj: Either a `bytes` object, or a binary mode file object to read data from. For a file object,
+                the data will be read starting from the file object's current position.
+            big_endian: Set True to read ints and structures in big-endian mode, False to read them in little-endian.
+                This setting can be overridden in individual calls if needed.
+
+        Notes:
+            - The passed in file object can be either seekable or non-seekable. For non-seekable streams, some of the
+              functions of the `BinaryReader` will be unavailable, and others will run less efficiently.
+            - You should avoid manipulating the file object in between calls to the `BinaryReader`. If you must,
+              be aware that the reader does not automatically restore its last position, it will continue from where
+              you left the stream before you called again.
+        """
+
         self._fileobj = _parse_main_input_arg(data_or_fileobj)
         self._big_endian = big_endian
 
@@ -59,6 +80,13 @@ class BinaryReader:
         return self._fileobj.tell() if self.seekable() else self._bytes_read
 
     def total_size(self) -> int:
+        """
+        Gets the total size of the data in the underlying file object (which must be seekeable).
+
+        Returns:
+            The size of the data, in bytes.
+        """
+
         self._require_seekable()
 
         if self._cached_total_size is None:
@@ -67,6 +95,14 @@ class BinaryReader:
         return self._cached_total_size
 
     def bytes_remaining(self) -> int:
+        """
+        Gets the total size of the data remaining in the file object (from the current position to the end). The reader
+        must be seekable for this.
+
+        Returns:
+            The size of the data, in bytes.
+        """
+
         self._require_seekable()
 
         return self.total_size() - self.tell()
