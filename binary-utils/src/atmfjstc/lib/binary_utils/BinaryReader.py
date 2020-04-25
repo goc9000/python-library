@@ -21,14 +21,12 @@ class BinaryReader:
     _fileobj: BinaryIO
     _big_endian: bool
 
-    _position: int
+    _bytes_read: Optional[int] = 0
     _cached_total_size: Optional[int] = None
 
     def __init__(self, data_or_fileobj: Union[bytes, BinaryIO], big_endian: bool):
         self._fileobj = _parse_main_input_arg(data_or_fileobj)
         self._big_endian = big_endian
-
-        self._position = self._fileobj.tell() if self._fileobj.seekable() else 0
 
     def name(self) -> Optional[AnyStr]:
         name = getattr(self._fileobj, 'name', None)
@@ -45,10 +43,7 @@ class BinaryReader:
     def seek(self, offset: int, whence: type(SEEK_SET)) -> int:
         self._require_seekable()
 
-        self._fileobj.seek(offset, whence)
-        self._position = self._fileobj.tell()
-
-        return self._position
+        return self._fileobj.seek(offset, whence)
 
     def tell(self) -> int:
         """
@@ -61,7 +56,7 @@ class BinaryReader:
         Returns:
             The position of the binary reader within the input, in bytes
         """
-        return self._position
+        return self._fileobj.tell() if self.seekable() else self._bytes_read
 
     def total_size(self) -> int:
         self._require_seekable()
@@ -74,7 +69,7 @@ class BinaryReader:
     def bytes_remaining(self) -> int:
         self._require_seekable()
 
-        return self.total_size() - self._position
+        return self.total_size() - self.tell()
 
     def read_at_most(self, n_bytes: int) -> bytes:
         """
@@ -95,7 +90,7 @@ class BinaryReader:
             return b''
 
         data = self._fileobj.read(n_bytes)
-        self._position += len(data)
+        self._bytes_read += len(data)
 
         while len(data) < n_bytes:
             new_data = self._fileobj.read(n_bytes - len(data))
@@ -103,7 +98,7 @@ class BinaryReader:
             if len(new_data) == 0:
                 break
 
-            self._position += len(new_data)
+            self._bytes_read += len(new_data)
             data += new_data
 
         return data
@@ -129,12 +124,12 @@ class BinaryReader:
         if n_bytes == 0:
             return b''
 
-        original_pos = self._position
+        original_pos = self.tell()
 
         data = self.read_at_most(n_bytes)
 
         if len(data) == 0:
-            raise BinaryReaderMissingDataError(self._position, n_bytes, meaning)
+            raise BinaryReaderMissingDataError(original_pos, n_bytes, meaning)
         if len(data) < n_bytes:
             raise BinaryReaderReadPastEndError(original_pos, n_bytes, len(data), meaning)
 
@@ -189,7 +184,7 @@ class BinaryReader:
         if n_bytes == 0:
             return
 
-        original_pos = self._position
+        original_pos = self.tell()
 
         if self.seekable():
             bytes_avail = self.bytes_remaining()
@@ -242,7 +237,7 @@ class BinaryReader:
         data = self.read_amount(len(magic), meaning)
 
         if data != magic:
-            raise BinaryReaderWrongMagicError(self._position - len(magic), magic, data, meaning)
+            raise BinaryReaderWrongMagicError(self.tell() - len(magic), magic, data, meaning)
 
     def maybe_expect_magic(self, magic: bytes, meaning: Optional[str] = None) -> bool:
         """
@@ -350,7 +345,7 @@ class BinaryReader:
         if buffer_size < 0:
             raise ValueError(f"buffer_size must be non-negative! (is: {buffer_size})")
 
-        original_pos = self._position
+        original_pos = self.tell()
 
         if (buffer_size < 1) or (not self.seekable()):
             buffer_size = 1
