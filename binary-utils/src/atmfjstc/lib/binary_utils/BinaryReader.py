@@ -51,6 +51,16 @@ class BinaryReader:
         return self._position
 
     def tell(self) -> int:
+        """
+        Reports the position of the reader in the binary data.
+
+        Note that, as opposed to a regular file object, the `BinaryReader` can report the position even if the
+        underlying stream is not seekable. In this case, the reported position represents the number of bytes read so
+        far from the stream, by the `BinaryReader` itself.
+
+        Returns:
+            The position of the binary reader within the input, in bytes
+        """
         return self._position
 
     def total_size(self) -> int:
