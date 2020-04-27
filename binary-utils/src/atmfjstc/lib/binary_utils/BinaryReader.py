@@ -5,7 +5,7 @@ binary-encoded data such as ints, strings, structures etc.
 
 import struct
 
-from typing import Union, BinaryIO, Optional, AnyStr
+from typing import Union, BinaryIO, Optional, AnyStr, Iterable, Tuple
 from io import BytesIO, IOBase, TextIOBase, UnsupportedOperation
 from os import SEEK_SET, SEEK_CUR
 
@@ -148,6 +148,30 @@ class BinaryReader:
 
             self._bytes_read += len(new_data)
 
+            if data == b'':
+                data = new_data
+            else:
+                data += new_data
+
+        return data
+
+    def read_remainder(self) -> bytes:
+        """
+        Reads all the remaining data in the input.
+
+        This is intended for use inside relatively small data structures of some bigger file, e.g. if the tail of a
+        record in a TLV sequence represents some path or text string.
+
+        Returns:
+            The data, as a `bytes` object.
+        """
+
+        BUF_SIZE = 1000000
+
+        data = b''
+
+        while not self.eof():
+            new_data = self.read_at_most(BUF_SIZE)
             if data == b'':
                 data = new_data
             else:
@@ -487,6 +511,51 @@ class BinaryReader:
             return self.read_length_prefixed_bytes(meaning, length_bytes=length_bytes, big_endian=big_endian)
         except BinaryReaderMissingDataError:
             return None
+
+    def iter_tlv(
+        self, type_bytes: int, length_bytes: int, meaning: Optional[str] = None, total_size: Optional[int] = None
+    ) -> Iterable[Tuple[int, bytes]]:
+        """
+        Reads the incoming data as a sequence of TLV (Type-Length-Value) records. As the name implies, each record
+        consists of an integer identifying the record Type, then an int indicating the length of the corresponding
+        Value in bytes, and then the Value bytes themselves.
+
+        Args:
+            type_bytes: The size of the int denoting the Type, in bytes
+            length_bytes: The size of the int denoting the Length, in bytes
+            meaning: An indication as to the meaning of the data being read for a record (e.g. "header"). It is used in
+                the text of any exceptions that may be thrown.
+            total_size: The expected total size of the TLV records, so the reader knows when to stop, if there is other
+                data after the TLV sequence. If this is None, the reader will continue to the end of the file.
+
+        Returns:
+            Yields (type, value) pairs for each incoming record.
+
+        Raises:
+            BinaryReaderReadPastEndError: If we read some bytes, but reached the end of the data before we got the
+                full string.
+            BinaryReaderMissingDataError: If we are at the end of the stream and no bytes are left at all.
+        """
+
+        tlv_meaning = f"{f'{meaning} ' if meaning is not None else ''}TLV"
+
+        total_read = 0
+        original_position = self.tell()
+
+        while (total_size is None) or (total_read < total_size):
+            tag = self.maybe_read_fixed_size_int(type_bytes, f"Type of {tlv_meaning} record")
+            if tag is None:
+                break
+
+            length = self.read_fixed_size_int(length_bytes, f"Length of {tlv_meaning} record")
+            value = self.read_amount(length, f"Value of {tlv_meaning} record")
+
+            total_read += type_bytes + length_bytes + length
+
+            yield tag, value
+
+        if (total_size is not None) and (total_read > total_size):
+            raise BinaryReaderReadPastEndError(original_position, total_size, total_read, f"{tlv_meaning} sequence")
 
     def read_fixed_size_int(
         self, n_bytes: int, meaning: Optional[str] = None, signed: bool = False, big_endian: Optional[bool] = None
