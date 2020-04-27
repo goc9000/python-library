@@ -535,6 +535,102 @@ class BinaryReader:
         except BinaryReaderMissingDataError:
             return None
 
+    def read_uint8(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading an 8-bit unsigned integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(1, meaning or 'uint8', signed=False, big_endian=big_endian)
+
+    def read_int8(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading an 8-bit signed integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(1, meaning or 'int8', signed=True, big_endian=big_endian)
+
+    def maybe_read_uint8(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 8-bit unsigned integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(1, meaning or 'uint8', signed=False, big_endian=big_endian)
+
+    def maybe_read_int8(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 8-bit signed integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(1, meaning or 'int8', signed=True, big_endian=big_endian)
+
+    def read_uint16(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 16-bit unsigned integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(2, meaning or 'uint16', signed=False, big_endian=big_endian)
+
+    def read_int16(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 16-bit signed integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(2, meaning or 'int8', signed=True, big_endian=big_endian)
+
+    def maybe_read_uint16(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 16-bit unsigned integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(2, meaning or 'uint16', signed=False, big_endian=big_endian)
+
+    def maybe_read_int16(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 16-bit signed integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(2, meaning or 'int16', signed=True, big_endian=big_endian)
+
+    def read_uint32(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 32-bit unsigned integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(4, meaning or 'uint32', signed=False, big_endian=big_endian)
+
+    def read_int32(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 32-bit signed integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(4, meaning or 'int32', signed=True, big_endian=big_endian)
+
+    def maybe_read_uint32(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 32-bit unsigned integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(4, meaning or 'uint32', signed=False, big_endian=big_endian)
+
+    def maybe_read_int32(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 32-bit signed integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(4, meaning or 'int32', signed=True, big_endian=big_endian)
+
+    def read_uint64(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 64-bit unsigned integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(8, meaning or 'uint64', signed=False, big_endian=big_endian)
+
+    def read_int64(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> int:
+        """
+        Convenient shortcut for reading a 64-bit signed integer. See `read_fixed_size_int`.
+        """
+        return self.read_fixed_size_int(8, meaning or 'int64', signed=True, big_endian=big_endian)
+
+    def maybe_read_uint64(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 64-bit unsigned integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(8, meaning or 'uint64', signed=False, big_endian=big_endian)
+
+    def maybe_read_int64(self, meaning: Optional[str] = None, big_endian: Optional[bool] = None) -> Optional[int]:
+        """
+        Convenient shortcut for reading an optional 64-bit signed integer. See `maybe_read_fixed_size_int`.
+        """
+        return self.maybe_read_fixed_size_int(8, meaning or 'int64', signed=True, big_endian=big_endian)
+
 
 def _parse_main_input_arg(input_: Union[bytes, BinaryIO]) -> BinaryIO:
     if isinstance(input_, bytes):
