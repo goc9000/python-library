@@ -122,11 +122,8 @@ class BinaryReader:
 
         if n_bytes < 0:
             raise ValueError("The number of bytes to read cannot be negative")
-        if n_bytes == 0:
-            return b''
 
-        data = self._fileobj.read(n_bytes)
-        self._bytes_read += len(data)
+        data = b''
 
         while len(data) < n_bytes:
             new_data = self._fileobj.read(n_bytes - len(data))
@@ -135,7 +132,11 @@ class BinaryReader:
                 break
 
             self._bytes_read += len(new_data)
-            data += new_data
+
+            if data == b'':
+                data = new_data
+            else:
+                data += new_data
 
         return data
 
