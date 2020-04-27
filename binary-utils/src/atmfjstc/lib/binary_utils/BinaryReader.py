@@ -27,6 +27,7 @@ class BinaryReader:
 
     _bytes_read: Optional[int] = 0
     _cached_total_size: Optional[int] = None
+    _synthetic_eof: bool = False
 
     def __init__(self, data_or_fileobj: Union[bytes, BinaryIO], big_endian: bool):
         """
@@ -107,6 +108,19 @@ class BinaryReader:
 
         return self.total_size() - self.tell()
 
+    def eof(self) -> bool:
+        """
+        Checks whether we are at the end of the data.
+
+        If the stream is seekable, this function is always accurate. If not, this just returns a flag that is set when
+        we attempt to read data in the past and ran against the end.
+
+        Returns:
+            True if no more data is available.
+        """
+
+        return (self.bytes_remaining() == 0) if self.seekable() else self._synthetic_eof
+
     def read_at_most(self, n_bytes: int) -> bytes:
         """
         Try to read `n_bytes` of data, returning fewer only if the data is exhausted.
@@ -129,6 +143,7 @@ class BinaryReader:
             new_data = self._fileobj.read(n_bytes - len(data))
 
             if len(new_data) == 0:
+                self._synthetic_eof = True
                 break
 
             self._bytes_read += len(new_data)
