@@ -16,12 +16,21 @@ def get_set_bits(value: int) -> List[int]:
     """
     Returns a list of all set bits in an integer. E.g. for 24, returns [3,4] since 24 = (1 << 3) + (1 << 4)
     """
+    return [round(math.log2(pow2)) for pow2 in split_powers2(value)]
+
+
+def split_powers2(value: int) -> List[int]:
+    """
+    Returns a list of the powers of 2 that make up an integer. E.g. for 24, returns [8, 16], since
+    8 + 16 = 2^3 + 2^4 == 24
+    """
+
     value = abs(value)
 
     result = []
     while value > 0:
         next_value = value & (value - 1)
-        result.append(round(math.log2(value - next_value)))
+        result.append(value - next_value)
         value = next_value
 
     return result
