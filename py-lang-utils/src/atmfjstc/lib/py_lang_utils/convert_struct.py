@@ -1,6 +1,7 @@
 import typing
 from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
 from dataclasses import dataclass
+from enum import Enum, auto
 from collections.abc import Mapping, Sequence
 
 from atmfjstc.lib.py_lang_utils.token import Token
@@ -139,6 +140,9 @@ def make_struct_converter(
     - All runtime errors (bad data) cause a `ConvertStructRuntimeError` subclass to be thrown.
     """
 
+    source_type = SourceType.parse(source_type)
+    dest_type = DestinationType.parse(dest_type)
+
     field_specs, unhandled_getter = _parse_fields_and_setup_unhandled_getter(fields, ignore)
     source_dest_finder = _setup_source_dest_finder(dest_type)
     getter = _setup_field_getter(source_type, none_means_missing)
@@ -155,6 +159,37 @@ FieldGetter = Callable[[Any, str], Any]
 FieldSetter = Callable[[Any, str, Any], None]
 ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
 ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
+
+
+class SourceType(Enum):
+    DICT = auto()
+    OBJ = auto()
+
+    @staticmethod
+    def parse(raw_source_type: str) -> 'SourceType':
+        if raw_source_type in {'dict'}:
+            return SourceType.DICT
+        elif raw_source_type in {'class'}:
+            return SourceType.OBJ
+        else:
+            raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
+
+
+class DestinationType(Enum):
+    DICT = auto()
+    DICT_BY_REF = auto()
+    OBJ_BY_REF = auto()
+
+    @staticmethod
+    def parse(raw_dest_type: str) -> 'DestinationType':
+        if raw_dest_type in {'dict'}:
+            return DestinationType.DICT
+        elif raw_dest_type in {'dict-by-reference'}:
+            return DestinationType.DICT_BY_REF
+        elif raw_dest_type in {'class-by-reference'}:
+            return DestinationType.OBJ_BY_REF
+        else:
+            raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
 
 
 def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
@@ -191,34 +226,34 @@ def _parse_fields_and_setup_unhandled_getter(
     return field_specs, unhandled_getter
 
 
-def _setup_source_dest_finder(destination_type: str) -> SourceDestFinder:
+def _setup_source_dest_finder(destination_type: DestinationType) -> SourceDestFinder:
     def _get_with_dest_by_reference(mut_dest, source):
         return source, mut_dest
 
     def _get_with_dest_new_dict(source):
         return source, dict()
 
-    if destination_type in ['class-by-reference', 'dict-by-reference']:
+    if destination_type in {DestinationType.DICT_BY_REF, DestinationType.OBJ_BY_REF}:
         return _get_with_dest_by_reference
-    elif destination_type == 'dict':
+    elif destination_type == DestinationType.DICT:
         return _get_with_dest_new_dict
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
+        raise ConvertStructCompileError(f"Unsupported destination type: {destination_type}")
 
 
-def _setup_field_getter(source_type: str, none_means_missing: bool) -> FieldGetter:
+def _setup_field_getter(source_type: SourceType, none_means_missing: bool) -> FieldGetter:
     def _dict_getter(source_dict, field):
         return source_dict.get(field, _NO_VALUE)
 
     def _obj_getter(source_obj, field):
         return getattr(source_obj, field, _NO_VALUE)
 
-    if source_type == 'dict':
+    if source_type == SourceType.DICT:
         base_getter = _dict_getter
-    elif source_type == 'class':
+    elif source_type == SourceType.OBJ:
         base_getter = _obj_getter
     else:
-        raise ConvertStructCompileError(f"Unsupported source type: '{source_type}'")
+        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
     if not none_means_missing:
         return base_getter
@@ -230,23 +265,24 @@ def _setup_field_getter(source_type: str, none_means_missing: bool) -> FieldGett
     return _adjust_nones
 
 
-def _setup_field_setter(destination_type: str) -> FieldSetter:
+def _setup_field_setter(destination_type: DestinationType) -> FieldSetter:
     def _dict_setter(dest_dict, field, value):
         dest_dict[field] = value
 
     def _obj_setter(dest_obj, field, value):
         setattr(dest_obj, field, value)
 
-    if destination_type in ['dict', 'dict-by-reference']:
+    if destination_type in {DestinationType.DICT, DestinationType.DICT_BY_REF}:
         return _dict_setter
-    elif destination_type == 'class-by-reference':
+    elif destination_type == DestinationType.OBJ_BY_REF:
         return _obj_setter
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
+        raise ConvertStructCompileError(f"Unsupported destination type: {destination_type}")
 
 
 def _setup_result_extractor(
-    source_type: str, destination_type: str, return_unparsed_option: bool, unhandled_getter: UnhandledGetter
+    source_type: SourceType, destination_type: DestinationType,
+    return_unparsed_option: bool, unhandled_getter: UnhandledGetter
 ) -> ResultExtractor:
     def _return_none(_source, _dest):
         return None
@@ -260,15 +296,15 @@ def _setup_result_extractor(
     def _return_dest_and_unparsed(source, dest):
         return dest, unhandled_getter(source)
 
-    if source_type == 'class' and return_unparsed_option:
-        raise ConvertStructCompileError("return_unparsed cannot be used for sources of type 'class'")
+    if source_type == SourceType.OBJ and return_unparsed_option:
+        raise ConvertStructCompileError("return_unparsed cannot be used for non-dict sources")
 
-    if destination_type in ['class-by-reference', 'dict-by-reference']:
+    if destination_type in {DestinationType.DICT_BY_REF, DestinationType.OBJ_BY_REF}:
         return _return_unparsed if return_unparsed_option else _return_none
-    elif destination_type == 'dict':
+    elif destination_type == DestinationType.DICT:
         return _return_dest_and_unparsed if return_unparsed_option else _return_dest
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
+        raise ConvertStructCompileError(f"Unsupported destination type: {destination_type}")
 
 
 def _setup_conversion_core(
