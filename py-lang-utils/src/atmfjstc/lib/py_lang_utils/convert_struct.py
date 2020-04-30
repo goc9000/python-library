@@ -154,7 +154,8 @@ def make_struct_converter(
     source_type = SourceType.parse(source_type)
     dest_type = DestinationType.parse(dest_type)
 
-    field_specs, unhandled_getter = _parse_fields_and_setup_unhandled_getter(fields, ignore)
+    field_specs, ignored_fields = _parse_fields(fields)
+    unhandled_getter = _setup_unhandled_getter(field_specs, ignored_fields, ignore)
     source_dest_finder = _setup_source_dest_finder(dest_type)
     getter = _setup_field_getter(source_type, none_means_missing)
     setter = _setup_field_setter(dest_type)
@@ -225,12 +226,10 @@ def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
     return out_fields, ignored_fields
 
 
-def _parse_fields_and_setup_unhandled_getter(
-    fields: RawFieldSpecs, ignore_fields_option: Iterable[str]
-) -> Tuple[ParsedFieldSpecs, UnhandledGetter]:
-    field_specs, ignored = _parse_fields(fields)
-
-    all_srcs = set(field_specs.source for _, field_specs in field_specs) | set(ignore_fields_option or set()) | ignored
+def _setup_unhandled_getter(
+    fields: ParsedFieldSpecs, ignored_fields: Set[str], ignore_fields_option: Iterable[str]
+) -> UnhandledGetter:
+    all_srcs = set(field.source for _, field in fields) | set(ignore_fields_option or set()) | ignored_fields
 
     def unhandled_getter(source_dict):
         if not isinstance(source_dict, Mapping):
@@ -238,7 +237,7 @@ def _parse_fields_and_setup_unhandled_getter(
 
         return {k: v for k, v in source_dict.items() if k not in all_srcs}
 
-    return field_specs, unhandled_getter
+    return unhandled_getter
 
 
 def _setup_source_dest_finder(destination_type: DestinationType) -> SourceDestFinder:
