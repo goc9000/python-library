@@ -21,8 +21,9 @@ def make_struct_converter(
     return_unparsed: bool = False, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> StructConverter:
     """
-    General purpose utility for making functions that convert from a simple structure in class or dict format, to a
-    dict format with similar fields, optionally renaming, converting or checking fields as they are accessed.
+    General purpose utility for making functions that convert from a simple structure in dict or object format, to
+    another structure in dict or object format, optionally excluding, renaming, converting or checking fields as they
+    are accessed.
 
     The Source and Destination Types
     --------------------------------
@@ -126,21 +127,21 @@ def make_struct_converter(
 
       - With `return_unparsed` unset::
 
-            result_dict = convert(source_class_or_dict)
+            result_dict = convert(source_dict_or_obj)
 
       - With `return_unparsed` set::
 
-            result_dict, unparsed_fields = convert(source_class_or_dict)
+            result_dict, unparsed_fields = convert(source_dict_or_obj)
 
     - For destinations of type ``'*-by-reference'``:
 
       - With `return_unparsed` unset::
 
-            convert(dest_class_or_dict, source_class_or_dict)
+            convert(dest_dict_or_obj, source_dict_or_obj)
 
       - With `return_unparsed` set::
 
-            unparsed_fields = convert(dest_class_or_dict, source_class_or_dict)
+            unparsed_fields = convert(dest_dict_or_obj, source_dict_or_obj)
 
     Exceptions
     ----------
