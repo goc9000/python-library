@@ -169,7 +169,7 @@ class SourceType(Enum):
     def parse(raw_source_type: str) -> 'SourceType':
         if raw_source_type in {'dict'}:
             return SourceType.DICT
-        elif raw_source_type in {'class'}:
+        elif raw_source_type in {'obj', 'object', 'class'}:
             return SourceType.OBJ
         else:
             raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
@@ -184,9 +184,13 @@ class DestinationType(Enum):
     def parse(raw_dest_type: str) -> 'DestinationType':
         if raw_dest_type in {'dict'}:
             return DestinationType.DICT
-        elif raw_dest_type in {'dict-by-reference'}:
+        elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
             return DestinationType.DICT_BY_REF
-        elif raw_dest_type in {'class-by-reference'}:
+        elif raw_dest_type in {
+            '&obj', '@obj', 'obj-by-ref', 'obj-by-reference',
+            '&object', '@object', 'object-by-ref', 'object-by-reference',
+            '&class', '@class', 'class-by-ref', 'class-by-reference'
+        }:
             return DestinationType.OBJ_BY_REF
         else:
             raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
