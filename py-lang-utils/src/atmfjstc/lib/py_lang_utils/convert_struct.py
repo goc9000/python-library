@@ -31,13 +31,23 @@ def make_struct_converter(
 
       - ``'dict'``: Any type whose fields can be read with ``obj.get('field_name')``, such as a `dict` or, more
         generally, a `Mapping`.
-      - ``'class'``: Any type whose fields can be read with ``obj.field_name``, such as any class.
+      - ``'object'``: Any type whose fields can be read with ``obj.field_name``, such as any object with public fields.
+
+        - The aliases ``'obj'`` and ``'class'`` can also be used
 
     - `destination_type` can be one of:
 
       - ``'dict'``: The converter will return a new `dict` containing the converted fields.
-      - ``'dict-by-reference'``, ``'class-by-reference'``: The converter will receive an existing dict or class and
-        write converted fields to it accordingly.
+      - ``'dict-by-reference'``: The converter will receive an existing dict (or `MutableMapping`) and write converted
+        fields to it accordingly.
+
+        - The aliases ``'dict-by-ref'``, ``'&dict'`` and ``'@dict'`` can also be used
+
+      - ``'object-by-reference'``: The converter will receive an existing object and set converted fields in it
+        accordingly.
+
+        - The aliases ``'obj[ect]-by-ref'``, ``'class-by-ref'``, ``'&obj[ect]'``, ``'@obj[ect]'``, ``'&class'``,  and
+          ``'@class'`` can also be used
 
     Field Specifications
     --------------------
