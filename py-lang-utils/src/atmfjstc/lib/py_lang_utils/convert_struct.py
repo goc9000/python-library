@@ -5,6 +5,7 @@ from enum import Enum, auto
 from collections.abc import Mapping, Sequence
 
 from atmfjstc.lib.py_lang_utils.token import Token
+from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 
 _NO_VALUE = Token()
@@ -112,8 +113,8 @@ def make_struct_converter(
       instructions on how to parse, and report them alongside the normal result. This is useful for detecting unexpected
       data that one might want to add processing for in the future, or decide to ignore explicitly.
 
-      Note that this only works for mapping-type sources, as classes do not have a standardized way of getting a list
-      of all their fields which are intended to represent data.
+      Note that this only works reliably for mapping-type sources, as classes do not have a standardized way of getting
+      a list of all their fields which are intended to represent data. The converter will use a heuristic in this case.
 
     - `ignore`: A list of additional field names that should be ignored, in addition to those marked as such in the
       `fields`.
@@ -155,7 +156,7 @@ def make_struct_converter(
     dest_type = DestinationType.parse(dest_type)
 
     field_specs, ignored_fields = _parse_fields(fields)
-    unhandled_getter = _setup_unhandled_getter(field_specs, ignored_fields, ignore)
+    unhandled_getter = _setup_unhandled_getter(source_type, field_specs, ignored_fields, ignore)
     source_dest_finder = _setup_source_dest_finder(dest_type)
     getter = _setup_field_getter(source_type, none_means_missing)
     setter = _setup_field_setter(dest_type)
@@ -227,17 +228,26 @@ def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
 
 
 def _setup_unhandled_getter(
-    fields: ParsedFieldSpecs, ignored_fields: Set[str], ignore_fields_option: Iterable[str]
+    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str], ignore_fields_option: Iterable[str]
 ) -> UnhandledGetter:
     all_srcs = set(field.source for _, field in fields) | set(ignore_fields_option or set()) | ignored_fields
 
-    def unhandled_getter(source_dict):
-        if not isinstance(source_dict, Mapping):
-            raise ConvertStructWrongSourceTypeError("When using return_unhandled, sources must be dicts, not classes")
-
+    def _dict_unhandled_getter(source_dict):
         return {k: v for k, v in source_dict.items() if k not in all_srcs}
 
-    return unhandled_getter
+    def _obj_unhandled_getter(source_obj):
+        return {
+            k: getattr(source_obj, k)
+            for k in get_obj_likely_data_fields_with_defaults(source_obj, include_properties=False).keys()
+            if k not in all_srcs
+        }
+
+    if source_type == SourceType.DICT:
+        return _dict_unhandled_getter
+    elif source_type == SourceType.OBJ:
+        return _obj_unhandled_getter
+    else:
+        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
 
 def _setup_source_dest_finder(destination_type: DestinationType) -> SourceDestFinder:
@@ -309,9 +319,6 @@ def _setup_result_extractor(
 
     def _return_dest_and_unparsed(source, dest):
         return dest, unhandled_getter(source)
-
-    if source_type == SourceType.OBJ and return_unparsed_option:
-        raise ConvertStructCompileError("return_unparsed cannot be used for non-dict sources")
 
     if destination_type in {DestinationType.DICT_BY_REF, DestinationType.OBJ_BY_REF}:
         return _return_unparsed if return_unparsed_option else _return_none
