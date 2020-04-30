@@ -210,13 +210,13 @@ def _setup_field_getter(source_type: str, none_means_missing: bool) -> FieldGett
     def _dict_getter(source_dict, field):
         return source_dict.get(field, _NO_VALUE)
 
-    def _class_getter(source_class, field):
-        return getattr(source_class, field, _NO_VALUE)
+    def _obj_getter(source_obj, field):
+        return getattr(source_obj, field, _NO_VALUE)
 
     if source_type == 'dict':
         base_getter = _dict_getter
     elif source_type == 'class':
-        base_getter = _class_getter
+        base_getter = _obj_getter
     else:
         raise ConvertStructCompileError(f"Unsupported source type: '{source_type}'")
 
@@ -234,13 +234,13 @@ def _setup_field_setter(destination_type: str) -> FieldSetter:
     def _dict_setter(dest_dict, field, value):
         dest_dict[field] = value
 
-    def _class_setter(dest_class, field, value):
-        setattr(dest_class, field, value)
+    def _obj_setter(dest_obj, field, value):
+        setattr(dest_obj, field, value)
 
     if destination_type in ['dict', 'dict-by-reference']:
         return _dict_setter
     elif destination_type == 'class-by-reference':
-        return _class_setter
+        return _obj_setter
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: '{destination_type}'")
 
