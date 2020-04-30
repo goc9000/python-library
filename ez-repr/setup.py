@@ -9,6 +9,10 @@ setup(
     package_dir={'': 'src'},
     packages=['atmfjstc.lib.ez_repr'],
 
+    install_requires=[
+        'atmfjstc-py-lang-utils>=1.10, <2',
+    ],
+
     zip_safe=True,
 
     description="Base class that provides a smarter __repr__() function for your objects",

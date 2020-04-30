@@ -26,8 +26,9 @@ import textwrap
 import typing
 from typing import Any, Iterable, Tuple, Optional, Mapping, Callable, Union, ItemsView, Sequence
 
-from inspect import isroutine, isdatadescriptor
 from collections import OrderedDict
+
+from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 
 class EZRepr:
@@ -60,13 +61,8 @@ class EZRepr:
         if dataclasses.is_dataclass(self):
             for field in dataclasses.fields(self):
                 yield field.name, field.default
-        else:
-            for parent in reversed(self.__class__.__mro__[:-1]):
-                for field, default_value in parent.__dict__.items():
-                    if field.startswith('_') or isroutine(default_value) or isdatadescriptor(default_value):
-                        continue
 
-                    yield field, default_value
+        yield from get_obj_likely_data_fields_with_defaults(self, include_properties=False).items()
 
 
 RendererFunc = Union[Callable[[Any], str], Callable[..., str]]
