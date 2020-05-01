@@ -75,3 +75,18 @@ def full_format_exception(exception: BaseException, follow_cause: bool = True) -
         parts.append(indent(full_format_exception(exception.__cause__), '    '))
 
     return '\n'.join(parts)
+
+
+class WarningWithMessage(UserWarning):
+    """
+    Convenient base class for warnings that contain a message.
+
+    The message programmed into the warning will show up when `str()` is called on the warning. This happens
+    automatically for Exceptions but not for Warnings, hence the need for this class.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def __str__(self):
+        return self.args[0]
