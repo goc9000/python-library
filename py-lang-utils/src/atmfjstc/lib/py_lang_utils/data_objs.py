@@ -36,11 +36,13 @@ def get_obj_likely_data_fields_with_defaults(obj: object, include_properties=Tru
             if field not in fields:
                 fields[field] = NO_DEFAULT
 
-        fields.update(cls.__dict__)
+        slots = set(getattr(cls, '__slots__', []))
+        fields.update((k, NO_DEFAULT if k in slots else v) for k, v in cls.__dict__.items())
 
-    for field in obj.__dict__.keys():
-        if field not in fields:
-            fields[field] = NO_DEFAULT
+    if hasattr(obj, '__dict__'):
+        for field in obj.__dict__.keys():
+            if field not in fields:
+                fields[field] = NO_DEFAULT
 
     def _is_data_field(field):
         if field.startswith('_'):
