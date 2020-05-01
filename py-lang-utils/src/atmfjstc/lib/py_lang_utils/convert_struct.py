@@ -236,11 +236,16 @@ def _setup_unhandled_getter(
         return {k: v for k, v in source_dict.items() if k not in all_srcs}
 
     def _obj_unhandled_getter(source_obj):
-        return {
-            k: getattr(source_obj, k)
-            for k in get_obj_likely_data_fields_with_defaults(source_obj, include_properties=False).keys()
-            if k not in all_srcs
-        }
+        result = dict()
+
+        for k in get_obj_likely_data_fields_with_defaults(source_obj, include_properties=False).keys():
+            if k not in all_srcs:
+                try:
+                    result[k] = getattr(source_obj, k)
+                except Exception:
+                    pass
+
+        return result
 
     if source_type == SourceType.DICT:
         return _dict_unhandled_getter
