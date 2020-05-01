@@ -46,7 +46,11 @@ class EZRepr:
         data = OrderedDict()
 
         for field, default_value in self._ez_repr_iter_fields_and_defaults():
-            current_value = getattr(self, field)
+            try:
+                current_value = getattr(self, field)
+            except Exception:
+                continue
+
             try:
                 is_diff = (current_value != default_value)
             except Exception:  # A custom __eq__() may throw exceptions, you never know...
