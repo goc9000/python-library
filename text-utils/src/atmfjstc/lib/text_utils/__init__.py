@@ -3,6 +3,7 @@ A collection of utilities for working with plain text.
 """
 
 import re
+import textwrap
 
 from typing import Tuple, Any, Iterable, Optional, List, Union
 
@@ -87,6 +88,23 @@ def add_prompt(prompt: str, value: Any) -> str:
         (prompt if is_first else ' ' * len(prompt)) + line
         for line, is_first in iter_with_first(str(value).splitlines(True))
     )
+
+
+def add_prompt_alt(prompt: str, value: Any, max_width: Optional[int] = None, indent: str = '  ') -> str:
+    """
+    Returns the ``str()`` of a value with a prompt prepended. This uses a different style from `add_prompt`:
+
+    - If the value's string representation is single-line, and the whole result fits within the given max_width, then
+      the prompt will just be prepended to the value.
+    - Otherwise, the prompt will appear on the first line, and the value representation will follow on subsequent lines,
+      indented so as to stand out.
+    """
+    value_repr = str(value)
+
+    if ('\n' not in value_repr) and ((max_width is None) or (len(prompt) + len(value_repr) <= max_width)):
+        return prompt + value_repr
+    else:
+        return prompt.rstrip() + '\n' + textwrap.indent(value_repr, indent)
 
 
 def iter_limit_text(
