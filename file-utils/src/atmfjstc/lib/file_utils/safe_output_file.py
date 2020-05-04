@@ -144,6 +144,10 @@ class SafeOutputFile(IO):
     def __init__(self, path):
         self._path = path
 
+    @property
+    def path(self) -> Path:
+        return self._path
+
     def writelines(self, lines: Iterable[AnyStr]) -> None:
         if self._handle is None:
             raise ValueError("Output file not initialized")
