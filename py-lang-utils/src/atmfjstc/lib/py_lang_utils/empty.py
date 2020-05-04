@@ -5,13 +5,13 @@ Utilities for working with nulls, empty values etc.
 import typing
 
 from typing import Callable, Any, Union
-from collections.abc import Mapping, Sequence, Hashable, Iterable
+from collections.abc import Mapping, Collection, Hashable, Iterable
 
 from atmfjstc.lib.py_lang_utils.functions import seems_callback
 
 
 NullTestCallback = Callable[[Any], bool]
-NullsSpec = Union[Hashable, NullTestCallback, typing.Sequence[Hashable]]
+NullsSpec = Union[Hashable, NullTestCallback, typing.Collection[Hashable]]
 
 
 def make_null_test(nulls: NullsSpec) -> NullTestCallback:
@@ -47,7 +47,7 @@ def make_null_test(nulls: NullsSpec) -> NullTestCallback:
     def _test(value):
         if isinstance(value, Hashable):
             return value in nulls_set
-        if isinstance(value, Sequence) and (list in nulls_set) and len(value) == 0:
+        if isinstance(value, Collection) and (list in nulls_set) and len(value) == 0:
             return True
         if isinstance(value, Mapping) and (dict in nulls_set) and len(value) == 0:
             return True

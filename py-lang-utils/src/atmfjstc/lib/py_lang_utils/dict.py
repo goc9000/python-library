@@ -14,7 +14,7 @@ K = TypeVar('K')
 V = TypeVar('V')
 
 
-def copy_only_fields(source_dict: typing.Mapping[K, V], fields: typing.Sequence[K]) -> typing.Mapping[K, V]:
+def copy_only_fields(source_dict: typing.Mapping[K, V], fields: typing.Collection[K]) -> typing.Mapping[K, V]:
     """
     Creates a copy of a dict or mapping with only certain fields preserved.
 
