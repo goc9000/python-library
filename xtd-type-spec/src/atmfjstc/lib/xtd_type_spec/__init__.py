@@ -31,7 +31,7 @@ the `isinstance_ex` and `issubclass_ex` functions, that mimic the interface of t
 syntax for expressing types:
 
 - a normal type like `str`, `list` etc. will stand for itself as before
-- lists or tuples will be treated as union types, e.g. ``(list, str)`` means ``list | str``
+- lists, tuples or sets will be treated as union types, e.g. ``(list, str)`` means ``list | str``
 - a hashable, non-class value will be treated as a literal type, e.g. ``(bool, "other")`` will produce a type that
   accepts `True`, `False` or the string ``'other'``
 - the tokens `AnyType` and `VoidType` stand for the universal type (any value matches) and null type (no value matches)
@@ -52,7 +52,7 @@ Other features provided in this module:
 
 import typing
 
-from collections.abc import Sequence, Hashable
+from collections.abc import Collection, Hashable
 
 from atmfjstc.lib.py_lang_utils.token import Token
 
@@ -68,7 +68,7 @@ VoidType = Token(repr_='VoidType')
 # This specification is imperfect, might want to revisit it
 XtdTypeSpec_Proper = type
 XtdTypeSpec_Literal = typing.Hashable
-XtdTypeSpec_Union = typing.Sequence['XtdTypeSpec']
+XtdTypeSpec_Union = typing.Collection['XtdTypeSpec']
 XtdTypeSpec_Any = Token
 XtdTypeSpec_Void = Token
 XtdTypeSpec = typing.Union[
@@ -90,7 +90,7 @@ def isinstance_ex(value: typing.Any, xtd_type_spec: XtdTypeSpec) -> bool:
         return True
     elif xtd_type_spec == VoidType:
         return False
-    elif _is_proper_sequence(xtd_type_spec):
+    elif _is_proper_collection(xtd_type_spec):
         return any(isinstance_ex(value, alt) for alt in xtd_type_spec)
     elif isinstance(xtd_type_spec, Hashable):
         return value == xtd_type_spec
@@ -112,9 +112,9 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
     if (parent_type_spec == VoidType) or (xtd_type_spec == AnyType):
         return False
 
-    if _is_proper_sequence(xtd_type_spec):
+    if _is_proper_collection(xtd_type_spec):
         return all(issubclass_ex(alt, parent_type_spec) for alt in xtd_type_spec)
-    if _is_proper_sequence(parent_type_spec):
+    if _is_proper_collection(parent_type_spec):
         return any(issubclass_ex(xtd_type_spec, alt) for alt in parent_type_spec)
 
     if isinstance(parent_type_spec, type):
@@ -136,8 +136,8 @@ def issubclass_ex(xtd_type_spec: XtdTypeSpec, parent_type_spec: XtdTypeSpec) -> 
     raise TypeError(f"Invalid extended type specification: {parent_type_spec!r}")
 
 
-def _is_proper_sequence(value: typing.Any) -> bool:
-    return isinstance(value, Sequence) and not isinstance(value, str)
+def _is_proper_collection(value: typing.Any) -> bool:
+    return isinstance(value, Collection) and not isinstance(value, str)
 
 
 def render_xtd_type_spec(xtd_type_spec: XtdTypeSpec, dequalify: bool = False) -> str:
@@ -148,7 +148,7 @@ def render_xtd_type_spec(xtd_type_spec: XtdTypeSpec, dequalify: bool = False) ->
     as it decreases readability whereas such conflicts are rare in practice. To keep the type names qualifies, set
     `dequalify` to False.
     """
-    if _is_proper_sequence(xtd_type_spec):
+    if _is_proper_collection(xtd_type_spec):
         return '(' + (' | '.join(render_xtd_type_spec(alt) for alt in xtd_type_spec)) + ')'
     if xtd_type_spec is AnyType:
         return '<any>'

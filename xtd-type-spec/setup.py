@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-xtd-type-spec',
-    version='1.1.0',
+    version='1.1.1',
 
     author_email='atmfjstc@protonmail.com',
 
