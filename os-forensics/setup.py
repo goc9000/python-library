@@ -9,6 +9,10 @@ setup(
     package_dir={'': 'src'},
     packages=['atmfjstc.lib.os_forensics'],
 
+    install_requires=[
+        'atmfjstc-iso-timestamp>=1.0.0, <2',
+    ],
+
     zip_safe=True,
 
     description="Utilities for decoding OS and filesystem-specific data enums and binary structures",
