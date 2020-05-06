@@ -7,6 +7,13 @@ from typing import NewType, Tuple
 PosixMode = NewType('PosixMode', int)
 PosixPermissionsString = NewType('PosixPermissionsString', str)
 
+PosixUID = NewType('PosixUID', int)
+PosixGID = NewType('PosixGID', int)
+
+PosixDeviceIDMinor = NewType('PosixDeviceIDMinor', int)
+PosixDeviceIDMajor = NewType('PosixDeviceIDMajor', int)
+PosixDeviceID = NewType('PosixDeviceID', Tuple[PosixDeviceIDMajor, PosixDeviceIDMinor])
+
 
 class PosixFileType(IntEnum):
     INVALID_0 = 0
