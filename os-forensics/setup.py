@@ -11,6 +11,7 @@ setup(
 
     install_requires=[
         'atmfjstc-iso-timestamp>=1.0.0, <2',
+        'atmfjstc-binary-utils>=1.2.0, <2',
     ],
 
     zip_safe=True,
