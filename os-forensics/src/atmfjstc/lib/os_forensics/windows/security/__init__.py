@@ -108,7 +108,7 @@ class NTSystemACLEntry(NTAclEntry):
 @dataclass(frozen=True)
 class NTRegularSACLEntryBase(NTSystemACLEntry):
     standard_audited_ops: 'NTStandardRights'
-    specific_audited_ops: 'NTSpecificRights'
+    specific_audited_ops: NTSpecificRights
     object_type: Optional[NTGuid]
     inherited_object_type: Optional[NTGuid]
     callback_data: Optional[bytes]
