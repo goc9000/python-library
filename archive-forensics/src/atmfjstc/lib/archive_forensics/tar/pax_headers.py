@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 from atmfjstc.lib.py_lang_utils.convert_struct import make_struct_converter
-from atmfjstc.lib.iso_timestamp import iso_from_unix_time, ISOTimestamp
+from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
 from atmfjstc.lib.os_forensics.posix import INodeNo, PosixDeviceIDKDevTFormat
 
 
@@ -45,14 +45,14 @@ _convert_tar_entry = make_struct_converter(
     dest_type='dict',
     fields=dict(
         complete_path=dict(src='path'),
-        ctime=dict(convert=lambda x: iso_from_unix_time(float(x))),
-        atime=dict(convert=lambda x: iso_from_unix_time(float(x))),
+        ctime=dict(convert=lambda x: iso_from_unix_time_string(x)),
+        atime=dict(convert=lambda x: iso_from_unix_time_string(x)),
         # SCHILY.* headers are added by the `star` program by Jörg Schilling
         inode=dict(src='SCHILY.ino', convert=INodeNo),
         host_device_kdev=dict(src='SCHILY.dev', convert=PosixDeviceIDKDevTFormat),
         n_links=dict(src='SCHILY.nlink', convert=int),
         # libarchive headers
-        creation_time=dict(src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time(float(x))),
+        creation_time=dict(src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time_string(x)),
     ),
     return_unparsed=True,
 )
