@@ -21,6 +21,7 @@ def parse_tar_archive_pax_headers(raw_headers: Dict[str, str]) -> TarArchivePaxH
 @dataclass(frozen=True)
 class TarArchiveEntryPaxHeaders:
     complete_path: Optional[str] = None
+    mtime: Optional[ISOTimestamp] = None
     ctime: Optional[ISOTimestamp] = None
     atime: Optional[ISOTimestamp] = None
     inode: Optional[INodeNo] = None
@@ -45,6 +46,7 @@ _convert_tar_entry = make_struct_converter(
     dest_type='dict',
     fields=dict(
         complete_path=dict(src='path'),
+        mtime=dict(convert=lambda x: iso_from_unix_time_string(x)),
         ctime=dict(convert=lambda x: iso_from_unix_time_string(x)),
         atime=dict(convert=lambda x: iso_from_unix_time_string(x)),
         # SCHILY.* headers are added by the `star` program by Jörg Schilling
