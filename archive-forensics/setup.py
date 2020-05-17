@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-archive-forensics',
-    version='0.2.0',
+    version='0.3.0',
 
     author_email='atmfjstc@protonmail.com',
 
@@ -12,7 +12,8 @@ setup(
     install_requires=[
         'atmfjstc-iso-timestamp>=1.0.0, <2',
         'atmfjstc-binary-utils>=1.2.0, <2',
-        'atmfjstc-os-forensics>=0.2.0, <2',
+        'atmfjstc-os-forensics>=0.2.1, <2',
+        'atmfjstc-py-lang-utils>=1.11.0, <2',
     ],
 
     zip_safe=True,
