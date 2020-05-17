@@ -122,6 +122,19 @@ def iso_from_unix_time_nanos(unix_time_nanos: int) -> ISOTimestamp:
     return _from_unix_time(seconds, f".{nanos:09}".rstrip('0.'))
 
 
+def iso_from_unix_time_string(unix_time_str: str) -> ISOTimestamp:
+    """
+    Like `iso_from_unix_time`, but takes a UNIX time formatted as a string containing an integer or floating-point
+    number. This ensures that all decimals present in the string are preserved.
+    """
+
+    m = re.fullmatch(r'(\d+)(\.\d*)?', unix_time_str)
+    if m is None:
+        raise ValueError(f"String is not a Unix timestamp: '{unix_time_str}'")
+
+    return _from_unix_time(int(m.group(1)), (m.group(2) or '').rstrip('0.'))
+
+
 def _from_unix_time(seconds: int, decimals: str) -> ISOTimestamp:
     base_datetime = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=seconds)
     base_ts = base_datetime.isoformat(sep=' ', timespec='seconds')
