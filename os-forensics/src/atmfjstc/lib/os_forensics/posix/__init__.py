@@ -14,6 +14,14 @@ PosixDeviceIDMinor = NewType('PosixDeviceIDMinor', int)
 PosixDeviceIDMajor = NewType('PosixDeviceIDMajor', int)
 PosixDeviceID = NewType('PosixDeviceID', Tuple[PosixDeviceIDMajor, PosixDeviceIDMinor])
 
+PosixDeviceIDKDevTFormat = NewType('PosixDeviceIDKDevTFormat', int)
+"""
+A device ID represented as an int equal to (major_id << MINOR_BITS) + minor_id (as in the C type ``kdev_t``). You need
+to know the value of MINOR_BITS (system dependent) to be able to decode it.
+"""
+
+INodeNo = NewType('INodeNo', int)
+
 
 class PosixFileType(IntEnum):
     INVALID_0 = 0
