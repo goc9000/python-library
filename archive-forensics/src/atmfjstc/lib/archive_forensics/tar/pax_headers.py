@@ -33,7 +33,7 @@ class TarArchiveEntryPaxHeaders:
 
 
 def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryPaxHeaders:
-    result, unhandled = _convert_tar_entry(raw_headers)
+    result, unhandled = _convert_entry_headers(raw_headers)
 
     return TarArchiveEntryPaxHeaders(
         **result,
@@ -41,7 +41,7 @@ def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryP
     )
 
 
-_convert_tar_entry = make_struct_converter(
+_convert_entry_headers = make_struct_converter(
     source_type='dict',
     dest_type='dict',
     fields=dict(
