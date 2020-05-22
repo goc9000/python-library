@@ -10,6 +10,7 @@ from atmfjstc.lib.iso_timestamp import ISOTimestamp, iso_from_unix_time
 from atmfjstc.lib.os_forensics.windows import iso_from_ntfs_time
 from atmfjstc.lib.os_forensics.windows.security import NTSecurityDescriptor
 from atmfjstc.lib.os_forensics.windows.security.parse import decode_nt_security_descriptor
+from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, PosixDeviceID
 
 from atmfjstc.lib.archive_forensics.zip import decompress_now
 
@@ -181,9 +182,9 @@ class ZXHPkWareUnix(ZipExtraHeader):
     magic: int = field(default=0x000d, init=False)
     atime: ISOTimestamp
     mtime: ISOTimestamp
-    uid: int
-    gid: int
-    device: Optional[Tuple[int, int]] = None
+    uid: PosixUID
+    gid: PosixGID
+    device: Optional[PosixDeviceID] = None
     link_target: Optional[bytes] = None
 
     @staticmethod
@@ -294,8 +295,8 @@ class ZXHInfoZipUnixV1(ZipExtraHeader):
     magic: int = field(default=0x5855, init=False)
     mtime: ISOTimestamp
     atime: ISOTimestamp
-    uid: Optional[int] = None
-    gid: Optional[int] = None
+    uid: Optional[PosixUID] = None
+    gid: Optional[PosixGID] = None
 
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnixV1':
@@ -403,8 +404,8 @@ class IZUnicodePathDataV1(IZUnicodePathData):
 @dataclass(frozen=True)
 class ZXHInfoZipUnixV2(ZipExtraHeader):
     magic: int = field(default=0x7855, init=False)
-    uid: Optional[int] = None
-    gid: Optional[int] = None
+    uid: Optional[PosixUID] = None
+    gid: Optional[PosixGID] = None
 
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnixV2':
@@ -442,9 +443,9 @@ class IZUnixV3Data:
 
         if version == 1:
             uid_size = reader.read_uint8('UID size')
-            uid = reader.read_fixed_size_int(uid_size, signed=False, meaning='UID')
+            uid = PosixUID(reader.read_fixed_size_int(uid_size, signed=False, meaning='UID'))
             gid_size = reader.read_uint8('GID size')
-            gid = reader.read_fixed_size_int(gid_size, signed=False, meaning='GID')
+            gid = PosixGID(reader.read_fixed_size_int(gid_size, signed=False, meaning='GID'))
 
             return IZUnixV3DataV1(uid, gid)
         else:
@@ -459,8 +460,8 @@ class IZUnixV3DataUnsupported(IZUnixV3Data):
 @dataclass(frozen=True)
 class IZUnixV3DataV1(IZUnixV3Data):
     format_version: int = field(default=1, init=False)
-    uid: int
-    gid: int
+    uid: PosixUID
+    gid: PosixGID
 
 
 _ALL_HEADER_CLASSES : List[Type[ZipExtraHeader]] = [
