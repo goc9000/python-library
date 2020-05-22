@@ -183,14 +183,13 @@ class ZXHPkWareUnix(ZipExtraHeader):
     mtime: ISOTimestamp
     uid: int
     gid: int
-    dev_major: Optional[int] = None
-    dev_minor: Optional[int] = None
+    device: Optional[Tuple[int, int]] = None
     link_target: Optional[bytes] = None
 
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool) -> 'ZXHPkWareUnix':
         raw_atime, raw_mtime, uid, gid = reader.read_struct('IIHH')
-        dev_major = dev_minor = link_target = None
+        device = link_target = None
 
         special_data = reader.read_remainder()
 
@@ -200,7 +199,7 @@ class ZXHPkWareUnix(ZipExtraHeader):
         # in the special data, whereas for a link this will definitely not be the case.
 
         if (len(special_data) == 8) and (b'\x00' in special_data):
-            dev_major, dev_minor = BinaryReader(special_data, big_endian=False).read_struct('II')
+            device = BinaryReader(special_data, big_endian=False).read_struct('II')
         else:
             link_target = special_data
 
@@ -208,7 +207,7 @@ class ZXHPkWareUnix(ZipExtraHeader):
             is_local, (), None,
             atime=iso_from_unix_time(raw_atime),
             mtime=iso_from_unix_time(raw_mtime),
-            uid=uid, gid=gid, dev_major=dev_major, dev_minor=dev_minor, link_target=link_target
+            uid=uid, gid=gid, device=device, link_target=link_target
         )
 
 
