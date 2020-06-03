@@ -7,6 +7,7 @@ import traceback
 from typing import ContextManager
 from textwrap import dedent, indent
 from contextlib import contextmanager
+from abc import abstractmethod, ABCMeta
 
 
 @contextmanager
@@ -89,4 +90,27 @@ class WarningWithMessage(UserWarning):
         super().__init__(message)
 
     def __str__(self) -> str:
+        return self.args[0]
+
+
+class WarningWithContext(WarningWithMessage, metaclass=ABCMeta):
+    """
+    Base class for warnings that contain context info.
+
+    Warnings of this class contain context info (i.e. info on which specific entry, location etc. in some broader scope
+    the warning pertains to) and methods to generate a `str()` representation either with or without the context info
+    attached. By default, the str() representation will show the context info.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        return self.str_with_context()
+
+    @abstractmethod
+    def str_with_context(self) -> str:
+        raise NotImplementedError
+
+    def str_without_context(self) -> str:
         return self.args[0]
