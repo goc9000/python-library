@@ -43,12 +43,14 @@ class Console:
     Don't create your own instances of this.
     """
 
-    _interactive = None
-    _stdout_enabled = None
+    _interactive: bool
+    _stdout_enabled: bool
+    _color_enabled: bool
 
-    def __init__(self, enable_stdout: bool = True, interactive: bool = True):
+    def __init__(self, enable_stdout: bool = True, interactive: bool = True, color: bool = True):
         self._stdout_enabled = enable_stdout
         self._interactive = interactive
+        self._color_enabled = color
 
     def print_info(self, message: str, **kwargs) -> 'Console':
         """
@@ -192,14 +194,29 @@ class Console:
         self._interactive = True
         return self
 
+    def disable_color(self) -> 'Console':
+        """
+        Disables color output.
+        """
+        self._color_enabled = False
+        return self
+
+    def enable_color(self) -> 'Console':
+        """
+        Enables color output.
+        """
+        self._color_enabled = False
+        return self
+
     def pipe_mode(self) -> 'Console':
         """
-        Enables "pipe mode", i.e. disables stdout and interactivity.
+        Enables "pipe mode", i.e. disables stdout, interactivity and color output.
 
         Perfect for non-interactive scripts that just process data from one program and pipe it to another.
         """
         self.disable_stdout()
         self.disable_interactive()
+        self.disable_color()
         return self
 
     def print_message(self, kind: str, message: str, major: bool = False, minor: bool = False) -> 'Console':
@@ -235,18 +252,17 @@ class Console:
         if minor and ('bold' in attrs):
             attrs = tuple(attr for attr in attrs if attr != 'bold')
 
-        _print_maybe_with_color(message, props.get('color'), attrs, channel)
+        self._print_maybe_with_color(message, props.get('color'), attrs, channel)
 
         return self
 
-
-def _print_maybe_with_color(
-    text: str, color: Optional[str], attrs: Optional[Tuple[str]], channel: TextIO
-):
-    if (color is None) and (len(attrs or []) == 0):
-        print(text, file=channel)
-    else:
-        cprint(text, color or 'white', attrs=attrs, file=channel)
+    def _print_maybe_with_color(
+        self, text: str, color: Optional[str], attrs: Optional[Tuple[str]], channel: TextIO
+    ):
+        if (not self._color_enabled) or ((color is None) and (len(attrs or []) == 0)):
+            print(text, file=channel)
+        else:
+            cprint(text, color or 'white', attrs=attrs, file=channel)
 
 
 _PROPS_BY_MSG_TYPE = {
