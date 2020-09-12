@@ -1,5 +1,4 @@
-from typing import Union
-from dataclasses import dataclass
+from typing import Union, NamedTuple
 from enum import IntFlag, IntEnum
 
 from atmfjstc.lib.iso_timestamp import ISOTimestamp, iso_from_unix_time_nanos
@@ -70,8 +69,7 @@ class NTReparsePointTag(IntEnum):
     GVFS_TOMBSTONE   = 0xA0000022
 
 
-@dataclass(frozen=True)
-class NTReparsePointTagAnalysis:
+class NTReparsePointTagAnalysis(NamedTuple):
     is_microsoft: bool
     is_surrogate: bool
     value: int
