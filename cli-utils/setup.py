@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-cli-utils',
-    version='1.5.0',
+    version='1.5.1',
 
     author_email='atmfjstc@protonmail.com',
 

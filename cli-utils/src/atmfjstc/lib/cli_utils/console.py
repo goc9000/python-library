@@ -25,6 +25,11 @@ Notes:
   interface calls like::
 
       console.enable_stdout().print_progress("File saved").print_success("Done")
+
+- The console starts out auto-configured appropriately depending on whether the standard input/output/error streams
+  appear to be interactive terminals or not. The console will be assumed to be non-interactive if stdin is not a
+  terminal, and color will be disabled if stdout/stderr are not terminals. These options can be manually re-enabled
+  with appropriate calls to the console's methods.
 """
 
 import sys
@@ -276,6 +281,14 @@ _PROPS_BY_MSG_TYPE = {
 }
 
 
+def _init_default_console() -> Console:
+    return Console(
+        enable_stdout=True,
+        interactive=sys.stdin.isatty(),
+        color=sys.stdout.isatty() and sys.stderr.isatty(),
+    )
+
+
 # Singleton
-console = Console()
+console = _init_default_console()
 """The currently active console abstraction."""
