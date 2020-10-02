@@ -476,7 +476,8 @@ def _typecheck(value: T, expected_type) -> T:
 
 def _is_nonempty(value: Any) -> bool:
     return not (
-        (value is 0) or (value is False) or (value is None) or (hasattr(value, '__len__') and (len(value) == 0))
+        (value is False) or (value is None) or (isinstance(value, int) and (value == 0)) or
+        (hasattr(value, '__len__') and (len(value) == 0))
     )
 
 
