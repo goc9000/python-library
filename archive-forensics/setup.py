@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='atmfjstc-archive-forensics',
-    version='0.4.0',
+    version='0.4.1',
 
     author_email='atmfjstc@protonmail.com',
 

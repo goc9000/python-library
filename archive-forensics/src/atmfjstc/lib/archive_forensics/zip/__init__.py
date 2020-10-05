@@ -56,6 +56,18 @@ class ZipCompressionMethod(IntEnum):
     DEFLATE64 = 9
     DCL_IMPLODE = 10
     BZIP2 = 12
+    LZMA = 14
+    ZOS_CMPSC = 16
+    IBM_TERSE_NEW = 18
+    IBM_LZ77 = 19
+    ZSTANDARD_OLD = 20
+    ZSTANDARD = 93
+    MP3 = 94
+    XZ = 95
+    JPEG_VARIANT = 96
+    WAVPACK = 97
+    PPMD = 98
+    AE_X_ENCRYPTION = 99
 
 
 def decompress_now(data: bytes, compress_type: Union[int, ZipCompressionMethod]) -> bytes:
