@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-py-lang-utils',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.py_lang_utils'],
+    packages=find_packages(where='src'),
 
     # Note to self: think twice before adding any install_requires here! This is intended to be a fundamental package.
 

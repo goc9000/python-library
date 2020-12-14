@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-os-forensics',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.os_forensics'],
+    packages=find_packages(where='src'),
 
     install_requires=[
         'atmfjstc-iso-timestamp>=1.0.0, <2',

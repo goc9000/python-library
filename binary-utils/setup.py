@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-binary-utils',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.binary_utils'],
+    packages=find_packages(where='src'),
 
     install_requires=[
         'atmfjstc-file-utils>=1.2, <2',

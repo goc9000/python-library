@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-file-utils',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.file_utils'],
+    packages=find_packages(where='src'),
 
     install_requires=[
         'atmfjstc-error-utils>=1.1, <2',

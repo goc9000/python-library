@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-ast',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.ast'],
+    packages=find_packages(where='src'),
     
     install_requires=[
         'atmfjstc-py-lang-utils>=1, <2',

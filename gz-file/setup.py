@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-gz-file',
@@ -7,7 +7,7 @@ setup(
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
-    packages=['atmfjstc.lib.gz_file'],
+    packages=find_packages(where='src'),
 
     install_requires=[
         'atmfjstc-binary-utils>=1, <2',
