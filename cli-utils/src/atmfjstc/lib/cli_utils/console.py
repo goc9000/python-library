@@ -35,6 +35,7 @@ Notes:
 import sys
 import shutil
 import subprocess
+import colorama
 
 from typing import Optional, Tuple, TextIO
 from getpass import getpass
@@ -282,10 +283,15 @@ _PROPS_BY_MSG_TYPE = {
 
 
 def _init_default_console() -> Console:
+    use_color = sys.stdout.isatty() and sys.stderr.isatty()
+
+    if use_color:
+        colorama.init()
+
     return Console(
         enable_stdout=True,
         interactive=sys.stdin.isatty(),
-        color=sys.stdout.isatty() and sys.stderr.isatty(),
+        color=use_color,
     )
 
 
