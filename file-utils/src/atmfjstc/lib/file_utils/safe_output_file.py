@@ -52,6 +52,8 @@ Caution: This module is not designed to be thread or multiprocess-safe.
 
 import atexit
 
+from io import IOBase
+
 from typing import IO, Optional, Any, AnyStr, Iterable
 from pathlib import Path
 
@@ -128,7 +130,7 @@ class SafeOutputFileError(RuntimeError):
     pass
 
 
-class SafeOutputFile(IO):
+class SafeOutputFile(IOBase, IO):
     """
     A file object-like instance representing an output file.
 
