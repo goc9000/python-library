@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-osx-daemon',
-    version='0.1.0',
+    version='0.2.0',
 
     author_email='atmfjstc@protonmail.com',
 
@@ -10,7 +10,8 @@ setup(
     packages=find_packages(where='src'),
 
     install_requires=[
-        'atmfjstc-cli-utils>=1.7.0, <2'
+        'atmfjstc-cli-utils>=1.8.0, <2',
+        'pidlockfile>=0.0'
     ],
 
     zip_safe=True,
