@@ -15,4 +15,4 @@ def is_root() -> bool:
         except OSError:
             return False
     else:
-        return ('SUDO_USER' in os.environ) and (os.geteuid() == 0)
+        return os.geteuid() == 0

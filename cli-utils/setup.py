@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-cli-utils',
-    version='1.7.0',
+    version='1.8.0',
 
     author_email='atmfjstc@protonmail.com',
 
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
-    
+
     install_requires=[
         'termcolor>=1, <2',
         'colorama>=0.4.0, <2',
