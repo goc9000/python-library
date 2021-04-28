@@ -101,7 +101,12 @@ class OSXDaemonBase(ABC):
                       an error occurred during command-line parsing. Logging MUST still be configured in this case,
                       using some sort of default settings.
         """
-        logging.basicConfig(level='INFO', style='{', format='[{asctime}] {levelname}: {message}')
+        logging.basicConfig(
+            level='INFO',
+            style='{',
+            format='[{asctime}] {levelname}: {message}',
+            datefmt='%Y-%m-%d %H:%M:%S'  # We omit the milliseconds by default
+        )
 
     def logger(self) -> logging.Logger:
         """
