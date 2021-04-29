@@ -127,6 +127,7 @@ class OSXDaemonBase(ABC):
         old_sigs = {
             signal.SIGTERM: signal.signal(signal.SIGTERM, _catch_term),
             signal.SIGHUP: signal.signal(signal.SIGHUP, _catch_term),
+            signal.SIGINT: signal.signal(signal.SIGINT, _catch_term),
         }
 
         raw_args = self._parse_raw_args()
@@ -288,6 +289,7 @@ class OSXAsyncDaemon(OSXDaemonBase, ABC):
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGTERM, lambda: self._catch_async_signal())
         loop.add_signal_handler(signal.SIGHUP, lambda: self._catch_async_signal())
+        loop.add_signal_handler(signal.SIGINT, lambda: self._catch_async_signal())
 
         try:
             self._main_task = asyncio.create_task(self.run(raw_args))
