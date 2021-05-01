@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-json-schema-utils',
-    version='0.1.1',
+    version='0.2.0',
 
     author_email='atmfjstc@protonmail.com',
 
@@ -11,6 +11,7 @@ setup(
 
     install_requires=[
         'atmfjstc-py-lang-utils>=1.11.3, <2',
+        'jsonschema>=3, <4',
     ],
 
     zip_safe=True,
