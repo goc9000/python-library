@@ -115,6 +115,9 @@ def obj(
     optional: Optional[Dict[str, JSONSchema]] = None,
     open: bool = False
 ) -> JSONSchema:
+    props = props or {}
+    optional = optional or {}
+
     schema = dict(
         type='object',
         properties={**props, **optional},
