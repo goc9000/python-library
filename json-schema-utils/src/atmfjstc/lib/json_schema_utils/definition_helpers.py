@@ -16,9 +16,7 @@ then define schemas using the helpers like e.g.::
 from typing import Optional, Iterable, List, Dict, Union
 
 from atmfjstc.lib.py_lang_utils.dict import dict_no_nulls
-
-
-JSONSchema = dict
+from atmfjstc.lib.json_schema_utils import JSONSchema
 
 
 def nul() -> JSONSchema:
