@@ -122,7 +122,7 @@ def obj(
     )
 
     if len(props or {}) > 0:
-        schema['requires'] = list(props.keys())
+        schema['required'] = list(props.keys())
     if not open:
         schema['additionalProperties'] = False
 
