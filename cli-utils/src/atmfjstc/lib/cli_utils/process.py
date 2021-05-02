@@ -81,10 +81,19 @@ def run_external(
         RunExternalOtherError: For any other unexpected error
     """
 
+    # We need to do this because the latest Python throws a fit if the stdout, stderr, capture_output params are
+    # specified at the same time, even if the values do not actually conflict...
+    if stdout is not None or stderr is not None:
+        if capture_output:
+            raise ValueError("Cannot use both stdout=/stderr= and capture_output= at the same time")
+        out_params = dict(stdout=stdout, stderr=stderr)
+    else:
+        out_params = dict(capture_output=capture_output)
+
     try:
         result = subprocess.run(
             (command, *(str(arg) for arg in args)),
-            stdin=stdin, input=input, stdout=stdout, stderr=stderr, capture_output=capture_output, shell=shell,
+            stdin=stdin, input=input, **out_params, shell=shell,
             cwd=cwd, timeout=timeout, encoding=encoding, errors=errors, text=text, env=env,
         )
     except subprocess.SubprocessError as e:
