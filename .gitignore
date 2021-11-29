@@ -27,3 +27,6 @@ ENV/
 env.bak/
 venv.bak/
 _python_venv/
+
+# Testing
+/test_area/
