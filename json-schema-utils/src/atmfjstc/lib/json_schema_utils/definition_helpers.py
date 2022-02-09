@@ -150,4 +150,4 @@ def one_of(*alternatives: Iterable[JSONSchema]) -> JSONSchema:
 
 
 def title(title: str, schema: JSONSchema) -> JSONSchema:
-    return dict(**schema, title=title)
+    return {**schema, title: title}
