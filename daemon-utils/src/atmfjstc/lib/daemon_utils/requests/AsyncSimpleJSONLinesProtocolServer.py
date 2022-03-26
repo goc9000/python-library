@@ -4,7 +4,7 @@ import json
 
 from pathlib import Path
 
-from typing import Callable, Awaitable, Optional, Union
+from typing import Callable, Awaitable, Optional, Union, Literal
 
 from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
 
@@ -59,20 +59,12 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         response = None
 
         try:
-            line = await reader.readline()
-            if line != b'':
-                try:
-                    request = json.loads(line)
-                except json.JSONDecodeError:
-                    request = None
+            request, response = await self._read_request(reader)
 
-                if isinstance(request, dict):
-                    response = await self._request_handler(request)
-                else:
-                    response = self._format_simple_error("Request is not valid one-line JSON")
+            if request is not None:
+                response = await self._request_handler(request)
         except asyncio.CancelledError:
-            response = self._format_simple_error("Daemon shutting down")
-            raise
+            response = self._shutting_down_error_response()
         except:
             logging.exception("Unexpected exception while processing request")
             response = self._format_simple_error("Internal error")
@@ -85,6 +77,37 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                     pass
 
             writer.close()
+
+    async def _read_request(
+        self, reader: asyncio.StreamReader
+    ) -> Union[tuple[dict, Literal[None]], tuple[Literal[None], Optional[dict]]]:
+        try:
+            line = await reader.readuntil(b'\n')
+        except asyncio.LimitOverrunError:
+            return None, self._format_simple_error("Request too large")
+        except asyncio.IncompleteReadError as e:
+            line = e.partial
+        except asyncio.CancelledError:
+            return None, self._shutting_down_error_response()
+        except:
+            logging.exception("Unexpected exception while reading request")
+            return None, self._format_simple_error("Internal error")
+
+        if line == b'':
+            return None, None
+
+        try:
+            request = json.loads(line)
+        except json.JSONDecodeError:
+            request = None
+
+        if isinstance(request, dict):
+            return request, None
+
+        return None, self._format_simple_error("Request is not valid one-line JSON")
+
+    def _shutting_down_error_response(self) -> dict:
+        return self._format_simple_error("Daemon shutting down")
 
 
 def _default_error_response_maker(message: str) -> dict:
