@@ -29,6 +29,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
     _request_handler: Callable[[dict], Awaitable[dict]]
     _format_simple_error: Callable[[str], dict]
+    _keep_connection_open: bool
 
     def __init__(
         self, socket_path: Path,
@@ -36,6 +37,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         expose_to_group: Union[bool, int, str] = False,
         expose_to_others: bool = False,
         error_response_maker: Optional[Callable[[str], dict]] = None,
+        keep_connection_open: bool = False,
     ):
         """
         Constructor.
@@ -49,34 +51,49 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                              of that group)
             expose_to_others: True to allow non-owner, non-group users access to the socket
             error_response_maker: Use this to override the format of the response for simple protocol errors
+            keep_connection_open: If set to true, the connection will remain open after a request is executed, allowing
+                                  the client to send more requests. The connection will still close after any error that
+                                  is likely to cause loss of sync (e.g. malformed JSON)
         """
         super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 
         self._request_handler = request_handler
         self._format_simple_error = error_response_maker or _default_error_response_maker
+        self._keep_connection_open = keep_connection_open
 
     async def _on_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        response = None
-
         try:
-            request, response = await self._read_request(reader)
+            while True:
+                can_continue = await self._read_request_loop(reader, writer)
+                if not can_continue or not self._keep_connection_open:
+                    break
+        except:
+            logging.exception("Unexpected exception while handling connection")
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
-            if request is not None:
-                response = await self._request_handler(request)
+    async def _read_request_loop(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> bool:
+        request, suggested_response = await self._read_request(reader)
+        if request is None:
+            await self._reply_best_effort(writer, suggested_response)
+            return False
+
+        can_continue = True
+        try:
+            response = await self._request_handler(request)
         except asyncio.CancelledError:
             response = self._shutting_down_error_response()
+            can_continue = False
         except:
             logging.exception("Unexpected exception while processing request")
             response = self._format_simple_error("Internal error")
-        finally:
-            if response is not None:
-                try:
-                    writer.write(json.dumps(response).encode('utf-8') + b'\n')
-                    await writer.drain()
-                except:
-                    pass
 
-            writer.close()
+        replied = await self._reply_best_effort(writer, response)
+        if not replied:
+            can_continue = False
+
+        return can_continue
 
     async def _read_request(
         self, reader: asyncio.StreamReader
@@ -105,6 +122,18 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             return request, None
 
         return None, self._format_simple_error("Request is not valid one-line JSON")
+
+    async def _reply_best_effort(self, writer: asyncio.StreamWriter, response: Optional[dict]) -> bool:
+        if response is None:
+            return True
+
+        try:
+            writer.write(json.dumps(response).encode('utf-8') + b'\n')
+            await writer.drain()
+
+            return True
+        except:
+            return False
 
     def _shutting_down_error_response(self) -> dict:
         return self._format_simple_error("Daemon shutting down")
