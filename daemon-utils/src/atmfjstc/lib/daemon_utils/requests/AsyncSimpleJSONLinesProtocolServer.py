@@ -1,17 +1,18 @@
 import asyncio
 import logging
 import json
-import shutil
 
 from pathlib import Path
 
 from typing import Callable, Awaitable, Optional, Union
 
+from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
+
 
 LOG = logging.getLogger()
 
 
-class AsyncSimpleJSONLinesProtocolServer:
+class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     """
     Main task for an async daemon that enables it to respond to requests issued over a socket, in "JSON lines" format.
 
@@ -26,12 +27,8 @@ class AsyncSimpleJSONLinesProtocolServer:
     - Only a basic, "single request", "single response" interaction is implemented (no long polling, etc)
     """
 
-    _server = None
-    _socket_path: Path
     _request_handler: Callable[[dict], Awaitable[dict]]
     _format_simple_error: Callable[[str], dict]
-    _expose_to_group: Union[int, str, bool]
-    _expose_to_others: bool
 
     def __init__(
         self, socket_path: Path,
@@ -53,46 +50,10 @@ class AsyncSimpleJSONLinesProtocolServer:
             expose_to_others: True to allow non-owner, non-group users access to the socket
             error_response_maker: Use this to override the format of the response for simple protocol errors
         """
-        self._socket_path = socket_path
+        super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 
         self._request_handler = request_handler
         self._format_simple_error = error_response_maker or _default_error_response_maker
-
-        self._expose_to_group = expose_to_group
-        self._expose_to_others = expose_to_others
-
-    async def start(self):
-        """
-        Initializes the socket. This is an opportunity for any major socket/permissions issues to be reported before
-        the daemon main loop starts.
-        """
-        self._server = await asyncio.start_unix_server(self._on_connection, path=self._socket_path)
-
-        permissions = 0o600
-
-        etg = self._expose_to_group
-        expose, group_id = (etg, None) if etg.__class__ == bool else (True, etg)
-
-        if expose:
-            permissions |= 0o060
-
-            if group_id is not None:
-                shutil.chown(self._socket_path, group=group_id)
-
-        if self._expose_to_others:
-            permissions |= 0o006
-
-        self._socket_path.chmod(permissions)
-
-    async def run(self):
-        """
-        This runnable should be used for the async task that runs continuously and serves requests.
-        """
-        try:
-            async with self._server:
-                await self._server.serve_forever()
-        finally:
-            self._socket_path.unlink()
 
     async def _on_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         response = None
