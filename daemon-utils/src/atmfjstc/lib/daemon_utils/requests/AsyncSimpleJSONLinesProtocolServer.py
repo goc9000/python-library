@@ -19,7 +19,19 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     Specifically, each request, as well as its response, is expected to be valid JSON terminated by a newline, with no
     newlines inside (encoded newlines in strings are OK of course).
 
+    The simplest use of this is along the lines of::
+
+        server = AsyncSimpleJSONLinesProtocolServer(socket_path=..., request_handler=_my_request_func)
+
+        async def _my_request_func(request: dict) -> dict:
+            # Return appropriate response dict here
+
+        # (call await server.start() and then await server.run() in the daemon main loop)
+
+    For more advanced processing, you can also subclass this.
+
     Notes:
+
     - Requests are handled independently. If there is any need to ensure that only one request is executing at any
       given time, or some other locking, this should be done by the caller in the request handler
     - This just ensures the basic JSON format is respected, any more advanced encoding/decoding/schema checking is
