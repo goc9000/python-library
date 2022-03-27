@@ -3,6 +3,7 @@ import logging
 import json
 
 from pathlib import Path
+from dataclasses import dataclass
 
 from typing import Callable, Awaitable, Optional, Union, Literal
 
@@ -10,6 +11,43 @@ from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProt
 
 
 LOG = logging.getLogger()
+
+
+@dataclass(frozen=True)
+class MicroResponse:
+    """
+    Special class for enabling more advanced request processing such as binary uploads and downloads. The following
+    parameters are available:
+
+    - `reply`: A dict containing the response that should be sent immediately after the request is received (and
+               before any binary uploads are processed as well as before any downloads occur). May be None, in which
+               case no response will be sent at this point, but this is not recommended - for symmetry, both downloads
+               and uploads should feature a preliminary response signaling whether the download or upload can proceed.
+    - `serve_download`: If provided, this async callable will be called with a `StreamWriter` where the binary data
+                        for the download is to be written (e.g. by a closure inside the request processing function).
+                        If the async callable returns a dict, this reply will be written to the socket after the
+                        download (e.g. for announcing a checksum). Any errors during the download will cause the stream
+                        to be broken off abruptly - a JSON error will never be emitted in the case.
+    - `receive_upload`: If provided, this async callable will be called with a `StreamReader` where the binary data for
+                        any upload can be read (e.g. by a closure inside the request processing function). It is up to
+                        the caller to know how much to read. The same considerations regarding a final response and
+                        the handling of errors apply as for the `serve_download` callback.
+
+    The order of processing is:
+
+    - the JSON part of the request is obtained from the user
+    - `reply` is emitted (if not None)
+    - `receive_upload` is called and its response emitted (if not None)
+    - `server_download` is called and its response emitted (if not None)
+    """
+
+    reply: Optional[dict] = None
+    serve_download: Optional[Callable[[asyncio.StreamWriter], Awaitable[Optional[dict]]]] = None
+    receive_upload: Optional[Callable[[asyncio.StreamReader], Awaitable[Optional[dict]]]] = None
+
+    @staticmethod
+    def normalize(response: Union[dict, 'MicroResponse']) -> 'MicroResponse':
+        return response if isinstance(response, MicroResponse) else MicroResponse(reply=response)
 
 
 class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
@@ -30,6 +68,10 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
     For more advanced processing, you can also subclass this.
 
+    This server also supports a simple mechanism for large binary uploads/downloads. To make use of it, return a
+    `MicroResponse` class instead of a dict (see the `MicroResponse` class docs for details on how to handle uploads/
+    downloads)
+
     Notes:
 
     - Requests are handled independently. If there is any need to ensure that only one request is executing at any
@@ -39,13 +81,13 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     - Only a basic, "single request", "single response" interaction is implemented (no long polling, etc)
     """
 
-    _request_handler: Callable[[dict], Awaitable[dict]]
+    _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
     _format_simple_error: Callable[[str], dict]
     _keep_connection_open: bool
 
     def __init__(
         self, socket_path: Path,
-        request_handler: Callable[[dict], Awaitable[dict]],
+        request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]],
         expose_to_group: Union[bool, int, str] = False,
         expose_to_others: bool = False,
         error_response_maker: Optional[Callable[[str], dict]] = None,
@@ -57,7 +99,8 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         Args:
             socket_path: Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
             request_handler: An async function that will be called with a dict representing the request. It must
-                             return a dict containing the response.
+                             return a dict containing the response (or a MicroResponse for more advanced situations,
+                             check the class documentation).
             expose_to_group: True to allow the default group access to the socket. Specify an explicit ID or name to
                              also change the socket to this group (needs root access or for the daemon user to be part
                              of that group)
@@ -101,11 +144,39 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             logging.exception("Unexpected exception while processing request")
             response = self._format_simple_error("Internal error")
 
-        replied = await self._reply_best_effort(writer, response)
-        if not replied:
-            can_continue = False
+        response = MicroResponse.normalize(response)
 
-        return can_continue
+        reply_ok = await self._reply_best_effort(writer, response.reply)
+        if not reply_ok or not can_continue:
+            return False
+
+        if response.receive_upload is not None:
+            try:
+                second_response = await response.receive_upload(reader)
+                if not await self._reply_best_effort(writer, second_response):
+                    return False
+            except asyncio.CancelledError:
+                # Note that we intentionally don't send error responses during the upload as we don't know whether the
+                # client expects multiple JSON replies. The serve_download callback can be made to intercept these
+                # errors and send a specific response if desired.
+                return False
+            except:
+                logging.exception("Unexpected exception while reading upload")
+                return False
+
+        if response.serve_download is not None:
+            try:
+                second_response = await response.serve_download(writer)
+                await writer.drain()
+                if not await self._reply_best_effort(writer, second_response):
+                    return False
+            except asyncio.CancelledError:
+                return False
+            except:
+                logging.exception("Unexpected exception while serving download")
+                return False
+
+        return True
 
     async def _read_request(
         self, reader: asyncio.StreamReader
