@@ -3,14 +3,21 @@ import logging
 import json
 
 from pathlib import Path
+from enum import Enum
 from dataclasses import dataclass
-
 from typing import Callable, Awaitable, Optional, Union, Literal
 
 from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
 
 
 LOG = logging.getLogger()
+
+
+class BasicErrorCode(Enum):
+    INTERNAL_ERROR = 'internal-error'
+    REQUEST_NOT_JSON = 'request-not-json'
+    REQUEST_TOO_LARGE = 'request-too-large'
+    SHUTTING_DOWN = 'shutting-down'
 
 
 @dataclass(frozen=True)
@@ -82,7 +89,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     """
 
     _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
-    _format_simple_error: Callable[[str], dict]
+    _format_simple_error: Callable[[BasicErrorCode, str], dict]
     _keep_connection_open: bool
 
     def __init__(
@@ -90,7 +97,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]],
         expose_to_group: Union[bool, int, str] = False,
         expose_to_others: bool = False,
-        error_response_maker: Optional[Callable[[str], dict]] = None,
+        error_response_maker: Optional[Callable[[BasicErrorCode, str], dict]] = None,
         keep_connection_open: bool = False,
     ):
         """
@@ -142,7 +149,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             can_continue = False
         except:
             logging.exception("Unexpected exception while processing request")
-            response = self._format_simple_error("Internal error")
+            response = self._internal_error_response()
 
         response = MicroResponse.normalize(response)
 
@@ -184,14 +191,14 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         try:
             line = await reader.readuntil(b'\n')
         except asyncio.LimitOverrunError:
-            return None, self._format_simple_error("Request too large")
+            return None, self._req_too_large_error_response()
         except asyncio.IncompleteReadError as e:
             line = e.partial
         except asyncio.CancelledError:
             return None, self._shutting_down_error_response()
         except:
             logging.exception("Unexpected exception while reading request")
-            return None, self._format_simple_error("Internal error")
+            return None, self._internal_error_response()
 
         if line == b'':
             return None, None
@@ -204,7 +211,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         if isinstance(request, dict):
             return request, None
 
-        return None, self._format_simple_error("Request is not valid one-line JSON")
+        return None, self._not_json_error_response()
 
     async def _reply_best_effort(self, writer: asyncio.StreamWriter, response: Optional[dict]) -> bool:
         if response is None:
@@ -218,12 +225,22 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         except:
             return False
 
+    def _not_json_error_response(self) -> dict:
+        return self._format_simple_error(BasicErrorCode.REQUEST_NOT_JSON, "Request is not valid one-line JSON")
+
+    def _req_too_large_error_response(self) -> dict:
+        return self._format_simple_error(BasicErrorCode.REQUEST_TOO_LARGE, "Request too large")
+
+    def _internal_error_response(self) -> dict:
+        return self._format_simple_error(BasicErrorCode.INTERNAL_ERROR, "Internal error")
+
     def _shutting_down_error_response(self) -> dict:
-        return self._format_simple_error("Daemon shutting down")
+        return self._format_simple_error(BasicErrorCode.SHUTTING_DOWN, "Daemon shutting down")
 
 
-def _default_error_response_maker(message: str) -> dict:
+def _default_error_response_maker(code: BasicErrorCode, message: str) -> dict:
     return dict(
         status='error',
+        code=code.value,
         message=message,
     )
