@@ -38,7 +38,7 @@ from typing import Text, NoReturn, Union, Optional, ContextManager, Callable, Di
 from pidlockfile import PIDLockFile, AlreadyLocked, LockTimeout
 from sdnotify import SystemdNotifier
 
-from atmfjstc.lib.cli_utils.errors import fail, DescriptiveError
+from atmfjstc.lib.cli_utils.errors import fail, DescriptiveError, short_format_exception
 from atmfjstc.lib.cli_utils.root import is_root
 
 
@@ -154,7 +154,7 @@ class SystemdDaemonBase(ABC):
             self.logger().info("Shut down by user")
             sys.exit(0)
         except DescriptiveError as e:
-            self.logger().fatal(str(e))
+            self.logger().fatal(short_format_exception(e))
             sys.exit(-1)
         except Exception as e:
             self.logger().fatal("Unexpected exception", exc_info=e)
