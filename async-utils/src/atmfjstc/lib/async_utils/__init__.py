@@ -44,7 +44,7 @@ async def gather_hard(*awaitables: Awaitable) -> list:
             await asyncio.gather(*futures, return_exceptions=True)
 
 
-async def run_uncancelable_thread(thread_main: Callable[[], T]) -> Awaitable[T]:
+async def run_uncancelable_thread(thread_main: Callable[[], T]) -> T:
     """
     Runs non-async code in a separate thread, while in an async context, like `asyncio.to_thread`, but with better
     behavior on cancellation.
@@ -78,7 +78,7 @@ async def run_uncancelable_thread(thread_main: Callable[[], T]) -> Awaitable[T]:
         raise
 
 
-async def run_cancelable_thread(thread_main: Callable[[], T], on_cancel: Callable[[], None]) -> Awaitable[T]:
+async def run_cancelable_thread(thread_main: Callable[[], T], on_cancel: Callable[[], None]) -> T:
     """
     Runs non-async code in a separate thread, while in an async context, like `asyncio.to_thread`, but supporting a
     generic mechanism for canceling the code in the thread.
@@ -115,7 +115,7 @@ async def run_cancelable_thread(thread_main: Callable[[], T], on_cancel: Callabl
 
 async def run_cancelable_thread_using_queue(
     thread_main: Callable[[queue.Queue], T], end_element: Any = None
-) -> Awaitable[T]:
+) -> T:
     """
     Runs code in a separate thread, while in an async context, like `asyncio.to_thread`, but supporting a specific,
     queue-based mechanism for canceling the code in the thread.
