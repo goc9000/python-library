@@ -132,8 +132,15 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         except:
             logging.exception("Unexpected exception while handling connection")
         finally:
-            writer.close()
-            await writer.wait_closed()
+            # Swallow errors as we may get BrokenPipe
+            try:
+                writer.close()
+            except:
+                pass
+            try:
+                await writer.wait_closed()
+            except:
+                pass
 
     async def _read_request_loop(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> bool:
         request, suggested_response = await self._read_request(reader)
