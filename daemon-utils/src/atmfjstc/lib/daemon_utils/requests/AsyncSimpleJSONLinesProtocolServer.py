@@ -3,21 +3,14 @@ import logging
 import json
 
 from pathlib import Path
-from enum import Enum
 from dataclasses import dataclass
 from typing import Callable, Awaitable, Optional, Union, Literal
 
+from atmfjstc.lib.daemon_utils.requests.standard_errors import BasicErrorCode
 from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
 
 
 LOG = logging.getLogger()
-
-
-class BasicErrorCode(Enum):
-    INTERNAL_ERROR = 'internal-error'
-    REQUEST_NOT_JSON = 'request-not-json'
-    REQUEST_TOO_LARGE = 'request-too-large'
-    SHUTTING_DOWN = 'shutting-down'
 
 
 @dataclass(frozen=True)
