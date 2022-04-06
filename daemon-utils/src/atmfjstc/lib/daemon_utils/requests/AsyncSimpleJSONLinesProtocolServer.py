@@ -137,9 +137,14 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                 pass
 
     async def _read_request_loop(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> bool:
-        request, suggested_response = await self._read_request(reader)
+        try:
+            request = await self._read_request(reader)
+        except Exception as error:
+            response = self._format_simple_error(error)
+            await self._reply_best_effort(writer, response)
+            return False
+
         if request is None:
-            await self._reply_best_effort(writer, suggested_response)
             return False
 
         can_continue = True
@@ -186,33 +191,31 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
         return True
 
-    async def _read_request(
-        self, reader: asyncio.StreamReader
-    ) -> Union[tuple[dict, Literal[None]], tuple[Literal[None], Optional[dict]]]:
+    async def _read_request(self, reader: asyncio.StreamReader) -> Optional[dict]:
         try:
             line = await reader.readuntil(b'\n')
         except asyncio.LimitOverrunError:
-            return None, self._req_too_large_error_response()
+            raise RequestTooLargeError
         except asyncio.IncompleteReadError as e:
             line = e.partial
         except asyncio.CancelledError:
-            return None, self._shutting_down_error_response()
-        except:
+            raise DaemonShuttingDownError
+        except Exception:
             logging.exception("Unexpected exception while reading request")
-            return None, self._internal_error_response()
+            raise InternalError
 
         if line == b'':
-            return None, None
+            return None
 
         try:
             request = json.loads(line)
         except json.JSONDecodeError:
             request = None
 
-        if isinstance(request, dict):
-            return request, None
+        if not isinstance(request, dict):
+            raise RequestNotJSONError
 
-        return None, self._not_json_error_response()
+        return request
 
     async def _reply_best_effort(self, writer: asyncio.StreamWriter, response: Optional[dict]) -> bool:
         if response is None:
@@ -225,12 +228,6 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             return True
         except:
             return False
-
-    def _not_json_error_response(self) -> dict:
-        return self._format_simple_error(RequestNotJSONError())
-
-    def _req_too_large_error_response(self) -> dict:
-        return self._format_simple_error(RequestTooLargeError())
 
     def _internal_error_response(self) -> dict:
         return self._format_simple_error(InternalError())
