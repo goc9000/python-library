@@ -83,7 +83,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     """
 
     _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
-    _format_simple_error: Callable[[Exception], dict]
+    _error_response_hook: Callable[[Exception], Optional[dict]]
     _keep_connection_open: bool
 
     def __init__(
@@ -91,7 +91,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]],
         expose_to_group: Union[bool, int, str] = False,
         expose_to_others: bool = False,
-        error_response_maker: Optional[Callable[[Exception], dict]] = None,
+        format_error: Optional[Callable[[Exception], Optional[dict]]] = None,
         keep_connection_open: bool = False,
     ):
         """
@@ -106,7 +106,9 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                              also change the socket to this group (needs root access or for the daemon user to be part
                              of that group)
             expose_to_others: True to allow non-owner, non-group users access to the socket
-            error_response_maker: Use this to override the format of the response for simple protocol errors
+            format_error: Specify a function here to customize how exceptions are converted to responses. The function
+                          will receive an Exception and must return a dict with the response. If you return None, the
+                          default processing will be performed.
             keep_connection_open: If set to true, the connection will remain open after a request is executed, allowing
                                   the client to send more requests. The connection will still close after any error that
                                   is likely to cause loss of sync (e.g. malformed JSON)
@@ -114,7 +116,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 
         self._request_handler = request_handler
-        self._format_simple_error = error_response_maker or (lambda error: self._format_error_fallback(error))
+        self._error_response_hook = format_error
         self._keep_connection_open = keep_connection_open
 
     async def _on_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -140,7 +142,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         try:
             request = await self._read_request(reader)
         except Exception as error:
-            response = self._format_simple_error(error)
+            response = self._format_error_response(error)
             await self._reply_best_effort(writer, response)
             return False
 
@@ -230,10 +232,22 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             return False
 
     def _internal_error_response(self) -> dict:
-        return self._format_simple_error(InternalError())
+        return self._format_error_response(InternalError())
 
     def _shutting_down_error_response(self) -> dict:
-        return self._format_simple_error(DaemonShuttingDownError())
+        return self._format_error_response(DaemonShuttingDownError())
+
+    def _format_error_response(self, error: Exception) -> dict:
+        if self._error_response_hook is not None:
+            try:
+                response = self._error_response_hook(error)
+
+                if response is not None:
+                    return response
+            except:
+                return self._format_error_fallback(InternalError())
+
+        return self._format_error_fallback(error)
 
     def _format_error_fallback(self, error: Exception) -> dict:
         if not isinstance(error, BasicError):
