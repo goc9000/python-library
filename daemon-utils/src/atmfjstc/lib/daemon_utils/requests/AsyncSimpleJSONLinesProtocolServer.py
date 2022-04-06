@@ -6,7 +6,8 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable, Awaitable, Optional, Union, Literal
 
-from atmfjstc.lib.daemon_utils.requests.standard_errors import BasicErrorCode
+from atmfjstc.lib.daemon_utils.requests.standard_errors import BasicError, InternalError, RequestNotJSONError, \
+    RequestTooLargeError, DaemonShuttingDownError
 from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
 
 
@@ -82,7 +83,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     """
 
     _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
-    _format_simple_error: Callable[[BasicErrorCode, str], dict]
+    _format_simple_error: Callable[[Exception], dict]
     _keep_connection_open: bool
 
     def __init__(
@@ -90,7 +91,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]],
         expose_to_group: Union[bool, int, str] = False,
         expose_to_others: bool = False,
-        error_response_maker: Optional[Callable[[BasicErrorCode, str], dict]] = None,
+        error_response_maker: Optional[Callable[[Exception], dict]] = None,
         keep_connection_open: bool = False,
     ):
         """
@@ -113,7 +114,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 
         self._request_handler = request_handler
-        self._format_simple_error = error_response_maker or _default_error_response_maker
+        self._format_simple_error = error_response_maker or (lambda error: self._format_error_fallback(error))
         self._keep_connection_open = keep_connection_open
 
     async def _on_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -226,21 +227,23 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             return False
 
     def _not_json_error_response(self) -> dict:
-        return self._format_simple_error(BasicErrorCode.REQUEST_NOT_JSON, "Request is not valid one-line JSON")
+        return self._format_simple_error(RequestNotJSONError())
 
     def _req_too_large_error_response(self) -> dict:
-        return self._format_simple_error(BasicErrorCode.REQUEST_TOO_LARGE, "Request too large")
+        return self._format_simple_error(RequestTooLargeError())
 
     def _internal_error_response(self) -> dict:
-        return self._format_simple_error(BasicErrorCode.INTERNAL_ERROR, "Internal error")
+        return self._format_simple_error(InternalError())
 
     def _shutting_down_error_response(self) -> dict:
-        return self._format_simple_error(BasicErrorCode.SHUTTING_DOWN, "Daemon shutting down")
+        return self._format_simple_error(DaemonShuttingDownError())
 
+    def _format_error_fallback(self, error: Exception) -> dict:
+        if not isinstance(error, BasicError):
+            error = InternalError()
 
-def _default_error_response_maker(code: BasicErrorCode, message: str) -> dict:
-    return dict(
-        status='error',
-        code=code.value,
-        message=message,
-    )
+        return dict(
+            status='error',
+            code=error.code.value,
+            message=error.args[0],
+        )
