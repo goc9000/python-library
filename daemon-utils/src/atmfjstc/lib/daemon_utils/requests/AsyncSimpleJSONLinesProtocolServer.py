@@ -4,7 +4,7 @@ import json
 
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Callable, Awaitable, Optional, Union, Literal
+from typing import Callable, Awaitable, Optional, Union
 
 from atmfjstc.lib.daemon_utils.requests.standard_errors import BasicError, InternalError, RequestNotJSONError, \
     RequestTooLargeError, DaemonShuttingDownError
@@ -67,7 +67,9 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
         # (call await server.start() and then await server.run() in the daemon main loop)
 
-    For more advanced processing, you can also subclass this.
+    To report an error back to the caller, you can return an appropriate response or just throw. By default, this server
+    will format all exceptions it doesn't recognize as "Internal error", but you add specific handling for any other
+    exception and also control how exceptions are converted to responses.
 
     This server also supports a simple mechanism for large binary uploads/downloads. To make use of it, return a
     `MicroResponse` class instead of a dict (see the `MicroResponse` class docs for details on how to handle uploads/
@@ -142,27 +144,31 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         try:
             request = await self._read_request(reader)
         except Exception as error:
-            response = self._format_error_response(error)
+            response, _ = self._format_error_response(error)
             await self._reply_best_effort(writer, response)
             return False
 
         if request is None:
             return False
 
-        can_continue = True
         try:
             response = await self._request_handler(request)
-        except asyncio.CancelledError:
-            response = self._shutting_down_error_response()
-            can_continue = False
-        except:
-            logging.exception("Unexpected exception while processing request")
-            response = self._internal_error_response()
+        except Exception as error:
+            if isinstance(error, asyncio.CancelledError):
+                error = DaemonShuttingDownError()
+
+            response, caller_handled = self._format_error_response(error)
+
+            if not isinstance(error, BasicError) and not caller_handled:
+                logging.exception("Unexpected exception while processing request")
+
+            await self._reply_best_effort(writer, response)
+            return False
 
         response = MicroResponse.normalize(response)
 
         reply_ok = await self._reply_best_effort(writer, response.reply)
-        if not reply_ok or not can_continue:
+        if not reply_ok:
             return False
 
         if response.receive_upload is not None:
@@ -175,7 +181,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                 # client expects multiple JSON replies. The serve_download callback can be made to intercept these
                 # errors and send a specific response if desired.
                 return False
-            except:
+            except Exception:
                 logging.exception("Unexpected exception while reading upload")
                 return False
 
@@ -187,7 +193,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                     return False
             except asyncio.CancelledError:
                 return False
-            except:
+            except Exception:
                 logging.exception("Unexpected exception while serving download")
                 return False
 
@@ -231,23 +237,17 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         except:
             return False
 
-    def _internal_error_response(self) -> dict:
-        return self._format_error_response(InternalError())
-
-    def _shutting_down_error_response(self) -> dict:
-        return self._format_error_response(DaemonShuttingDownError())
-
-    def _format_error_response(self, error: Exception) -> dict:
+    def _format_error_response(self, error: Exception) -> tuple[dict, bool]:
         if self._error_response_hook is not None:
             try:
                 response = self._error_response_hook(error)
 
                 if response is not None:
-                    return response
+                    return response, True
             except:
-                return self._format_error_fallback(InternalError())
+                return self._format_error_fallback(InternalError()), False
 
-        return self._format_error_fallback(error)
+        return self._format_error_fallback(error), False
 
     def _format_error_fallback(self, error: Exception) -> dict:
         if not isinstance(error, BasicError):

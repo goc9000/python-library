@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-daemon-utils',
-    version='0.3.1',
+    version='0.4.0',
 
     author_email='atmfjstc@protonmail.com',
 
