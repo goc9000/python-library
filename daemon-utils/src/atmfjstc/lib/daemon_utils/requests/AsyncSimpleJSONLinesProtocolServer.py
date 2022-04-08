@@ -203,14 +203,14 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         try:
             line = await reader.readuntil(b'\n')
         except asyncio.LimitOverrunError:
-            raise RequestTooLargeError
+            raise RequestTooLargeError from None
         except asyncio.IncompleteReadError as e:
             line = e.partial
         except asyncio.CancelledError:
-            raise DaemonShuttingDownError
+            raise DaemonShuttingDownError from None
         except Exception:
             logging.exception("Unexpected exception while reading request")
-            raise InternalError
+            raise InternalError from None
 
         if line == b'':
             return None
