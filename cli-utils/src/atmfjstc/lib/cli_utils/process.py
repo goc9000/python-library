@@ -97,9 +97,9 @@ def run_external(
             cwd=cwd, timeout=timeout, encoding=encoding, errors=errors, text=text, env=env,
         )
     except subprocess.SubprocessError as e:
-        raise RunExternalError.from_std_error(e)
+        raise RunExternalError.from_std_error(e) from None
     except OSError as e:
-        raise RunExternalError.from_std_error(e, command, args)
+        raise RunExternalError.from_std_error(e, command, args) from None
 
     check_external_cmd_result(result, check_retcode=check_retcode, check_stderr=check_stderr)
 
