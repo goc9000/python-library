@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-py-lang-utils',
-    version='1.11.3',
+    version='1.11.4',
 
     author_email='atmfjstc@protonmail.com',
 

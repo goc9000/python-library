@@ -505,7 +505,7 @@ def _parse_store(value: Hashable) -> Callable[[Any], Any]:
     try:
         _ = hash(value)
     except Exception:
-        raise TypeError("Only constant (hashable) values may be stored")
+        raise TypeError("Only constant (hashable) values may be stored") from None
 
     return lambda _: value
 
