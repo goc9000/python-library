@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import json
+import re
 
 from pathlib import Path
 from dataclasses import dataclass
@@ -87,6 +88,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
     _error_response_hook: Callable[[Exception], Optional[dict]]
     _keep_connection_open: bool
+    _max_request_size: int
 
     def __init__(
         self, socket_path: Path,
@@ -95,6 +97,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         expose_to_others: bool = False,
         format_error: Optional[Callable[[Exception], Optional[dict]]] = None,
         keep_connection_open: bool = False,
+        max_request_size: int = 128 * 1024,
     ):
         """
         Constructor.
@@ -114,12 +117,14 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             keep_connection_open: If set to true, the connection will remain open after a request is executed, allowing
                                   the client to send more requests. The connection will still close after any error that
                                   is likely to cause loss of sync (e.g. malformed JSON)
+            max_request_size: The maximum request size, in bytes
         """
         super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 
         self._request_handler = request_handler
         self._error_response_hook = format_error
         self._keep_connection_open = keep_connection_open
+        self._max_request_size = max_request_size
 
     async def _on_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         try:
@@ -201,22 +206,43 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
     async def _read_request(self, reader: asyncio.StreamReader) -> Optional[dict]:
         try:
-            line = await reader.readuntil(b'\n')
-        except asyncio.LimitOverrunError:
-            raise RequestTooLargeError from None
-        except asyncio.IncompleteReadError as e:
-            line = e.partial
+            finished = False
+            parts = []
+            total_len = 0
+
+            while not finished:
+                try:
+                    data = await reader.readuntil(b'\n')
+                    finished = True
+                except asyncio.LimitOverrunError:
+                    data = await reader.readexactly(self._buffer_limit)
+                except asyncio.IncompleteReadError as e:
+                    data = e.partial
+                    finished = True
+
+                if len(parts) == 0:
+                    if data == b'':
+                        return None
+                    if not re.match(rb'\s*{', data):
+                        raise RequestNotJSONError
+
+                parts.append(data)
+                total_len += len(data)
+
+                if total_len > self._max_request_size:
+                    raise RequestTooLargeError(self._max_request_size)
         except asyncio.CancelledError:
             raise DaemonShuttingDownError from None
+        except (RequestTooLargeError, RequestNotJSONError):
+            raise
         except Exception:
             logging.exception("Unexpected exception while reading request")
             raise InternalError from None
 
-        if line == b'':
-            return None
+        data = b''.join(parts)
 
         try:
-            request = json.loads(line)
+            request = json.loads(data)
         except json.JSONDecodeError:
             request = None
 
@@ -253,8 +279,13 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         if not isinstance(error, BasicError):
             error = InternalError()
 
-        return dict(
+        params = dict(
             status='error',
             code=error.code.value,
             message=error.args[0],
         )
+
+        if isinstance(error, RequestTooLargeError):
+            params['max_size'] = error.max_size
+
+        return params

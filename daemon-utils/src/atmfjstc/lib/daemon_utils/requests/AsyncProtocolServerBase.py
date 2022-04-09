@@ -19,6 +19,8 @@ class AsyncProtocolServerBase(ABC):
     _expose_to_group: Union[int, str, bool]
     _expose_to_others: bool
 
+    _buffer_limit: int = 64 * 1024
+
     def __init__(
         self, socket_path: Path,
         expose_to_group: Union[bool, int, str] = False,
@@ -43,7 +45,9 @@ class AsyncProtocolServerBase(ABC):
         Initializes the socket. This is an opportunity for any major socket/permissions issues to be reported before
         the daemon main loop starts.
         """
-        self._server = await asyncio.start_unix_server(self._on_connection, path=self._socket_path)
+        self._server = await asyncio.start_unix_server(
+            self._on_connection, path=self._socket_path, limit=self._buffer_limit
+        )
 
         permissions = 0o600
 

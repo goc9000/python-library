@@ -31,8 +31,12 @@ class RequestNotJSONError(BasicError):
 
 
 class RequestTooLargeError(BasicError):
-    def __init__(self):
-        super().__init__(BasicErrorCode.REQUEST_TOO_LARGE, "Request too large")
+    max_size: int
+
+    def __init__(self, max_size: int):
+        self.max_size = max_size
+
+        super().__init__(BasicErrorCode.REQUEST_TOO_LARGE, f"Request too large (>{max_size} bytes)")
 
 
 class DaemonShuttingDownError(BasicError):
