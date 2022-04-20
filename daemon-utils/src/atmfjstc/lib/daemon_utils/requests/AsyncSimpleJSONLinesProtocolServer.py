@@ -34,6 +34,9 @@ class MicroResponse:
                         any upload can be read (e.g. by a closure inside the request processing function). It is up to
                         the caller to know how much to read. The same considerations regarding a final response and
                         the handling of errors apply as for the `serve_download` callback.
+    - `cleanup`: If provided, this async callable will be awaited for, no matter what, once the response has been
+                 served. It is meant to be used as a cleanup stage for any resources temporarily allocated for serving
+                 a download/upload response.
 
     The order of processing is:
 
@@ -41,11 +44,13 @@ class MicroResponse:
     - `reply` is emitted (if not None)
     - `receive_upload` is called and its response emitted (if not None)
     - `server_download` is called and its response emitted (if not None)
+    - `cleanup` is called (if not None)
     """
 
     reply: Optional[dict] = None
     serve_download: Optional[Callable[[asyncio.StreamWriter], Awaitable[Optional[dict]]]] = None
     receive_upload: Optional[Callable[[asyncio.StreamReader], Awaitable[Optional[dict]]]] = None
+    cleanup: Optional[Callable[[], Awaitable[None]]] = None
 
     @staticmethod
     def normalize(response: Union[dict, 'MicroResponse']) -> 'MicroResponse':
@@ -172,6 +177,23 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
         response = MicroResponse.normalize(response)
 
+        try:
+            can_continue = await self._serve_response(response, reader, writer)
+        finally:
+            if response.cleanup is not None:
+                try:
+                    await response.cleanup()
+                except asyncio.CancelledError:
+                    can_continue = False
+                except Exception:
+                    logging.exception("Unexpected exception while cleaning up")
+                    can_continue = False
+
+        return can_continue
+
+    async def _serve_response(
+        self, response: MicroResponse, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> bool:
         reply_ok = await self._reply_best_effort(writer, response.reply)
         if not reply_ok:
             return False
