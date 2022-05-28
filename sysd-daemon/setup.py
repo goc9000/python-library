@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-sysd-daemon',
-    version='0.1.2',
+    version='0.2.0',
 
     author_email='atmfjstc@protonmail.com',
 

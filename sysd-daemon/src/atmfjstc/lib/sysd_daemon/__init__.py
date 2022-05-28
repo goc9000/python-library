@@ -13,14 +13,13 @@ It takes care of a few issues, such as:
 Daemons built using this harness should run in the foreground and not do the traditional forking, etc. The corresponding
 unit file should have a `Type` of `simple` or `notify`.
 
-By default logging is done to stderr. The unit file configuration can be used so as to redirect this to some other place
-if necessary.
+By default logging is done to stderr, in a SystemD friendly format. If needed, logging can be adjusted by either
+overriding the `setup_logging` method, or by tweaking settings in the SystemD unit file.
 
 Note that PID files are generally not required by systemd daemons, but we support them anyway, e.g. so as to support
 exclusion between a debug instance run in a terminal vs the real one that might still be running in the background.
 """
 
-import logging
 import sys
 import signal
 import os
@@ -29,6 +28,7 @@ import fcntl
 import time
 import asyncio
 
+from logging import Logger, getLogger, INFO
 from pathlib import Path
 from contextlib import contextmanager
 from argparse import ArgumentParser, Namespace
@@ -40,6 +40,8 @@ from sdnotify import SystemdNotifier
 
 from atmfjstc.lib.cli_utils.errors import fail, DescriptiveError, short_format_exception
 from atmfjstc.lib.cli_utils.root import is_root
+
+from atmfjstc.lib.sysd_daemon.logging import init_sysd_friendly_logging
 
 
 class SystemdDaemonBase(ABC):
@@ -104,26 +106,37 @@ class SystemdDaemonBase(ABC):
         """
         Override this if desired, to configure logging for the daemon.
 
+        By default, this sets up logging as appropriate for running the daemon as a ``systemd`` unit. If debugging the
+        daemon in the console, you might want to use `init_console_friendly_logging` instead.
+
         Args:
             raw_args: A Namespace object containing the parsed command-line arguments. Note that this may be None, if
                       an error occurred during command-line parsing. Logging MUST still be configured in this case,
                       using some sort of default settings.
         """
-        logging.basicConfig(
-            level='INFO',
-            style='{',
-            format='[{asctime}] {levelname}: {message}',
-            datefmt='%Y-%m-%d %H:%M:%S'  # We omit the milliseconds by default
-        )
+        init_sysd_friendly_logging(self.logging_level(raw_args))
 
-    def logger(self) -> logging.Logger:
+    def logging_level(self, raw_args: Optional[Namespace]) -> int:
+        """
+        Override this if desired, to set the default logging level for the daemon (default: INFO).
+
+        Args:
+            raw_args: A Namespace object containing the parsed command-line arguments. Note that this may be None, if
+                      an error occurred during command-line parsing.
+
+        Returns:
+            A logging.DEBUG, INFO, etc. constant
+        """
+        return INFO
+
+    def logger(self) -> Logger:
         """
         Override this if desired, to change the logger used by the daemon harness.
 
         Returns:
             The Logger object
         """
-        return logging.getLogger()
+        return getLogger()
 
     def go(self):
         """
