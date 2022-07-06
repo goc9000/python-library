@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-stay-awake',
-    version='0.1.0',
+    version='0.1.1',
 
     author_email='atmfjstc@protonmail.com',
 
