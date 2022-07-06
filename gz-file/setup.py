@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-gz-file',
-    version='1.0.0',
+    version='1.0.1',
 
     author_email='atmfjstc@protonmail.com',
 
