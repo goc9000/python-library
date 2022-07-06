@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-xtd-type-spec',
-    version='1.1.1',
+    version='1.1.2',
 
     author_email='atmfjstc@protonmail.com',
 
