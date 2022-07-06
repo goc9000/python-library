@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='atmfjstc-ez-repr',
-    version='1.1.1',
+    version='1.1.2',
 
     author_email='atmfjstc@protonmail.com',
 
