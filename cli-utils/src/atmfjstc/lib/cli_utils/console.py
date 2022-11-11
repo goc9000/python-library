@@ -35,10 +35,10 @@ Notes:
 import sys
 import shutil
 import subprocess
-import colorama
 
 from typing import Optional, Tuple, TextIO
 from getpass import getpass
+from colorama import just_fix_windows_console
 from termcolor import cprint
 
 
@@ -286,7 +286,7 @@ def _init_default_console() -> Console:
     use_color = sys.stdout.isatty() and sys.stderr.isatty()
 
     if use_color:
-        colorama.init()
+        just_fix_windows_console()
 
     return Console(
         enable_stdout=True,
