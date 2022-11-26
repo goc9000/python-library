@@ -21,22 +21,28 @@ class MicroResponse:
     Special class for enabling more advanced request processing such as binary uploads and downloads. The following
     parameters are available:
 
-    - `reply`: A dict containing the response that should be sent immediately after the request is received (and
-               before any binary uploads are processed as well as before any downloads occur). May be None, in which
-               case no response will be sent at this point, but this is not recommended - for symmetry, both downloads
-               and uploads should feature a preliminary response signaling whether the download or upload can proceed.
-    - `serve_download`: If provided, this async callable will be called with a `StreamWriter` where the binary data
-                        for the download is to be written (e.g. by a closure inside the request processing function).
-                        If the async callable returns a dict, this reply will be written to the socket after the
-                        download (e.g. for announcing a checksum). Any errors during the download will cause the stream
-                        to be broken off abruptly - a JSON error will never be emitted in the case.
-    - `receive_upload`: If provided, this async callable will be called with a `StreamReader` where the binary data for
-                        any upload can be read (e.g. by a closure inside the request processing function). It is up to
-                        the caller to know how much to read. The same considerations regarding a final response and
-                        the handling of errors apply as for the `serve_download` callback.
-    - `cleanup`: If provided, this async callable will be awaited for, no matter what, once the response has been
-                 served. It is meant to be used as a cleanup stage for any resources temporarily allocated for serving
-                 a download/upload response.
+    `reply`:
+      A dict containing the response that should be sent immediately after the request is received (and before any
+      binary uploads are processed as well as before any downloads occur). May be None, in which case no response will
+      be sent at this point, but this is not recommended - for symmetry, both downloads and uploads should feature a
+      preliminary response signaling whether the download or upload can proceed.
+
+    `serve_download`:
+      If provided, this async callable will be called with a `StreamWriter` where the binary data for the download is to
+      be written (e.g. by a closure inside the request processing function). If the async callable returns a dict, this
+      reply will be written to the socket after the download (e.g. for announcing a checksum). Any errors during the
+      download will cause the stream to be broken off abruptly - a JSON error will never be emitted in the case.
+
+    `receive_upload`:
+      If provided, this async callable will be called with a `StreamReader` where the binary data for any upload can be
+      read (e.g. by a closure inside the request processing function). It is up to the caller to know how much to read.
+      The same considerations regarding a final response and the handling of errors apply as for the `serve_download`
+      callback.
+
+    `cleanup`:
+      If provided, this async callable will be awaited for, no matter what, once the response has been served. It is
+      meant to be used as a cleanup stage for any resources temporarily allocated for serving a download/upload
+      response.
 
     The order of processing is:
 
@@ -108,21 +114,27 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         Constructor.
 
         Args:
-            socket_path: Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
-            request_handler: An async function that will be called with a dict representing the request. It must
-                             return a dict containing the response (or a MicroResponse for more advanced situations,
-                             check the class documentation).
-            expose_to_group: True to allow the default group access to the socket. Specify an explicit ID or name to
-                             also change the socket to this group (needs root access or for the daemon user to be part
-                             of that group)
-            expose_to_others: True to allow non-owner, non-group users access to the socket
-            format_error: Specify a function here to customize how exceptions are converted to responses. The function
-                          will receive an Exception and must return a dict with the response. If you return None, the
-                          default processing will be performed.
-            keep_connection_open: If set to true, the connection will remain open after a request is executed, allowing
-                                  the client to send more requests. The connection will still close after any error that
-                                  is likely to cause loss of sync (e.g. malformed JSON)
-            max_request_size: The maximum request size, in bytes
+            socket_path:
+              Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
+            request_handler:
+              An async function that will be called with a dict representing the request. It must return a dict
+              containing the response (or a `MicroResponse` for more advanced situations, check the class
+              documentation).
+            expose_to_group:
+              True to allow the default group access to the socket. Specify an explicit ID or name to also change the
+              socket to this group (needs root access or for the daemon user to be part of that group)
+            expose_to_others:
+              True to allow non-owner, non-group users access to the socket
+            format_error:
+              Specify a function here to customize how exceptions are converted to responses. The function will receive
+              an Exception and must return a dict with the response. If you return None, the default processing will be
+              performed.
+            keep_connection_open:
+              If set to true, the connection will remain open after a request is executed, allowing the client to send
+              more requests. The connection will still close after any error that is likely to cause loss of sync (e.g.
+              malformed JSON)
+            max_request_size:
+              The maximum request size, in bytes
         """
         super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
 

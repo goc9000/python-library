@@ -30,11 +30,13 @@ class AsyncProtocolServerBase(ABC):
         Constructor.
 
         Args:
-            socket_path: Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
-            expose_to_group: True to allow the default group access to the socket. Specify an explicit ID or name to
-                             also change the socket to this group (needs root access or for the daemon user to be part
-                             of that group)
-            expose_to_others: True to allow non-owner, non-group users access to the socket
+            socket_path:
+              Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
+            expose_to_group:
+              True to allow the default group access to the socket. Specify an explicit ID or name to also change the
+              socket to this group (needs root access or for the daemon user to be part of that group)
+            expose_to_others:
+              True to allow non-owner, non-group users access to the socket
         """
         self._socket_path = socket_path
         self._expose_to_group = expose_to_group
