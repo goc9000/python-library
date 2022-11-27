@@ -39,6 +39,13 @@ class MicroResponse:
       The same considerations regarding a final response and the handling of errors apply as for the `serve_download`
       callback.
 
+    `multi_reply`:
+      If provided, this async callable will be called with another async callable that can be used so as to continue
+      emitting replies after the first one over time, e.g. to implement a long polling or subscription feature. Note
+      that if the peer closes the connection (even just their write side), the callable will be cancelled. Also, for
+      simplicitly, any further input sent by the peer is ignored - closing the connection is the only event we listen
+      for.
+
     `cleanup`:
       If provided, this async callable will be awaited for, no matter what, once the response has been served. It is
       meant to be used as a cleanup stage for any resources temporarily allocated for serving a download/upload
@@ -50,12 +57,14 @@ class MicroResponse:
     - `reply` is emitted (if not None)
     - `receive_upload` is called and its response emitted (if not None)
     - `server_download` is called and its response emitted (if not None)
+    - `multi_reply` is called, if applicable
     - `cleanup` is called (if not None)
     """
 
     reply: Optional[dict] = None
     serve_download: Optional[Callable[[asyncio.StreamWriter], Awaitable[Optional[dict]]]] = None
     receive_upload: Optional[Callable[[asyncio.StreamReader], Awaitable[Optional[dict]]]] = None
+    multi_reply: Optional[Callable[[Callable[[dict], Awaitable[None]]], Awaitable[None]]] = None
     cleanup: Optional[Callable[[], Awaitable[None]]] = None
 
     @staticmethod
@@ -83,9 +92,9 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     will format all exceptions it doesn't recognize as "Internal error", but you add specific handling for any other
     exception and also control how exceptions are converted to responses.
 
-    This server also supports a simple mechanism for large binary uploads/downloads. To make use of it, return a
-    `MicroResponse` class instead of a dict (see the `MicroResponse` class docs for details on how to handle uploads/
-    downloads)
+    Although this server is mostly meant for basic, "single request, single reply" scenarios, some more advanced
+    features (binary uploads/downloads, long polling, subscription etc) are available by returning a `MicroResponse`
+    object instead of a dict (see the `MicroResponse` class for details).
 
     Notes:
 
@@ -93,7 +102,6 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
       given time, or some other locking, this should be done by the caller in the request handler
     - This just ensures the basic JSON format is respected, any more advanced encoding/decoding/schema checking is
       up to the caller
-    - Only a basic, "single request", "single response" interaction is implemented (no long polling, etc)
     """
 
     _request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]]
@@ -236,7 +244,68 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
                 logging.exception("Unexpected exception while serving download")
                 return False
 
+        if response.multi_reply is not None:
+            try:
+                await self._serve_multi_reply(response.multi_reply, reader, writer)
+            except asyncio.CancelledError:
+                return False
+            except Exception:
+                logging.exception("Unexpected exception while serving multiple responses")
+                return False
+
         return True
+
+    async def _serve_multi_reply(
+        self,
+        user_code: Optional[Callable[[Callable[[dict], Awaitable[None]]], Awaitable[None]]],
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter
+    ):
+        done_event = asyncio.Event()
+
+        async def _write_cb(response: dict):
+            success = await self._reply_best_effort(writer, response)
+            if not success:
+                done_event.set()
+
+        async def _actual_task():
+            try:
+                await user_code(_write_cb)
+            finally:
+                done_event.set()
+
+        async def _wait_eof():
+            try:
+                while True:
+                    data = await reader.read(65536)
+                    if data == b'':
+                        break
+            except:
+                pass
+
+            done_event.set()
+
+        user_code_real_task = asyncio.create_task(_actual_task())
+        wait_eof_task = asyncio.create_task(_wait_eof())
+
+        my_cancelation = None
+        try:
+            await done_event.wait()
+        except asyncio.CancelledError as e:
+            my_cancelation = e
+
+        user_code_real_task.cancel()
+        wait_eof_task.cancel()
+
+        try:
+            await asyncio.shield(user_code_real_task)
+        except asyncio.CancelledError as e:
+            my_cancelation = e
+
+        # We don't wait for the wait_eof() task to finish, it has no effects and terminates immediately anyway
+
+        if my_cancelation is not None:
+            raise my_cancelation
 
     async def _read_request(self, reader: asyncio.StreamReader) -> Optional[dict]:
         try:
