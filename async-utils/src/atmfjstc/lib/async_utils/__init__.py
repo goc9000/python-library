@@ -92,8 +92,10 @@ async def run_cancelable_thread(thread_main: Callable[[], T], on_cancel: Callabl
     itself, either normally or by propagating the cancelation.
 
     Args:
-        thread_main: The code to execute in a different thread
-        on_cancel: A callback that will be called when the task is cancelled, so as to stop the thread. Please check the
+        thread_main:
+            The code to execute in a different thread
+        on_cancel:
+            A callback that will be called when the task is cancelled, so as to stop the thread. Please check the
             function description for details and caveats.
 
     Returns:
@@ -123,10 +125,12 @@ async def run_cancelable_thread_using_queue(
     See `run_cancelable_thread` for details on the general caveats and semantics of running cancelable sync code.
 
     Args:
-        thread_main: The code to execute in a different thread. It will receive as its sole argument a thread-safe queue
-            that will have a value pushed to it when the cancelation of the thread is desired. Note that the thread may
-            use the queue for pushing and processing its own events as well.
-        end_element: The value that is pushed to the queue when it is time to stop (default `None`)
+        thread_main:
+            The code to execute in a different thread. It will receive as its sole argument a thread-safe queue that
+            will have a value pushed to it when the cancelation of the thread is desired. Note that the thread may use
+            the queue for pushing and processing its own events as well.
+        end_element:
+            The value that is pushed to the queue when it is time to stop (default `None`)
 
     Returns:
         The result of the code in `thread_main`
