@@ -4,6 +4,9 @@ import queue
 from typing import Callable, Awaitable, TypeVar, Any
 
 
+__version__ = '0.2.2'
+
+
 T = TypeVar('T')
 
 
