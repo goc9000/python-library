@@ -48,6 +48,9 @@ where:
     be implicitly UTC. It is up to the caller to keep track of the semantics.
 """
 
+__version__ = '1.1.2'
+
+
 import re
 import math
 
