@@ -101,7 +101,7 @@ def tup(*item_types: Iterable[JSONSchema], default: Optional[List] = None) -> JS
 
     return dict_no_nulls(
         type='array',
-        items=item_types,
+        prefixItems=item_types,
         minItems=len(item_types),
         maxItems=len(item_types),
         default=default,
