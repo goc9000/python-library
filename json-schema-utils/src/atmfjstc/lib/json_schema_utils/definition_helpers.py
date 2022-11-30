@@ -150,4 +150,7 @@ def one_of(*alternatives: Iterable[JSONSchema]) -> JSONSchema:
 
 
 def title(title: str, schema: JSONSchema) -> JSONSchema:
-    return {**schema, title: title}
+    result = {'title': title, **schema}  # Ensure title appears at the front
+    result['title'] = title  # Might have been overridden by the schema
+
+    return result
