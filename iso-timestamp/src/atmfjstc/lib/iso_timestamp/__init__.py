@@ -48,13 +48,14 @@ where:
     be implicitly UTC. It is up to the caller to keep track of the semantics.
 """
 
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 
 
 import re
 import math
 
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import NewType, Tuple
 
 
@@ -230,3 +231,76 @@ def iso_timestamp_split(iso_time: ISOTimestamp) -> Tuple[str, str, str]:
     m = re.match(r'^(.{19})((?:\.\d+)?)(.*)$', iso_time)
 
     return m.group(1), m.group(2), m.group(3)
+
+
+def iso_now(utc: bool = False, aware: bool = True) -> ISOTimestamp:
+    """
+    Convenience function for getting the current timestamp in `ISOTimestamp` format.
+    """
+    if utc:
+        if aware:
+            date = datetime.now(timezone.utc)
+        else:
+            date = datetime.utcnow()
+    else:
+        if aware:
+            date = datetime.now(timezone.utc).astimezone()
+        else:
+            date = datetime.now()
+
+    return iso_from_datetime(date)
+
+
+def parse_iso_timestamp(
+    timestamp_str: str,
+    allow_decimals: bool = True, allow_timezone: bool = True, allow_other_separator: bool = False,
+) -> ISOTimestamp:
+    """
+    Parses a ISO timestamp from a string, checking for validity of the syntax and date.
+
+    A `ValueError` is raised if the format or date are not valid.
+    """
+    pattern = _regex_for_parsing(
+        allow_decimals=allow_decimals, allow_timezone=allow_timezone, allow_other_separator=allow_other_separator
+    )
+
+    match = re.match(pattern, timestamp_str)
+    if match is None:
+        raise ValueError(f"Invalid ISO timestamp: '{timestamp_str}' (invalid format)")
+
+    groups = match.groupdict()
+
+    normalized_tz = ''
+    if allow_timezone:
+        if groups.get('null_tz') is not None:
+            normalized_tz = '+00:00'
+        elif groups.get('tz_sign') is not None:
+            normalized_tz = f"{groups['tz_sign']}{groups['tz_hours'].rjust(2, '0')}:{groups['tz_mins']}"
+
+    normalized_datetime = f"{groups['date']} {groups['time']}"
+
+    decimals = groups.get('decimals') if groups.get('decimals') is not None else ''
+
+    try:
+        _ = datetime.fromisoformat(f"{normalized_datetime}{normalized_tz}")
+    except ValueError as e:
+        raise ValueError(f"Invalid ISO timestamp: '{timestamp_str}' ({str(e)})") from None
+
+    return ISOTimestamp(f"{normalized_datetime}{decimals}{normalized_tz}")
+
+
+@lru_cache(maxsize=None)
+def _regex_for_parsing(allow_decimals: bool, allow_timezone: bool, allow_other_separator: bool) -> re.Pattern:
+    parts = [
+        r'(?P<date>[1-9]\d{3}-(?:1[0-2]|0[1-9])-[0-3]\d)',
+        r'[^a-z]' if allow_other_separator else ' ',
+        r'(?P<time>[0-2]\d:[0-5]\d:[0-5]\d)',
+    ]
+
+    if allow_decimals:
+        parts.append(r'(?P<decimals>\.\d+)?')
+
+    if allow_timezone:
+        parts.append(r' ?(?:(?P<null_tz>Z)|(?P<tz_sign>[+-])(?P<tz_hours>\d{1,2}):?(?P<tz_mins>\d{2}))?')
+
+    return re.compile('^' + ''.join(parts) + '$', re.I)
