@@ -82,7 +82,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
 
     The simplest use of this is along the lines of::
 
-        server = AsyncSimpleJSONLinesProtocolServer(socket_path=..., request_handler=_my_request_func)
+        server = AsyncSimpleJSONLinesProtocolServer(socket_config=..., request_handler=_my_request_func)
 
         async def _my_request_func(request: dict) -> dict:
             # Return appropriate response dict here
