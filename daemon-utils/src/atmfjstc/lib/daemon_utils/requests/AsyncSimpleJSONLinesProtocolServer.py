@@ -111,10 +111,8 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
     _max_request_size: int
 
     def __init__(
-        self, socket_path: Path,
+        self, socket_config: UnixServerSocketConfig,
         request_handler: Callable[[dict], Awaitable[Union[dict, MicroResponse]]],
-        expose_to_group: Union[bool, int, str] = False,
-        expose_to_others: bool = False,
         format_error: Optional[Callable[[Exception], Optional[dict]]] = None,
         keep_connection_open: bool = False,
         max_request_size: int = 128 * 1024,
@@ -123,17 +121,12 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
         Constructor.
 
         Args:
-            socket_path:
-              Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
+            socket_config:
+              The configuration for the socket on which the daemon will listen for requests
             request_handler:
               An async function that will be called with a dict representing the request. It must return a dict
               containing the response (or a `MicroResponse` for more advanced situations, check the class
               documentation).
-            expose_to_group:
-              True to allow the default group access to the socket. Specify an explicit ID or name to also change the
-              socket to this group (needs root access or for the daemon user to be part of that group)
-            expose_to_others:
-              True to allow non-owner, non-group users access to the socket
             format_error:
               Specify a function here to customize how exceptions are converted to responses. The function will receive
               an Exception and must return a dict with the response. If you return None, the default processing will be
@@ -145,9 +138,7 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             max_request_size:
               The maximum request size, in bytes
         """
-        super().__init__(
-            UnixServerSocketConfig(path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
-        )
+        super().__init__(socket_config=socket_config)
 
         self._request_handler = request_handler
         self._error_response_hook = format_error
