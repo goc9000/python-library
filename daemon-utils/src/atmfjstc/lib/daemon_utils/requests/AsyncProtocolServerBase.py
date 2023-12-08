@@ -1,13 +1,8 @@
 import asyncio
-import shutil
-
-from pathlib import Path
-
-from typing import Union
 
 from abc import ABC, abstractmethod
 
-from .socket import UnixServerSocketConfig
+from .socket import UnixServerSocketConfig, setup_unix_socket
 
 
 class AsyncProtocolServerBase(ABC):
@@ -40,27 +35,11 @@ class AsyncProtocolServerBase(ABC):
         Initializes the socket. This is an opportunity for any major socket/permissions issues to be reported before
         the daemon main loop starts.
         """
-        socket_cfg = self._socket_config
-
         self._server = await asyncio.start_unix_server(
-            self._on_connection_wrapper, path=socket_cfg.path, limit=self._buffer_limit
+            self._on_connection_wrapper, path=self._socket_config.path, limit=self._buffer_limit
         )
 
-        permissions = 0o600
-        owner_to_set = socket_cfg.owner
-
-        etg = socket_cfg.expose_to_group
-        expose_group, group_to_set = (etg, None) if etg.__class__ == bool else (True, etg)
-
-        if expose_group:
-            permissions |= 0o060
-        if socket_cfg.expose_to_others:
-            permissions |= 0o006
-
-        socket_cfg.path.chmod(permissions)
-
-        if (owner_to_set is not None) or (group_to_set is not None):
-            shutil.chown(socket_cfg.path, user=owner_to_set, group=group_to_set)
+        setup_unix_socket(self._socket_config)
 
     async def run(self, wait_requests_end: bool = True):
         """
