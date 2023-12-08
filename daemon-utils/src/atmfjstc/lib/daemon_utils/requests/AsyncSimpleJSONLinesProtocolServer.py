@@ -10,6 +10,7 @@ from typing import Callable, Awaitable, Optional, Union
 from atmfjstc.lib.daemon_utils.requests.standard_errors import BasicError, InternalError, RequestNotJSONError, \
     RequestTooLargeError, DaemonShuttingDownError
 from atmfjstc.lib.daemon_utils.requests.AsyncProtocolServerBase import AsyncProtocolServerBase
+from .socket import UnixServerSocketConfig
 
 
 LOG = logging.getLogger()
@@ -144,7 +145,9 @@ class AsyncSimpleJSONLinesProtocolServer(AsyncProtocolServerBase):
             max_request_size:
               The maximum request size, in bytes
         """
-        super().__init__(socket_path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
+        super().__init__(
+            UnixServerSocketConfig(path=socket_path, expose_to_group=expose_to_group, expose_to_others=expose_to_others)
+        )
 
         self._request_handler = request_handler
         self._error_response_hook = format_error

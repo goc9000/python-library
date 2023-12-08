@@ -7,6 +7,8 @@ from typing import Union
 
 from abc import ABC, abstractmethod
 
+from .socket import UnixServerSocketConfig
+
 
 class AsyncProtocolServerBase(ABC):
     """
@@ -15,34 +17,21 @@ class AsyncProtocolServerBase(ABC):
     """
 
     _server = None
-    _socket_path: Path
-    _expose_to_group: Union[int, str, bool]
-    _expose_to_others: bool
+    _socket_config: UnixServerSocketConfig
 
     _buffer_limit: int = 64 * 1024
 
     _request_tasks: set[asyncio.Task]
 
-    def __init__(
-        self, socket_path: Path,
-        expose_to_group: Union[bool, int, str] = False,
-        expose_to_others: bool = False,
-    ):
+    def __init__(self, socket_config: UnixServerSocketConfig):
         """
         Constructor.
 
         Args:
-            socket_path:
-              Path to the socket that will be exposed for communication (e.g. `/run/daemon_name.sock`)
-            expose_to_group:
-              True to allow the default group access to the socket. Specify an explicit ID or name to also change the
-              socket to this group (needs root access or for the daemon user to be part of that group)
-            expose_to_others:
-              True to allow non-owner, non-group users access to the socket
+            socket_config:
+              The configuration for the socket on which the daemon will listen for requests
         """
-        self._socket_path = socket_path
-        self._expose_to_group = expose_to_group
-        self._expose_to_others = expose_to_others
+        self._socket_config = socket_config
 
         self._request_tasks = set()
 
@@ -51,25 +40,27 @@ class AsyncProtocolServerBase(ABC):
         Initializes the socket. This is an opportunity for any major socket/permissions issues to be reported before
         the daemon main loop starts.
         """
+        socket_cfg = self._socket_config
+
         self._server = await asyncio.start_unix_server(
-            self._on_connection_wrapper, path=self._socket_path, limit=self._buffer_limit
+            self._on_connection_wrapper, path=socket_cfg.path, limit=self._buffer_limit
         )
 
         permissions = 0o600
 
-        etg = self._expose_to_group
+        etg = socket_cfg.expose_to_group
         expose, group_id = (etg, None) if etg.__class__ == bool else (True, etg)
 
         if expose:
             permissions |= 0o060
 
             if group_id is not None:
-                shutil.chown(self._socket_path, group=group_id)
+                shutil.chown(socket_cfg.path, group=group_id)
 
-        if self._expose_to_others:
+        if socket_cfg.expose_to_others:
             permissions |= 0o006
 
-        self._socket_path.chmod(permissions)
+        socket_cfg.path.chmod(permissions)
 
     async def run(self, wait_requests_end: bool = True):
         """
@@ -98,7 +89,7 @@ class AsyncProtocolServerBase(ABC):
                         pass  # TODO: should probably do something here if there is an uncaught exception in the tasks
                               # (or maybe catch it in _on_connection_wrapper?)
 
-            self._socket_path.unlink()
+            self._socket_config.path.unlink()
 
     async def _on_connection_wrapper(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self._request_tasks.add(asyncio.current_task())
