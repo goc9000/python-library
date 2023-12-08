@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from typing import Union
+from typing import Union, Optional
 
 
 @dataclass
@@ -12,6 +12,9 @@ class UnixServerSocketConfig:
 
     path: Path
     "The path to the socket."
+
+    owner: Optional[Union[int, str]] = None
+    "Specify an explicit ID or name to change the socket owner. If None the owner is unchanged."
 
     expose_to_group: Union[bool, int, str] = False
     """

@@ -47,20 +47,20 @@ class AsyncProtocolServerBase(ABC):
         )
 
         permissions = 0o600
+        owner_to_set = socket_cfg.owner
 
         etg = socket_cfg.expose_to_group
-        expose, group_id = (etg, None) if etg.__class__ == bool else (True, etg)
+        expose_group, group_to_set = (etg, None) if etg.__class__ == bool else (True, etg)
 
-        if expose:
+        if expose_group:
             permissions |= 0o060
-
-            if group_id is not None:
-                shutil.chown(socket_cfg.path, group=group_id)
-
         if socket_cfg.expose_to_others:
             permissions |= 0o006
 
         socket_cfg.path.chmod(permissions)
+
+        if (owner_to_set is not None) or (group_to_set is not None):
+            shutil.chown(socket_cfg.path, user=owner_to_set, group=group_to_set)
 
     async def run(self, wait_requests_end: bool = True):
         """
