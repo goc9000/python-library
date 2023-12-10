@@ -9,6 +9,9 @@ Caution: this module is not thread-safe.
 TODO: currently only the OS X backend is implemented.
 """
 
+__version__ = '0.1.2'
+
+
 import sys
 import platform
 
