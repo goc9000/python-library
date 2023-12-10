@@ -9,14 +9,14 @@ Caution: this module is not thread-safe.
 TODO: currently only the OS X backend is implemented.
 """
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 
 import sys
 import platform
+import re
 
 from typing import Optional, ContextManager
-from distutils.version import LooseVersion as V
 from contextlib import contextmanager
 
 from atmfjstc.lib.stay_awake._backends.StayAwakeBackend import StayAwakeBackend
@@ -86,7 +86,7 @@ def is_prevent_sleep_supported() -> bool:
 def _init_backend() -> None:
     global _backend
 
-    if sys.platform == 'darwin' and not (V(platform.mac_ver()[0]) < V('10.9')):
+    if sys.platform == 'darwin' and _check_mac_version():
         from atmfjstc.lib.stay_awake._backends.StayAwakeOsXBackend import StayAwakeOsXBackend
 
         _backend = StayAwakeOsXBackend()
@@ -94,6 +94,17 @@ def _init_backend() -> None:
         from atmfjstc.lib.stay_awake._backends.StayAwakeNopBackend import StayAwakeNopBackend
 
         _backend = StayAwakeNopBackend()
+
+
+def _check_mac_version() -> bool:
+    mac_ver_parts = platform.mac_ver()[0].split('.')
+
+    def _to_num(version_element: str) -> int:
+        match = re.match(r'^([0-9]+).*$', version_element)
+
+        return int(match.group(1)) if match else 0
+
+    return tuple(_to_num(elem) for elem in mac_ver_parts) >= (10, 9)
 
 
 _init_backend()
