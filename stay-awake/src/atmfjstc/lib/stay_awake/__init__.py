@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from ._backends.StayAwakeBackend import StayAwakeBackend
 
 
-_backend: StayAwakeBackend
+_backend: Optional[StayAwakeBackend] = None
 
 
 def disable_sleep(reason: Optional[str] = None) -> None:
@@ -35,14 +35,14 @@ def disable_sleep(reason: Optional[str] = None) -> None:
     Args:
         reason: Text describing the reason why the system is being kept awake (some OSes allow an admin to see this)
     """
-    _backend.disable_sleep(reason)
+    _get_backend().disable_sleep(reason)
 
 
 def restore_sleep() -> None:
     """
     Ends the no-sleep period initiated by a previous `disable_sleep` call.
     """
-    _backend.restore_sleep()
+    _get_backend().restore_sleep()
 
 
 @contextmanager
@@ -71,7 +71,7 @@ def is_preventing_sleep() -> bool:
     Returns:
         True if sleep is currently being prevented by this module.
     """
-    return _backend.is_preventing_sleep()
+    return _get_backend().is_preventing_sleep()
 
 
 def is_prevent_sleep_supported() -> bool:
@@ -80,20 +80,27 @@ def is_prevent_sleep_supported() -> bool:
     Returns:
         True if sleep prevention is supported.
     """
-    return _backend.is_prevent_sleep_supported()
+    return _get_backend().is_prevent_sleep_supported()
 
 
-def _init_backend() -> None:
+def _get_backend() -> StayAwakeBackend:
     global _backend
 
+    if _backend is None:
+        _backend = _init_backend()
+
+    return _backend
+
+
+def _init_backend() -> StayAwakeBackend:
     if sys.platform == 'darwin' and _check_mac_version():
         from atmfjstc.lib.stay_awake._backends.StayAwakeOsXBackend import StayAwakeOsXBackend
 
-        _backend = StayAwakeOsXBackend()
+        return StayAwakeOsXBackend()
     else:
         from atmfjstc.lib.stay_awake._backends.StayAwakeNopBackend import StayAwakeNopBackend
 
-        _backend = StayAwakeNopBackend()
+        return StayAwakeNopBackend()
 
 
 def _check_mac_version() -> bool:
@@ -105,6 +112,3 @@ def _check_mac_version() -> bool:
         return int(match.group(1)) if match else 0
 
     return tuple(_to_num(elem) for elem in mac_ver_parts) >= (10, 9)
-
-
-_init_backend()
