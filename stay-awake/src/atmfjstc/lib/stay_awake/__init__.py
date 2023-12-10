@@ -19,7 +19,7 @@ import re
 from typing import Optional, ContextManager
 from contextlib import contextmanager
 
-from atmfjstc.lib.stay_awake._backends.StayAwakeBackend import StayAwakeBackend
+from ._backends.StayAwakeBackend import StayAwakeBackend
 
 
 _backend: StayAwakeBackend

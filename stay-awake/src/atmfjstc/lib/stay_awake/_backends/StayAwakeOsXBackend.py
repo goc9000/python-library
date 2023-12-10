@@ -4,7 +4,7 @@ import ctypes.util
 from typing import Optional, Union, List
 from enum import IntFlag
 
-from atmfjstc.lib.stay_awake._backends.StayAwakeBackend import StayAwakeBackend
+from .StayAwakeBackend import StayAwakeBackend
 
 
 class StayAwakeOsXBackend(StayAwakeBackend):

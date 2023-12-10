@@ -1,6 +1,6 @@
 from typing import Optional
 
-from atmfjstc.lib.stay_awake._backends.StayAwakeBackend import StayAwakeBackend
+from .StayAwakeBackend import StayAwakeBackend
 
 
 class StayAwakeNopBackend(StayAwakeBackend):
