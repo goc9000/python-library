@@ -36,7 +36,7 @@ class OsXBackend(StayAwakeBackend):
 
         return True
 
-    def disable_sleep(self, reason: Optional[str] = None) -> Any:
+    def disable_sleep(self, reason: Optional[str] = None, who: Optional[str] = None) -> Any:
         reason = self._objc.msg(self._objc.cls('NSString'), 'stringWithUTF8String:', (reason or '').encode('utf-8'))
         process_info = self._objc.msg(self._objc.cls('NSProcessInfo'), 'processInfo')
 

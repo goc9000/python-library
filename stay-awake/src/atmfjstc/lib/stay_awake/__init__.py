@@ -34,6 +34,9 @@ class WakeLock:
     reason: Optional[str] = None
     "Text describing the reason why the system is being kept awake"
 
+    who: Optional[str] = None
+    "Text identifying the application that wants to keep the system awake"
+
     def end(self):
         """
         Ends the wake period associated with this lock.
@@ -44,7 +47,7 @@ class WakeLock:
 _wake_locks: list[WakeLock] = []
 
 
-def disable_sleep(reason: Optional[str] = None) -> WakeLock:
+def disable_sleep(reason: Optional[str] = None, who: Optional[str] = None) -> WakeLock:
     """
     Keeps the system from sleeping from this point forward.
 
@@ -52,15 +55,18 @@ def disable_sleep(reason: Optional[str] = None) -> WakeLock:
         reason:
             Text describing the reason why the system is being kept awake. Whether this information is visible or
             easily accessible varies by system.
+        who:
+            Text identifying the application that wants to keep the system awake. Whether this information is visible or
+            easily accessible varies by system.
 
     Returns:
         An object that can be used to end the wake period by calling its `.end()` method
     """
     backend = _get_backend()
 
-    token = backend.disable_sleep(reason) if backend is not None else None
+    token = backend.disable_sleep(reason=reason, who=who) if backend is not None else None
 
-    wake_lock = WakeLock(token=token, reason=reason)
+    wake_lock = WakeLock(token=token, reason=reason, who=who)
 
     _wake_locks.append(wake_lock)
 

@@ -54,7 +54,7 @@ class StayAwakeBackend(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def disable_sleep(self, reason: Optional[str] = None) -> Any:
+    def disable_sleep(self, reason: Optional[str] = None, who: Optional[str] = None) -> Any:
         """
         Performs the backend-specific operations for starting a period where the system is kept awake.
 
@@ -62,6 +62,9 @@ class StayAwakeBackend(metaclass=ABCMeta):
             reason:
                 Text describing the reason why the system is being kept awake. Whether this information is visible or
                 easily accessible varies by system.
+            who:
+                Text identifying the application that wants to keep the system awake. Whether this information is
+                visible or easily accessible varies by system.
 
         Returns:
             A backend-specific token that can be later used to re-enable sleep disabled during this call
