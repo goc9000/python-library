@@ -6,10 +6,10 @@ system as being user activity, e.g. MIDI keyboard or controller.
 
 Caution: this module is not thread-safe.
 
-TODO: currently only the OS X backend is implemented.
+TODO: currently only a limited set of backends is implemented.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 
 import sys
