@@ -16,6 +16,3 @@ class NopBackend(StayAwakeBackend):
 
     def is_preventing_sleep(self) -> bool:
         return False
-
-    def is_prevent_sleep_supported(self) -> bool:
-        return False

@@ -20,6 +20,7 @@ from typing import Optional, ContextManager
 from contextlib import contextmanager
 
 from ._backends.StayAwakeBackend import StayAwakeBackend
+from ._backends.NopBackend import NopBackend
 
 
 _backend: Optional[StayAwakeBackend] = None
@@ -80,7 +81,7 @@ def is_prevent_sleep_supported() -> bool:
     Returns:
         True if sleep prevention is supported.
     """
-    return _get_backend().is_prevent_sleep_supported()
+    return not isinstance(_get_backend(), NopBackend)
 
 
 def _get_backend() -> StayAwakeBackend:

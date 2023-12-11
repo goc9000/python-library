@@ -47,9 +47,6 @@ class OsXBackend(StayAwakeBackend):
     def is_preventing_sleep(self) -> bool:
         return len(self._layers) > 0
 
-    def is_prevent_sleep_supported(self) -> bool:
-        return True
-
 
 class MiniObjCInterface:
     _objc = None
