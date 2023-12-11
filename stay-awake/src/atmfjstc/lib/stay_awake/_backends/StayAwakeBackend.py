@@ -28,6 +28,17 @@ class StayAwakeBackend(metaclass=ABCMeta):
         return None
 
     @classmethod
+    def priority(cls) -> int:
+        """
+        Gets the priority for the backend. A backend with a higher priority will be selected over a lesser priority one
+        if both are available.
+
+        Returns:
+            A priority number (higher means more preferred)
+        """
+        return 0
+
+    @classmethod
     @abstractmethod
     def check_available(cls) -> Union[bool, str]:
         """

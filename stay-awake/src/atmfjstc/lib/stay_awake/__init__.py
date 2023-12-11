@@ -108,7 +108,7 @@ def _select_backend() -> Optional[StayAwakeBackend]:
     # First quickly filter by platform
     candidates = [candidate for candidate in ALL_BACKENDS if candidate.platform() in [None, platform]]
 
-    for cls in candidates:
+    for cls in sorted(candidates, key=lambda candidate: -candidate.priority()):
         try:
             result = cls.check_available()
         except Exception as e:
