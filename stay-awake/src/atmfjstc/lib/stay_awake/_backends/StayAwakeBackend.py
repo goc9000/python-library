@@ -16,6 +16,18 @@ class StayAwakeBackend(metaclass=ABCMeta):
         raise NotImplementedError
 
     @classmethod
+    def platform(cls) -> Optional[str]:
+        """
+        Gets a specifier for the platform to which this backend is applicable (as reported by sys.platform()). This can
+        be used to quickly filter out backends that cannot possibly be available on the current system.
+
+        Returns:
+            A platform string like 'win32', 'linux', 'darwin' etc., or None if the backend is potentially applicable to
+            multiple platforms.
+        """
+        return None
+
+    @classmethod
     @abstractmethod
     def check_available(cls) -> Union[bool, str]:
         """

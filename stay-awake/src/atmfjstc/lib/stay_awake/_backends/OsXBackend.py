@@ -29,10 +29,11 @@ class OsXBackend(StayAwakeBackend):
         return "Activity-based backend for Mac OS X and above"
 
     @classmethod
-    def check_available(cls) -> Union[bool, str]:
-        if sys.platform != 'darwin':
-            return "Not on Mac"
+    def platform(cls) -> Optional[str]:
+        return 'darwin'
 
+    @classmethod
+    def check_available(cls) -> Union[bool, str]:
         if not _check_mac_version():
             return "Not on OS X"
 

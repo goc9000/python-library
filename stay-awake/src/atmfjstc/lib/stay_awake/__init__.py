@@ -12,6 +12,8 @@ TODO: currently only the OS X backend is implemented.
 __version__ = '0.1.3'
 
 
+import sys
+
 from typing import Optional, ContextManager
 from contextlib import contextmanager
 
@@ -101,7 +103,12 @@ def _get_backend() -> Optional[StayAwakeBackend]:
 
 
 def _select_backend() -> Optional[StayAwakeBackend]:
-    for cls in ALL_BACKENDS:
+    platform = sys.platform
+
+    # First quickly filter by platform
+    candidates = [candidate for candidate in ALL_BACKENDS if candidate.platform() in [None, platform]]
+
+    for cls in candidates:
         try:
             result = cls.check_available()
         except Exception as e:
