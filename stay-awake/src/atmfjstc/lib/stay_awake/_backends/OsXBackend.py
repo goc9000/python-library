@@ -62,9 +62,6 @@ class OsXBackend(StayAwakeBackend):
 
         self._objc.msg(process_info, 'endActivity:', ctypes.c_void_p(activity))
 
-    def is_preventing_sleep(self) -> bool:
-        return len(self._layers) > 0
-
 
 def _check_mac_version() -> bool:
     mac_ver_parts = platform.mac_ver()[0].split('.')

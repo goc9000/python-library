@@ -16,6 +16,7 @@ import sys
 
 from typing import Optional, ContextManager
 from contextlib import contextmanager
+from dataclasses import dataclass
 
 from ._backends import ALL_BACKENDS
 from ._backends.StayAwakeBackend import StayAwakeBackend
@@ -23,6 +24,15 @@ from ._backends.StayAwakeBackend import StayAwakeBackend
 
 _backend: Optional[StayAwakeBackend] = None
 _backend_selected: bool = False
+
+
+@dataclass(frozen=True)
+class WakeLock:
+    reason: Optional[str] = None
+    "Text describing the reason why the system is being kept awake"
+
+
+_wake_locks: list[WakeLock] = []
 
 
 def disable_sleep(reason: Optional[str] = None) -> None:
@@ -40,11 +50,18 @@ def disable_sleep(reason: Optional[str] = None) -> None:
     if backend is not None:
         backend.disable_sleep(reason)
 
+    _wake_locks.append(WakeLock(reason=reason))
+
 
 def restore_sleep() -> None:
     """
     Ends the no-sleep period initiated by a previous `disable_sleep` call.
     """
+    if len(_wake_locks) == 0:
+        return
+
+    last_wake = _wake_locks.pop()
+
     backend = _get_backend()
 
     if backend is not None:
@@ -77,9 +94,8 @@ def is_preventing_sleep() -> bool:
     Returns:
         True if sleep is currently being prevented by this module.
     """
-    backend = _get_backend()
 
-    return backend.is_preventing_sleep() if backend is not None else False
+    return (_get_backend() is not None) and (len(_wake_locks) > 0)
 
 
 def is_prevent_sleep_supported() -> bool:

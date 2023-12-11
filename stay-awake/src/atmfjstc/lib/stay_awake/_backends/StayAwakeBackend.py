@@ -60,7 +60,3 @@ class StayAwakeBackend(metaclass=ABCMeta):
     @abstractmethod
     def restore_sleep(self) -> None:
         raise NotImplementedError
-
-    @abstractmethod
-    def is_preventing_sleep(self) -> bool:
-        raise NotImplementedError
