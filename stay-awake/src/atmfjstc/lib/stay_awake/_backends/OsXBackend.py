@@ -1,5 +1,8 @@
+import re
 import ctypes
 import ctypes.util
+import sys
+import platform
 
 from typing import Optional, Union, List
 from enum import IntFlag
@@ -24,6 +27,16 @@ class OsXBackend(StayAwakeBackend):
     @classmethod
     def description(cls) -> str:
         return "Activity-based backend for Mac OS X and above"
+
+    @classmethod
+    def check_available(cls) -> Union[bool, str]:
+        if sys.platform != 'darwin':
+            return "Not on Mac"
+
+        if not _check_mac_version():
+            return "Not on OS X"
+
+        return True
 
     def disable_sleep(self, reason: Optional[str] = None) -> None:
         reason = self._objc.msg(self._objc.cls('NSString'), 'stringWithUTF8String:', (reason or '').encode('utf-8'))
@@ -50,6 +63,17 @@ class OsXBackend(StayAwakeBackend):
 
     def is_preventing_sleep(self) -> bool:
         return len(self._layers) > 0
+
+
+def _check_mac_version() -> bool:
+    mac_ver_parts = platform.mac_ver()[0].split('.')
+
+    def _to_num(version_element: str) -> int:
+        match = re.match(r'^([0-9]+).*$', version_element)
+
+        return int(match.group(1)) if match else 0
+
+    return tuple(_to_num(elem) for elem in mac_ver_parts) >= (10, 9)
 
 
 class MiniObjCInterface:

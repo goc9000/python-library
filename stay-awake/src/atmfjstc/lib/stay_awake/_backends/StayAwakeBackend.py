@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from abc import ABCMeta, abstractmethod
 
@@ -12,6 +12,21 @@ class StayAwakeBackend(metaclass=ABCMeta):
 
         Returns:
             A short text describing the backend
+        """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def check_available(cls) -> Union[bool, str]:
+        """
+        Checks if the backend is applicable to the current system.
+
+        Returns:
+            True if the backend is applicable. If not, either a string (detailing the reason), or False if no
+            explanation is provided.
+
+        Raises:
+            Exception: The method may also throw any exception to indicate that the backend is not available
         """
         raise NotImplementedError
 

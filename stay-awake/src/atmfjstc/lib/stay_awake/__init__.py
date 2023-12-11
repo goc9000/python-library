@@ -12,13 +12,10 @@ TODO: currently only the OS X backend is implemented.
 __version__ = '0.1.3'
 
 
-import sys
-import platform
-import re
-
 from typing import Optional, ContextManager
 from contextlib import contextmanager
 
+from ._backends import ALL_BACKENDS
 from ._backends.StayAwakeBackend import StayAwakeBackend
 
 
@@ -104,20 +101,15 @@ def _get_backend() -> Optional[StayAwakeBackend]:
 
 
 def _select_backend() -> Optional[StayAwakeBackend]:
-    if sys.platform == 'darwin' and _check_mac_version():
-        from ._backends.OsXBackend import OsXBackend
+    for cls in ALL_BACKENDS:
+        try:
+            result = cls.check_available()
+        except Exception as e:
+            result = str(e) if str(e) != '' else e.__class__.__name__
 
-        return OsXBackend()
-    else:
-        return None
+        if result is True:
+            return cls()
 
+        # TODO: maybe log the reason
 
-def _check_mac_version() -> bool:
-    mac_ver_parts = platform.mac_ver()[0].split('.')
-
-    def _to_num(version_element: str) -> int:
-        match = re.match(r'^([0-9]+).*$', version_element)
-
-        return int(match.group(1)) if match else 0
-
-    return tuple(_to_num(elem) for elem in mac_ver_parts) >= (10, 9)
+    return None
