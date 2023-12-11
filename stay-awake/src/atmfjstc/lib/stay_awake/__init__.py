@@ -9,7 +9,7 @@ Caution: this module is not thread-safe.
 TODO: currently only the OS X backend is implemented.
 """
 
-__version__ = '0.1.3'
+__version__ = '0.2.0'
 
 
 import sys
@@ -26,7 +26,7 @@ _backend: Optional[StayAwakeBackend] = None
 _backend_selected: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class WakeLock:
     token: Any
     "Internal token for re-enabling sleep"
@@ -34,40 +34,61 @@ class WakeLock:
     reason: Optional[str] = None
     "Text describing the reason why the system is being kept awake"
 
+    def end(self):
+        """
+        Ends the wake period associated with this lock.
+        """
+        _end_wake(self)
+
 
 _wake_locks: list[WakeLock] = []
 
 
-def disable_sleep(reason: Optional[str] = None) -> None:
+def disable_sleep(reason: Optional[str] = None) -> WakeLock:
     """
-    Keeps the system from sleeping, until `restore_sleep()` is called.
-
-    The function can be called multiple times; in that case, `restore_sleep()` must also be called that many times
-    before the system can sleep again.
+    Keeps the system from sleeping from this point forward.
 
     Args:
-        reason: Text describing the reason why the system is being kept awake (some OSes allow an admin to see this)
+        reason:
+            Text describing the reason why the system is being kept awake. Whether this information is visible or
+            easily accessible varies by system.
+
+    Returns:
+        An object that can be used to end the wake period by calling its `.end()` method
     """
     backend = _get_backend()
 
     token = backend.disable_sleep(reason) if backend is not None else None
 
-    _wake_locks.append(WakeLock(token=token, reason=reason))
+    wake_lock = WakeLock(token=token, reason=reason)
+
+    _wake_locks.append(wake_lock)
+
+    return wake_lock
 
 
 def restore_sleep() -> None:
     """
-    Ends the no-sleep period initiated by a previous `disable_sleep` call.
+    Convenience method for ending the wake period initiated by the latest `disable_sleep` call.
     """
     if len(_wake_locks) == 0:
         return
 
-    last_wake = _wake_locks.pop()
+    _end_wake(_wake_locks[-1])
+
+
+def _end_wake(wake_lock: WakeLock):
+    try:
+        index = _wake_locks.index(wake_lock)
+    except ValueError:
+        return
+
+    token = _wake_locks.pop(index).token
 
     backend = _get_backend()
 
     if backend is not None:
-        backend.restore_sleep(last_wake.token)
+        backend.restore_sleep(token)
 
 
 @contextmanager
@@ -76,15 +97,17 @@ def no_sleep(reason: Optional[str] = None) -> ContextManager[None]:
     Context manager for keeping the system awake while it is in effect.
 
     Args:
-        reason: Text describing the reason why the system is being kept awake (some OSes allow an admin to see this)
+        reason:
+            Text describing the reason why the system is being kept awake. Whether this information is visible or
+            easily accessible varies by system.
     """
 
-    disable_sleep(reason)
+    wake_lock = disable_sleep(reason)
 
     try:
         yield
     finally:
-        restore_sleep()
+        wake_lock.end()
 
 
 def is_preventing_sleep() -> bool:
