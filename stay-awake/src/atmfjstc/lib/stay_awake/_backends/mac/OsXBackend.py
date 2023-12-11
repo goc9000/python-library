@@ -6,7 +6,7 @@ import platform
 from typing import Optional, Union, Any
 from enum import IntFlag
 
-from .StayAwakeBackend import StayAwakeBackend
+from ..StayAwakeBackend import StayAwakeBackend
 
 
 class OsXBackend(StayAwakeBackend):
