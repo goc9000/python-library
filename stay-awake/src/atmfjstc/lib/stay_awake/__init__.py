@@ -20,10 +20,10 @@ from typing import Optional, ContextManager
 from contextlib import contextmanager
 
 from ._backends.StayAwakeBackend import StayAwakeBackend
-from ._backends.NopBackend import NopBackend
 
 
 _backend: Optional[StayAwakeBackend] = None
+_backend_selected: bool = False
 
 
 def disable_sleep(reason: Optional[str] = None) -> None:
@@ -36,14 +36,20 @@ def disable_sleep(reason: Optional[str] = None) -> None:
     Args:
         reason: Text describing the reason why the system is being kept awake (some OSes allow an admin to see this)
     """
-    _get_backend().disable_sleep(reason)
+    backend = _get_backend()
+
+    if backend is not None:
+        backend.disable_sleep(reason)
 
 
 def restore_sleep() -> None:
     """
     Ends the no-sleep period initiated by a previous `disable_sleep` call.
     """
-    _get_backend().restore_sleep()
+    backend = _get_backend()
+
+    if backend is not None:
+        backend.restore_sleep()
 
 
 @contextmanager
@@ -72,7 +78,9 @@ def is_preventing_sleep() -> bool:
     Returns:
         True if sleep is currently being prevented by this module.
     """
-    return _get_backend().is_preventing_sleep()
+    backend = _get_backend()
+
+    return backend.is_preventing_sleep() if backend is not None else False
 
 
 def is_prevent_sleep_supported() -> bool:
@@ -81,27 +89,27 @@ def is_prevent_sleep_supported() -> bool:
     Returns:
         True if sleep prevention is supported.
     """
-    return not isinstance(_get_backend(), NopBackend)
+    return _get_backend() is not None
 
 
-def _get_backend() -> StayAwakeBackend:
+def _get_backend() -> Optional[StayAwakeBackend]:
     global _backend
+    global _backend_selected
 
-    if _backend is None:
-        _backend = _init_backend()
+    if not _backend_selected:
+        _backend = _select_backend()
+        _backend_selected = True
 
     return _backend
 
 
-def _init_backend() -> StayAwakeBackend:
+def _select_backend() -> Optional[StayAwakeBackend]:
     if sys.platform == 'darwin' and _check_mac_version():
         from ._backends.OsXBackend import OsXBackend
 
         return OsXBackend()
     else:
-        from ._backends.NopBackend import NopBackend
-
-        return NopBackend()
+        return None
 
 
 def _check_mac_version() -> bool:
