@@ -3,7 +3,7 @@ from typing import Optional
 from .StayAwakeBackend import StayAwakeBackend
 
 
-class StayAwakeNopBackend(StayAwakeBackend):
+class NopBackend(StayAwakeBackend):
     """
     No-operation backend for operating systems not supported by this module.
     """

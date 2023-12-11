@@ -94,13 +94,13 @@ def _get_backend() -> StayAwakeBackend:
 
 def _init_backend() -> StayAwakeBackend:
     if sys.platform == 'darwin' and _check_mac_version():
-        from atmfjstc.lib.stay_awake._backends.StayAwakeOsXBackend import StayAwakeOsXBackend
+        from ._backends.OsXBackend import OsXBackend
 
-        return StayAwakeOsXBackend()
+        return OsXBackend()
     else:
-        from atmfjstc.lib.stay_awake._backends.StayAwakeNopBackend import StayAwakeNopBackend
+        from ._backends.NopBackend import NopBackend
 
-        return StayAwakeNopBackend()
+        return NopBackend()
 
 
 def _check_mac_version() -> bool:

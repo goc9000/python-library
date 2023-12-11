@@ -7,7 +7,7 @@ from enum import IntFlag
 from .StayAwakeBackend import StayAwakeBackend
 
 
-class StayAwakeOsXBackend(StayAwakeBackend):
+class OsXBackend(StayAwakeBackend):
     """
     OS X backend. Based on code from the `app_nope` module at https://github.com/minrk/appnope
 
