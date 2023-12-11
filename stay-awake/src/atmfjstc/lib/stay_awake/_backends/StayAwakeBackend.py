@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 from abc import ABCMeta, abstractmethod
 
@@ -54,9 +54,26 @@ class StayAwakeBackend(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def disable_sleep(self, reason: Optional[str] = None) -> None:
+    def disable_sleep(self, reason: Optional[str] = None) -> Any:
+        """
+        Performs the backend-specific operations for starting a period where the system is kept awake.
+
+        Args:
+            reason:
+                Text describing the reason why the system is being kept awake. Whether this information is visible or
+                easily accessible varies by system.
+
+        Returns:
+            A backend-specific token that can be later used to re-enable sleep disabled during this call
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def restore_sleep(self) -> None:
+    def restore_sleep(self, token: Any) -> None:
+        """
+        Ends a keep-awake period previously started by a disable_sleep() call.
+
+        Args:
+            token: The token returned by the previous disable_sleep() call
+        """
         raise NotImplementedError

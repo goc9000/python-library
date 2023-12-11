@@ -14,7 +14,7 @@ __version__ = '0.1.3'
 
 import sys
 
-from typing import Optional, ContextManager
+from typing import Optional, ContextManager, Any
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -28,6 +28,9 @@ _backend_selected: bool = False
 
 @dataclass(frozen=True)
 class WakeLock:
+    token: Any
+    "Internal token for re-enabling sleep"
+
     reason: Optional[str] = None
     "Text describing the reason why the system is being kept awake"
 
@@ -47,10 +50,9 @@ def disable_sleep(reason: Optional[str] = None) -> None:
     """
     backend = _get_backend()
 
-    if backend is not None:
-        backend.disable_sleep(reason)
+    token = backend.disable_sleep(reason) if backend is not None else None
 
-    _wake_locks.append(WakeLock(reason=reason))
+    _wake_locks.append(WakeLock(token=token, reason=reason))
 
 
 def restore_sleep() -> None:
@@ -65,7 +67,7 @@ def restore_sleep() -> None:
     backend = _get_backend()
 
     if backend is not None:
-        backend.restore_sleep()
+        backend.restore_sleep(last_wake.token)
 
 
 @contextmanager

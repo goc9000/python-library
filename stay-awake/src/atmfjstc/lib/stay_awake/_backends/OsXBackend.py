@@ -1,10 +1,9 @@
 import re
 import ctypes
 import ctypes.util
-import sys
 import platform
 
-from typing import Optional, Union, List
+from typing import Optional, Union, Any
 from enum import IntFlag
 
 from .StayAwakeBackend import StayAwakeBackend
@@ -18,11 +17,9 @@ class OsXBackend(StayAwakeBackend):
     """
 
     _objc: 'MiniObjCInterface'
-    _layers: List[int]
 
     def __init__(self):
         self._objc = MiniObjCInterface()
-        self._layers = []
 
     @classmethod
     def description(cls) -> str:
@@ -39,7 +36,7 @@ class OsXBackend(StayAwakeBackend):
 
         return True
 
-    def disable_sleep(self, reason: Optional[str] = None) -> None:
+    def disable_sleep(self, reason: Optional[str] = None) -> Any:
         reason = self._objc.msg(self._objc.cls('NSString'), 'stringWithUTF8String:', (reason or '').encode('utf-8'))
         process_info = self._objc.msg(self._objc.cls('NSProcessInfo'), 'processInfo')
 
@@ -50,17 +47,12 @@ class OsXBackend(StayAwakeBackend):
         )
         assert activity is not None, 'Could not create activity?!'
 
-        self._layers.append(activity)
+        return activity
 
-    def restore_sleep(self) -> None:
-        if len(self._layers) == 0:
-            return
-
-        activity = self._layers.pop()
-
+    def restore_sleep(self, token: Any) -> None:
         process_info = self._objc.msg(self._objc.cls('NSProcessInfo'), 'processInfo')
 
-        self._objc.msg(process_info, 'endActivity:', ctypes.c_void_p(activity))
+        self._objc.msg(process_info, 'endActivity:', ctypes.c_void_p(token))
 
 
 def _check_mac_version() -> bool:
