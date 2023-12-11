@@ -21,6 +21,10 @@ class OsXBackend(StayAwakeBackend):
         self._objc = MiniObjCInterface()
         self._layers = []
 
+    @classmethod
+    def description(cls) -> str:
+        return "Activity-based backend for Mac OS X and above"
+
     def disable_sleep(self, reason: Optional[str] = None) -> None:
         reason = self._objc.msg(self._objc.cls('NSString'), 'stringWithUTF8String:', (reason or '').encode('utf-8'))
         process_info = self._objc.msg(self._objc.cls('NSProcessInfo'), 'processInfo')
