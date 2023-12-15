@@ -20,6 +20,9 @@ Note that PID files are generally not required by systemd daemons, but we suppor
 exclusion between a debug instance run in a terminal vs the real one that might still be running in the background.
 """
 
+__version__ = '0.2.0'
+
+
 import sys
 import signal
 import os
