@@ -80,7 +80,7 @@ class SystemdDaemonBase(ABC):
             raw_args: A Namespace object containing the parsed command-line arguments.
 
         Returns:
-            A string representing an absolut path, or None
+            A string representing an absolute path, or None
         """
         return f"/run/{self.daemon_name()}.pid"
 
@@ -215,7 +215,7 @@ class SystemdDaemonBase(ABC):
             except (AlreadyLocked, LockTimeout):
                 fail("Daemon seems to be already running")
             except Exception as e:
-                fail(f"Could not open PID file at {pidfile}. Not running as rooot?")
+                fail(f"Could not open PID file at {pidfile}. Not running as root?")
 
         try:
             yield
