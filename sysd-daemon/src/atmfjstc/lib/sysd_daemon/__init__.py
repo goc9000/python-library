@@ -20,7 +20,7 @@ Note that PID files are generally not required by systemd daemons, but we suppor
 exclusion between a debug instance run in a terminal vs the real one that might still be running in the background.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 
 import sys
@@ -211,6 +211,12 @@ class SystemdDaemonBase(ABC):
 
         lock = None
         if pidfile is not None:
+            parent_path = Path(pidfile).parent
+            try:
+                parent_path.mkdir(mode=0o755, parents=True, exist_ok=True)
+            except OSError:
+                fail(f"Could not set up directory for PID file at {parent_path}. Not running as root?")
+
             lock = _PIDLockFileWithDelete(pidfile, 2)
 
             try:
