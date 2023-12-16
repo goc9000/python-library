@@ -44,6 +44,11 @@ class UnixSocketSetupError(Exception):
     pass
 
 
+class UnixSocketParentDirSetupError(UnixSocketSetupError):
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message or "Could not set up parent directory for daemon socket, maybe you need root access")
+
+
 class UnixSocketPermissionsSetupError(UnixSocketSetupError):
     def __init__(self, message: Optional[str] = None):
         super().__init__(message or "Could not set permissions for daemon socket, maybe you need root access")
@@ -52,6 +57,23 @@ class UnixSocketPermissionsSetupError(UnixSocketSetupError):
 class UnixSocketOwnerSetupError(UnixSocketSetupError):
     def __init__(self, message: Optional[str] = None):
         super().__init__(message or "Could not set owner/group for daemon socket, maybe you need root access")
+
+
+def pre_setup_unix_socket(socket_config: UnixServerSocketConfig):
+    """
+    Performs any necessary setup before a Unix socket is created. Currently this only means creating the parent
+    directory if necessary.
+
+    Args:
+        socket_config: The configuration of the socket
+
+    Raises:
+        UnixSocketParentDirSetupError: If the parent directory could not be set up
+    """
+    try:
+        socket_config.path.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    except OSError:
+        raise UnixSocketParentDirSetupError() from None
 
 
 def setup_unix_socket(socket_config: UnixServerSocketConfig):

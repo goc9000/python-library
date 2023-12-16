@@ -2,7 +2,7 @@ import asyncio
 
 from abc import ABC, abstractmethod
 
-from .socket import UnixServerSocketConfig, setup_unix_socket
+from .socket import UnixServerSocketConfig, pre_setup_unix_socket, setup_unix_socket
 
 
 class AsyncProtocolServerBase(ABC):
@@ -35,6 +35,8 @@ class AsyncProtocolServerBase(ABC):
         Initializes the socket. This is an opportunity for any major socket/permissions issues to be reported before
         the daemon main loop starts.
         """
+        pre_setup_unix_socket(self._socket_config)
+
         self._server = await asyncio.start_unix_server(
             self._on_connection_wrapper, path=self._socket_config.path, limit=self._buffer_limit
         )
