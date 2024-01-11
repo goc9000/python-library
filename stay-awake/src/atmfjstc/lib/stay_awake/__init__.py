@@ -9,7 +9,7 @@ Caution: this module is not thread-safe.
 TODO: currently only a limited set of backends is implemented.
 """
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 
 import sys
@@ -98,7 +98,7 @@ def _end_wake(wake_lock: WakeLock):
 
 
 @contextmanager
-def no_sleep(reason: Optional[str] = None) -> ContextManager[None]:
+def no_sleep(reason: Optional[str] = None, who: Optional[str] = None) -> ContextManager[None]:
     """
     Context manager for keeping the system awake while it is in effect.
 
@@ -106,9 +106,12 @@ def no_sleep(reason: Optional[str] = None) -> ContextManager[None]:
         reason:
             Text describing the reason why the system is being kept awake. Whether this information is visible or
             easily accessible varies by system.
+        who:
+            Text identifying the application that wants to keep the system awake. Whether this information is visible or
+            easily accessible varies by system.
     """
 
-    wake_lock = disable_sleep(reason)
+    wake_lock = disable_sleep(reason=reason, who=who)
 
     try:
         yield
