@@ -151,6 +151,9 @@ from atmfjstc.lib.ast.config import ASTNodeConfig, ASTNodeFieldSpec, ASTNodeSing
 from atmfjstc.lib.ast._initialization import parse_ast_node_args
 
 
+__version__ = '1.5.2'
+
+
 class ASTNode:
     """
     Base class for building AST (Abstract Syntax Tree) nodes. See package doc for usage.
