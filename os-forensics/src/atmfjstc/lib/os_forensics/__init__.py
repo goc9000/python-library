@@ -6,3 +6,6 @@ and tidbits that are not fully covered or decoded by the former. There is also a
 being able to analyze the data of any operating system while running any other, e.g. we do not need to have any
 Windows stuff installed to be able to analyze Windows data.
 """
+
+
+__version__ = '0.2.4'
