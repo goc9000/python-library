@@ -5,3 +5,6 @@ The defining feature of these utilities is that they refer to and extend the Pyt
 any specific operating system features or connect to any specific real-world application. They are just highly abstract
 idioms for iteration and data structure processing that may come in handy anywhere.
 """
+
+
+__version__ = '1.11.5'
