@@ -95,4 +95,4 @@ def extract_posix_permissions(posix_mode: PosixMode) -> PosixNumericPermissions:
 
 
 def posix_permissions_num_to_string(permissions: PosixNumericPermissions) -> PosixPermissionsString:
-    return stat.filemode(permissions)[1:]
+    return PosixPermissionsString(stat.filemode(permissions)[1:])
