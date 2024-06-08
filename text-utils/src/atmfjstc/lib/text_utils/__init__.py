@@ -10,6 +10,9 @@ from typing import Tuple, Any, Iterable, Optional, List, Union
 from atmfjstc.lib.py_lang_utils.iteration import iter_with_first
 
 
+__version__ = '1.5.2'
+
+
 def ucfirst(word: str) -> str:
     """Capitalize the first letter of a word (while leaving the rest alone, unlike ``str.capitalize``)"""
     return '' if len(word) == 0 else (word[0].upper() + word[1:])
