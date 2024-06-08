@@ -57,6 +57,9 @@ from collections.abc import Collection, Hashable
 from atmfjstc.lib.py_lang_utils.token import Token
 
 
+__version__ = '1.1.3'
+
+
 AnyType = Token(repr_='AnyType')
 """This is used as a token for the universal type (any value matches)."""
 
