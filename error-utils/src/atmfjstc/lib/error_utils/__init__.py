@@ -10,6 +10,9 @@ from contextlib import contextmanager
 from abc import abstractmethod, ABCMeta
 
 
+__version__ = '1.3.2'
+
+
 @contextmanager
 def ignore_errors() -> ContextManager[None]:
     """
