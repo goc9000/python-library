@@ -34,6 +34,9 @@ from atmfjstc.lib.cli_utils.errors import fail, DescriptiveError, short_format_e
 from atmfjstc.lib.cli_utils.root import is_root
 
 
+__version__ = '0.3.4'
+
+
 class OSXDaemonBase(ABC):
     """
     A harness for daemons designed to be run via `launchd`.
