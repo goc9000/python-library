@@ -31,6 +31,9 @@ from collections import OrderedDict
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 
+__version__ = '1.1.3'
+
+
 class EZRepr:
     def __repr__(self, **kwargs) -> str:
         """
