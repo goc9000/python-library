@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from abc import abstractmethod, ABCMeta
 
 
-__version__ = '1.3.2'
+__version__ = '1.4.0'
 
 
 @contextmanager
@@ -67,7 +67,7 @@ def full_format_exception(exception: BaseException, follow_cause: bool = True) -
 
     Args:
         exception: The exception to format
-        follow_cause: Whether to show `__cause__` exceptions. True by default.
+        follow_cause: Whether to show `__cause__` or `__context__` exceptions. True by default.
 
     Returns:
        A string containing the fully formatted exception info. It will not end in a newline.
@@ -75,9 +75,13 @@ def full_format_exception(exception: BaseException, follow_cause: bool = True) -
 
     parts = [format_exception_head(exception), '  Traceback:', indent(format_exception_trace(exception), '    ')]
 
-    if follow_cause and exception.__cause__:
-        parts.append('  Cause:')
-        parts.append(indent(full_format_exception(exception.__cause__), '    '))
+    if follow_cause:
+        if exception.__cause__:
+            parts.append('  Cause:')
+            parts.append(indent(full_format_exception(exception.__cause__), '    '))
+        elif (exception.__context__ is not None) and not exception.__suppress_context__:
+            parts.append('  The exception occurred while handling another one:')
+            parts.append(indent(full_format_exception(exception.__context__), '    '))
 
     return '\n'.join(parts)
 
