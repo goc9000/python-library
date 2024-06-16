@@ -18,15 +18,16 @@ def ignore_errors() -> ContextManager[None]:
     """
     Use ``with ignore_errors(): <code>`` to ignore all errors in a bit of code (e.g. when making sure some file is
     closed in a `finally` block)
+
+    Note that `BaseException`'s are intentionally not ignored. This is because they usually represent system exiting
+    events (Ctrl+C, sys.exit() etc.) which should only, if ever, be intercepted in an explicit construct.
     """
     try:
         yield
-    except SystemExit:
-        raise
-    except KeyboardInterrupt:
-        raise
-    except:
+    except Exception:
         pass
+    except:
+        raise
 
 
 def format_exception_head(exception: BaseException) -> str:
