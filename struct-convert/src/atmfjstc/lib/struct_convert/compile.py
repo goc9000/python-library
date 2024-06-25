@@ -1,14 +1,14 @@
 import re
 
 from collections.abc import Set
-from typing import Callable, Any
-from collections.abc import Mapping
+from typing import Callable, Any, Optional
+from contextlib import contextmanager
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec
-from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
+from .errors import ConvertStructCompileError
 
 
 _NO_VALUE = Token()
@@ -145,23 +145,31 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
         )
         value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
 
-        lines_if_value = []
-        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
-
-        lines_if_value.append(f"{value_var} = converter_core{index}(source, {value_var})")
-
-        lines_if_value.append(f"if {value_var} is not _NO_VALUE:")
-        setter_lines = []
-        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
-        lines_if_value.extend(f"    {line}" for line in setter_lines)
-
         if field.required:
             mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
             mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
-            mut_code_lines.extend(lines_if_value)
-        else:
-            mut_code_lines.append(f"if {value_var} is not _NO_VALUE:")
-            mut_code_lines.extend(f"    {line}" for line in lines_if_value)
+
+        with _maybe_indent(mut_code_lines, f"if {value_var} is not _NO_VALUE" if not field.required else None) as lines:
+            mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
+
+            lines.append(f"{value_var} = converter_core{index}(source, {value_var})")
+
+            lines.append(f"if {value_var} is not _NO_VALUE:")
+            setter_lines = []
+            _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
+            lines.extend(f"    {line}" for line in setter_lines)
+
+
+@contextmanager
+def _maybe_indent(mut_code_lines: list[str], header: Optional[str] = None):
+    if header is not None:
+        mut_code_lines.append(f"{header}:")
+
+    temp_lines = []
+
+    yield mut_code_lines if header is None else temp_lines
+
+    mut_code_lines.extend(f"    {line}" for line in temp_lines)
 
 
 def _compile_get_field(
