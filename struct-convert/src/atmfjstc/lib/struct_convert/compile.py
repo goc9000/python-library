@@ -149,15 +149,42 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
             mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
             mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
 
-        with _maybe_indent(mut_code_lines, f"if {value_var} is not _NO_VALUE" if not field.required else None) as lines:
-            mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
+        filters = []
 
-            lines.append(f"{value_var} = converter_core{index}(source, {value_var})")
+        if not field.required:
+            filters.append(dict(
+                condition=f"{value_var} is not _NO_VALUE"
+            ))
 
-            lines.append(f"if {value_var} is not _NO_VALUE:")
-            setter_lines = []
-            _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
-            lines.extend(f"    {line}" for line in setter_lines)
+        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
+        filters.append(dict(
+            setup=[
+                f"{value_var} = converter_core{index}(source, {value_var})"
+            ],
+            condition=f"{value_var} is not _NO_VALUE"
+        ))
+
+        setter_lines = []
+        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
+
+        _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
+
+
+def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[dict], setter_lines: list[str]):
+    if len(filters) == 0:
+        mut_code_lines.extend(setter_lines)
+        return
+
+    filter, *filters_rest = filters
+
+    mut_code_lines.extend(filter.get('setup', []))
+
+    mut_code_lines.append(f"if {filter['condition']}:")
+
+    sub_lines = []
+    _compile_conversion_with_filters(sub_lines, filters_rest, setter_lines)
+
+    mut_code_lines.extend(f"    {line}" for line in sub_lines)
 
 
 @contextmanager
