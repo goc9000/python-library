@@ -183,7 +183,7 @@ def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
 
     for field, raw_field_spec in fields.items():
         try:
-            parsed_field_spec = ConvertStructFieldSpec.parse(raw_field_spec, field)
+            parsed_field_spec = parse_field_spec(raw_field_spec, field)
 
             if parsed_field_spec is not None:
                 out_fields.append((field, parsed_field_spec))
@@ -329,56 +329,56 @@ class ConvertStructFieldSpec:
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
 
-    @staticmethod
-    def parse(raw_field_spec: RawFieldSpec, default_source: str) -> Optional['ConvertStructFieldSpec']:
-        if isinstance(raw_field_spec, ConvertStructFieldSpec):
-            return raw_field_spec
 
-        normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
+def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optional[ConvertStructFieldSpec]:
+    if isinstance(raw_field_spec, ConvertStructFieldSpec):
+        return raw_field_spec
 
-        if 'ignore' in normalized_raw_field_spec:
-            if not normalized_raw_field_spec['ignore']:
-                raise ConvertStructCompileError("If 'ignore' is set, it must be True")
-            if len(normalized_raw_field_spec) > 1:
-                raise ConvertStructCompileError("If 'ignore' is set, it must be the only key")
+    normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
 
-            return None
+    if 'ignore' in normalized_raw_field_spec:
+        if not normalized_raw_field_spec['ignore']:
+            raise ConvertStructCompileError("If 'ignore' is set, it must be True")
+        if len(normalized_raw_field_spec) > 1:
+            raise ConvertStructCompileError("If 'ignore' is set, it must be the only key")
 
-        if ('store' in normalized_raw_field_spec) and ('convert' in normalized_raw_field_spec):
-            raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
+        return None
 
-        init_params = dict(source=default_source)
-        filters = []
+    if ('store' in normalized_raw_field_spec) and ('convert' in normalized_raw_field_spec):
+        raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
 
-        # How ironic that the struct converter itself would be excellent at doing the job of the following code!
-        # Chicken and the egg...
+    init_params = dict(source=default_source)
+    filters = []
 
-        for key, value in normalized_raw_field_spec.items():
-            try:
-                if key == 'src':
-                    init_params['source'] = _expect_field_name(value)
-                elif key == 'if_different':
-                    init_params[key] = _expect_field_name(value)
-                elif key == 'req':
-                    init_params['required'] = _typecheck(value, bool)
-                elif key == 'skip_empty':
-                    if _typecheck(value, bool):
-                        filters.append((1, _is_nonempty))
-                elif key == 'skip_if':
-                    filters.append((2, _make_not_eq_filter(value)))
-                elif key == 'convert':
-                    init_params[key] = _parse_converter(value)
-                elif key == 'store':
-                    init_params['convert'] = _parse_store(value)
-                else:
-                    raise KeyError("Don't recognize this field")
-            except Exception as e:
-                raise ConvertStructCompileError(f"Invalid field spec parameter '{key}'") from e
+    # How ironic that the struct converter itself would be excellent at doing the job of the following code!
+    # Chicken and the egg...
 
-        if len(filters) > 0:
-            init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
+    for key, value in normalized_raw_field_spec.items():
+        try:
+            if key == 'src':
+                init_params['source'] = _expect_field_name(value)
+            elif key == 'if_different':
+                init_params[key] = _expect_field_name(value)
+            elif key == 'req':
+                init_params['required'] = _typecheck(value, bool)
+            elif key == 'skip_empty':
+                if _typecheck(value, bool):
+                    filters.append((1, _is_nonempty))
+            elif key == 'skip_if':
+                filters.append((2, _make_not_eq_filter(value)))
+            elif key == 'convert':
+                init_params[key] = _parse_converter(value)
+            elif key == 'store':
+                init_params['convert'] = _parse_store(value)
+            else:
+                raise KeyError("Don't recognize this field")
+        except Exception as e:
+            raise ConvertStructCompileError(f"Invalid field spec parameter '{key}'") from e
 
-        return ConvertStructFieldSpec(**init_params)
+    if len(filters) > 0:
+        init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
+
+    return ConvertStructFieldSpec(**init_params)
 
 
 def _expect_field_name(value: str) -> str:
