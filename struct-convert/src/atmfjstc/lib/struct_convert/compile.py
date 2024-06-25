@@ -20,7 +20,31 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     result_extractor = \
         _setup_result_extractor(spec.source_type, spec.destination, spec.return_unparsed, unhandled_getter)
 
-    return _setup_conversion_core(spec.fields, source_dest_finder, getter, setter, result_extractor)
+    converter_core = _setup_conversion_core(spec.fields, source_dest_finder, getter, setter, result_extractor)
+
+    parameters = _compile_converter_params(spec.destination)
+
+    func_header = f"def convert({', '.join(parameters)}):"
+    code_lines = []
+
+    globals = dict(
+        converter_core=converter_core,
+    )
+
+    code_lines.append(f"return converter_core({', '.join(parameters)})")
+
+    code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
+
+    try:
+        exec(code, globals)
+
+        return globals['convert']
+    except Exception as e:
+        raise ConvertStructCompileError("Failed to compile converter") from e
+
+
+def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
+    return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
 ParsedFieldSpecs = tuple[FieldSpec, ...]
