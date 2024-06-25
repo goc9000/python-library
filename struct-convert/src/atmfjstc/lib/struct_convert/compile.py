@@ -1,5 +1,7 @@
+import re
+
 from collections.abc import Set
-from typing import Callable, Any, Tuple, Union
+from typing import Callable, Any
 from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
@@ -149,6 +151,7 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
         value_expr = _compile_get_field(
             mut_code_lines, mut_globals, field.destination, spec.source_type, spec.none_means_missing
         )
+        value_expr = _drop_to_variable(mut_code_lines, value_expr, 'value')
 
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter, setter)
 
@@ -169,12 +172,21 @@ def _compile_get_field(
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
     if none_means_missing:
-        mut_code_lines.append(f"{temp_name} = {result}")
+        _drop_to_variable(mut_code_lines, result, temp_name)
         mut_code_lines.append(f"if {temp_name} is None:")
         mut_code_lines.append(f"     {temp_name} = _NO_VALUE")
         result = temp_name
 
     return result
+
+
+def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> str:
+    if re.match(r'^[a-z0-9_]+$', expr, re.I):
+        return expr
+
+    mut_code_lines.append(f"{var_name} = {expr}")
+
+    return var_name
 
 
 def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter, setter: FieldSetter) -> Callable:
