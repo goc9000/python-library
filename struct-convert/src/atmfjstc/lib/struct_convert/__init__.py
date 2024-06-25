@@ -7,6 +7,8 @@ from collections.abc import Mapping, Sequence
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
+from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
+
 
 __version__ = '0.0.0'
 
@@ -511,27 +513,3 @@ def _parse_store(value: Hashable) -> Callable[[Any], Any]:
         raise TypeError("Only constant (hashable) values may be stored") from None
 
     return lambda _: value
-
-
-class ConvertStructCompileError(Exception):
-    """
-    Base class for all exceptions related to setting up a struct converter incorrectly.
-    """
-
-
-class ConvertStructRuntimeError(Exception):
-    """
-    Base class for all exceptions thrown when a struct converter encounters bad data at runtime.
-    """
-
-
-class ConvertStructMissingRequiredFieldError(ConvertStructRuntimeError):
-    field = None
-
-    def __init__(self, field):
-        super().__init__(f"Missing required field '{field}'")
-        self.field = field
-
-
-class ConvertStructWrongSourceTypeError(ConvertStructRuntimeError):
-    pass
