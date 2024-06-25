@@ -154,6 +154,11 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
         ))
 
         setter_lines = []
+
+        if field.convert is not None:
+            mut_globals[f'converter{index}'] = field.convert
+            setter_lines.append(f"{value_var} = converter{index}({value_var})")
+
         _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
 
         _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
