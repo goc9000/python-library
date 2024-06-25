@@ -1,12 +1,11 @@
 from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
-from dataclasses import dataclass
 from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs, RawFieldSpec
-from .spec import SourceType, DestinationType
+from .spec import SourceType, DestinationType, FieldSpec
 from .parse_spec import parse_source_type, parse_destination_type, normalize_raw_field_spec
 from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
@@ -321,17 +320,8 @@ def _setup_conversion_core(
     return _convert_core
 
 
-@dataclass(frozen=True)
-class ConvertStructFieldSpec:
-    source: str  # Name of field to copy data from
-    required: bool = False
-    filter: Optional[Callable[[any], bool]] = None
-    if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
-    convert: Optional[Callable[[any], any]] = None
-
-
-def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optional[ConvertStructFieldSpec]:
-    if isinstance(raw_field_spec, ConvertStructFieldSpec):
+def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optional[FieldSpec]:
+    if isinstance(raw_field_spec, FieldSpec):
         return raw_field_spec
 
     normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
@@ -378,7 +368,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optio
     if len(filters) > 0:
         init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
 
-    return ConvertStructFieldSpec(**init_params)
+    return FieldSpec(**init_params)
 
 
 def _expect_field_name(value: str) -> str:
@@ -436,7 +426,7 @@ def _parse_store(value: Hashable) -> Callable[[Any], Any]:
     return lambda _: value
 
 
-def do_convert(field_spec: ConvertStructFieldSpec, field_getter: Callable[[str], Any]) -> Any:
+def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any]) -> Any:
     value = field_getter(field_spec.source)
 
     if value is _NO_VALUE:
