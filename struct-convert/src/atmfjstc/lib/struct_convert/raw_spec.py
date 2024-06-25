@@ -1,0 +1,2 @@
+RawSourceType = str
+RawDestinationType = str

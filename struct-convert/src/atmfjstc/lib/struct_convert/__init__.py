@@ -1,12 +1,14 @@
 import typing
 from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
 from dataclasses import dataclass
-from enum import Enum, auto
 from collections.abc import Mapping, Sequence
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
+from .raw_spec import RawSourceType, RawDestinationType
+from .spec import SourceType, DestinationType
+from .parse_spec import parse_source_type, parse_destination_type
 from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
 
@@ -23,7 +25,7 @@ StructConverter = Callable
 
 
 def make_struct_converter(
-    source_type: str, dest_type: str, fields: RawFieldSpecs,
+    source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs,
     return_unparsed: bool = False, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> StructConverter:
     """
@@ -157,8 +159,8 @@ def make_struct_converter(
     - All runtime errors (bad data) cause a `ConvertStructRuntimeError` subclass to be thrown.
     """
 
-    source_type = SourceType.parse(source_type)
-    dest_type = DestinationType.parse(dest_type)
+    source_type = parse_source_type(source_type)
+    dest_type = parse_destination_type(dest_type)
 
     field_specs, ignored_fields = _parse_fields(fields)
     unhandled_getter = _setup_unhandled_getter(source_type, field_specs, ignored_fields, ignore)
@@ -177,41 +179,6 @@ FieldGetter = Callable[[Any, str], Any]
 FieldSetter = Callable[[Any, str, Any], None]
 ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
 ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
-
-
-class SourceType(Enum):
-    DICT = auto()
-    OBJ = auto()
-
-    @staticmethod
-    def parse(raw_source_type: str) -> 'SourceType':
-        if raw_source_type in {'dict'}:
-            return SourceType.DICT
-        elif raw_source_type in {'obj', 'object', 'class'}:
-            return SourceType.OBJ
-        else:
-            raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
-
-
-class DestinationType(Enum):
-    DICT = auto()
-    DICT_BY_REF = auto()
-    OBJ_BY_REF = auto()
-
-    @staticmethod
-    def parse(raw_dest_type: str) -> 'DestinationType':
-        if raw_dest_type in {'dict'}:
-            return DestinationType.DICT
-        elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
-            return DestinationType.DICT_BY_REF
-        elif raw_dest_type in {
-            '&obj', '@obj', 'obj-by-ref', 'obj-by-reference',
-            '&object', '@object', 'object-by-ref', 'object-by-reference',
-            '&class', '@class', 'class-by-ref', 'class-by-reference'
-        }:
-            return DestinationType.OBJ_BY_REF
-        else:
-            raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
 
 
 def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
