@@ -146,16 +146,42 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
     setter = _setup_field_setter(spec.destination)
 
     for index, field in enumerate(spec.fields):
+        value_expr = _compile_get_field(
+            mut_code_lines, mut_globals, field.destination, spec.source_type, spec.none_means_missing
+        )
+
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter, setter)
 
-        mut_code_lines.append(f"converter_core{index}(source, {destination_var})")
+        mut_code_lines.append(f"converter_core{index}(source, {destination_var}, {value_expr})")
+
+
+def _compile_get_field(
+    mut_code_lines: list[str], mut_globals: dict, field: str, source_type: SourceType, none_means_missing: bool,
+    temp_name: str = 'value'
+) -> str:
+    mut_globals['_NO_VALUE'] = _NO_VALUE
+
+    if source_type == SourceType.DICT:
+        result = f"source.get({field!r}, _NO_VALUE)"
+    elif source_type == SourceType.OBJ:
+        result = f"getattr(source, {field!r}, _NO_VALUE)"
+    else:
+        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
+
+    if none_means_missing:
+        mut_code_lines.append(f"{temp_name} = {result}")
+        mut_code_lines.append(f"if {temp_name} is None:")
+        mut_code_lines.append(f"     {temp_name} = _NO_VALUE")
+        result = temp_name
+
+    return result
 
 
 def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter, setter: FieldSetter) -> Callable:
-    def _convert_core(source, destination):
+    def _convert_core(source, destination, obtained_value):
         field_getter = lambda field_name: getter(source, field_name)
 
-        value = do_convert(field_spec, field_getter)
+        value = do_convert(field_spec, field_getter, obtained_value)
 
         if value is not _NO_VALUE:
             setter(destination, field_spec.destination, value)
@@ -163,8 +189,8 @@ def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter,
     return _convert_core
 
 
-def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any]) -> Any:
-    value = field_getter(field_spec.source)
+def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any], obtained_value: Any) -> Any:
+    value = obtained_value
 
     if value is _NO_VALUE:
         if field_spec.required:
