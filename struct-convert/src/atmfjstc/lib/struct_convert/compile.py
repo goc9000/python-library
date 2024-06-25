@@ -13,19 +13,12 @@ _NO_VALUE = Token()
 
 
 def compile_converter(spec: ConversionSpec) -> Callable:
-    getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
-    setter = _setup_field_setter(spec.destination)
-
-    converter_core = _setup_conversion_core(spec.fields, getter, setter)
-
     parameters = _compile_converter_params(spec.destination)
 
     func_header = f"def convert({', '.join(parameters)}):"
     code_lines = []
 
-    globals = dict(
-        converter_core=converter_core,
-    )
+    globals = dict()
 
     if spec.destination.by_ref:
         destination_var = 'mut_dest'
@@ -33,7 +26,7 @@ def compile_converter(spec: ConversionSpec) -> Callable:
         code_lines.append(f"destination = {_compile_init_destination(spec.destination)}")
         destination_var = 'destination'
 
-    code_lines.append(f"converter_core(source, {destination_var})")
+    _compile_conversion_core(code_lines, globals, destination_var, spec)
 
     return_values = _compile_return_values(spec.destination)
 
@@ -146,6 +139,15 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
     return return_values
+
+
+def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, destination_var: str, spec: ConversionSpec):
+    getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
+    setter = _setup_field_setter(spec.destination)
+
+    mut_globals['converter_core'] = _setup_conversion_core(spec.fields, getter, setter)
+
+    mut_code_lines.append(f"converter_core(source, {destination_var})")
 
 
 def _setup_conversion_core(fields: ParsedFieldSpecs, getter: FieldGetter, setter: FieldSetter) -> Callable:
