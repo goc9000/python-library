@@ -20,7 +20,6 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     converter_core = _setup_conversion_core(spec.fields, getter, setter)
 
     parameters = _compile_converter_params(spec.destination)
-    return_values = _compile_return_values(spec.destination, spec.return_unparsed)
 
     func_header = f"def convert({', '.join(parameters)}):"
     code_lines = []
@@ -32,7 +31,10 @@ def compile_converter(spec: ConversionSpec) -> Callable:
 
     code_lines.append(f"destination = {_compile_dest_finder(spec.destination)}")
     code_lines.append(f"converter_core(source, destination)")
-    code_lines.append(f"return {', '.join(return_values)}")
+
+    return_values = _compile_return_values(spec.destination, spec.return_unparsed)
+    if len(return_values) > 0:
+        code_lines.append(f"return {', '.join(return_values)}")
 
     code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
 
@@ -134,18 +136,19 @@ def _setup_field_setter(destination_spec: DestinationSpec) -> FieldSetter:
 
 
 def _compile_return_values(destination_spec: DestinationSpec, return_unparsed_option: bool) -> list[str]:
+    return_values = []
+
     if destination_spec.by_ref:
-        if return_unparsed_option:
-            return ['unhandled_getter(source)']
-        else:
-            return ['None']
+        pass
     elif destination_spec.type == DestinationType.DICT:
-        if return_unparsed_option:
-            return ['destination', 'unhandled_getter(source)']
-        else:
-            return ['destination']
+        return_values.append('destination')
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+
+    if return_unparsed_option:
+        return_values.append('unhandled_getter(source)')
+
+    return return_values
 
 
 def _setup_conversion_core(fields: ParsedFieldSpecs, getter: FieldGetter, setter: FieldSetter) -> Callable:
