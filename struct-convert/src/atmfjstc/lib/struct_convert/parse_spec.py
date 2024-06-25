@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence, Hashable, Iterable, Set
-from typing import Optional, TypeVar, Callable, Any, Union
+from typing import Optional, TypeVar, Callable, Any, Union, Type
 
-from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec
+from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec, ConstSpec
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, RawFieldSpecs, NormalizedRawFieldSpec
 from .errors import ConvertStructCompileError
 
@@ -126,7 +126,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
             elif key == 'convert':
                 init_params[key] = _parse_converter(value)
             elif key == 'store':
-                init_params['convert'] = _parse_store(value)
+                init_params[key] = _parse_const(value)
             else:
                 raise KeyError("Don't recognize this field")
         except Exception as e:
@@ -180,12 +180,10 @@ def _parse_converter(converter_spec: Union[Callable[[Any], Any], str]) -> Callab
     raise ValueError(f"Unknown built-in converter: '{converter_spec}'")
 
 
-def _parse_store(value: Hashable) -> Callable[[Any], Any]:
+def _parse_const(value: Union[Hashable, Type, Callable[[], Any]]) -> ConstSpec:
+    if isinstance(value, Type) or callable(value):
+        return ConstSpec(factory=value)
+
     _typecheck(value, Hashable)
 
-    try:
-        _ = hash(value)
-    except Exception:
-        raise TypeError("Only constant (hashable) values may be stored") from None
-
-    return lambda _: value
+    return ConstSpec(constant=value)

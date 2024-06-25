@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections.abc import Set, Hashable
-from typing import Optional, Callable
+from typing import Optional, Callable, Type, Any, Union
 from enum import Enum, auto
 
 
@@ -21,6 +21,12 @@ class DestinationSpec:
 
 
 @dataclass(frozen=True)
+class ConstSpec:
+    constant: Optional[Hashable] = None
+    factory: Optional[Union[Callable[[], Any], Type]] = None
+
+
+@dataclass(frozen=True)
 class FieldSpec:
     source: str  # Name of field to copy data from
     destination: str  # Name of field to copy data to
@@ -29,6 +35,7 @@ class FieldSpec:
     skip_if: Set[Hashable, ...] = frozenset()
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
+    store: Optional[ConstSpec] = None
 
 
 @dataclass(frozen=True)

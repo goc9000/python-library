@@ -165,7 +165,14 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
 
         setter_lines = []
 
-        if field.convert is not None:
+        if field.store is not None:
+            if field.store.factory is not None:
+                mut_globals[f'factory{index}'] = field.store.factory
+                value_expr = f"factory{index}()"
+            else:
+                mut_globals[f'const{index}'] = field.store.constant
+                value_expr = f"const{index}"
+        elif field.convert is not None:
             mut_globals[f'converter{index}'] = field.convert
             value_expr = f"converter{index}({value_var})"
         else:
