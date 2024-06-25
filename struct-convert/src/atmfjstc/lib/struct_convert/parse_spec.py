@@ -1,5 +1,7 @@
+from typing import Mapping, Sequence
+
 from .spec import SourceType, DestinationType
-from .raw_spec import RawSourceType, RawDestinationType
+from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, NormalizedRawFieldSpec
 from .errors import ConvertStructCompileError
 
 
@@ -25,3 +27,26 @@ def parse_destination_type(raw_dest_type: RawDestinationType) -> DestinationType
         return DestinationType.OBJ_BY_REF
     else:
         raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
+
+
+def normalize_raw_field_spec(raw_field_spec: RawFieldSpec) -> NormalizedRawFieldSpec:
+    if (raw_field_spec is None) or (raw_field_spec is True):
+        return dict()
+    if raw_field_spec is False:
+        return dict(ignore=True)
+    if isinstance(raw_field_spec, Mapping):
+        return raw_field_spec
+    if isinstance(raw_field_spec, str):
+        return {raw_field_spec: True} if raw_field_spec != '' else dict()
+    if isinstance(raw_field_spec, Sequence):
+        result = dict()
+
+        for part in raw_field_spec:
+            for k, v in normalize_raw_field_spec(part).items():
+                if k in result:
+                    raise ConvertStructCompileError(f"Parameter '{k}' is specified more than once")
+                result[k] = v
+
+        return result
+
+    raise ConvertStructCompileError(f"Can't parse field spec of type {type(raw_field_spec).__name__}")

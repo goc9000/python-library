@@ -1,14 +1,13 @@
-import typing
 from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
 from dataclasses import dataclass
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
-from .raw_spec import RawSourceType, RawDestinationType
+from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs, RawFieldSpec
 from .spec import SourceType, DestinationType
-from .parse_spec import parse_source_type, parse_destination_type
+from .parse_spec import parse_source_type, parse_destination_type, normalize_raw_field_spec
 from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
 
@@ -18,9 +17,6 @@ __version__ = '0.0.0'
 _NO_VALUE = Token()
 
 
-NormalizedRawFieldSpec = typing.Mapping[str, Any]
-RawFieldSpec = Union[None, bool, str, NormalizedRawFieldSpec, typing.Sequence['RawFieldSpec']]
-RawFieldSpecs = typing.Mapping[str, RawFieldSpec]
 StructConverter = Callable
 
 
@@ -357,7 +353,7 @@ class ConvertStructFieldSpec:
         if isinstance(raw_field_spec, ConvertStructFieldSpec):
             return raw_field_spec
 
-        normalized_raw_field_spec = _normalize_raw_field_spec(raw_field_spec)
+        normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
 
         if 'ignore' in normalized_raw_field_spec:
             if not normalized_raw_field_spec['ignore']:
@@ -402,29 +398,6 @@ class ConvertStructFieldSpec:
             init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
 
         return ConvertStructFieldSpec(**init_params)
-
-
-def _normalize_raw_field_spec(raw_field_spec: RawFieldSpec) -> NormalizedRawFieldSpec:
-    if (raw_field_spec is None) or (raw_field_spec is True):
-        return dict()
-    if raw_field_spec is False:
-        return dict(ignore=True)
-    if isinstance(raw_field_spec, Mapping):
-        return raw_field_spec
-    if isinstance(raw_field_spec, str):
-        return {raw_field_spec: True} if raw_field_spec != '' else dict()
-    if isinstance(raw_field_spec, Sequence):
-        result = dict()
-
-        for part in raw_field_spec:
-            for k, v in _normalize_raw_field_spec(part).items():
-                if k in result:
-                    raise ConvertStructCompileError(f"Parameter '{k}' is specified more than once")
-                result[k] = v
-
-        return result
-
-    raise ConvertStructCompileError(f"Can't parse field spec of type {type(raw_field_spec).__name__}")
 
 
 def _expect_field_name(value: str) -> str:
