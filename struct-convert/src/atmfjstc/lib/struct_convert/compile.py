@@ -145,20 +145,20 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
     getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
     setter = _setup_field_setter(spec.destination)
 
-    mut_globals['converter_core'] = _setup_conversion_core(spec.fields, getter, setter)
+    for index, field in enumerate(spec.fields):
+        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter, setter)
 
-    mut_code_lines.append(f"converter_core(source, {destination_var})")
+        mut_code_lines.append(f"converter_core{index}(source, {destination_var})")
 
 
-def _setup_conversion_core(fields: ParsedFieldSpecs, getter: FieldGetter, setter: FieldSetter) -> Callable:
+def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter, setter: FieldSetter) -> Callable:
     def _convert_core(source, destination):
         field_getter = lambda field_name: getter(source, field_name)
 
-        for field_spec in fields:
-            value = do_convert(field_spec, field_getter)
+        value = do_convert(field_spec, field_getter)
 
-            if value is not _NO_VALUE:
-                setter(destination, field_spec.destination, value)
+        if value is not _NO_VALUE:
+            setter(destination, field_spec.destination, value)
 
     return _convert_core
 
