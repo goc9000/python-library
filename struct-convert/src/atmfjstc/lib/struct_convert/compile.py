@@ -145,14 +145,23 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
         )
         value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
 
+        lines_if_value = []
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
 
-        mut_code_lines.append(f"{value_var} = converter_core{index}(source, {value_var})")
+        lines_if_value.append(f"{value_var} = converter_core{index}(source, {value_var})")
 
-        mut_code_lines.append(f"if {value_var} is not _NO_VALUE:")
+        lines_if_value.append(f"if {value_var} is not _NO_VALUE:")
         setter_lines = []
         _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
-        mut_code_lines.extend(f"    {line}" for line in setter_lines)
+        lines_if_value.extend(f"    {line}" for line in setter_lines)
+
+        if field.required:
+            mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
+            mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+            mut_code_lines.extend(lines_if_value)
+        else:
+            mut_code_lines.append(f"if {value_var} is not _NO_VALUE:")
+            mut_code_lines.extend(f"    {line}" for line in lines_if_value)
 
 
 def _compile_get_field(
@@ -197,12 +206,6 @@ def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter)
 
 def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any], obtained_value: Any) -> Any:
     value = obtained_value
-
-    if value is _NO_VALUE:
-        if field_spec.required:
-            raise ConvertStructMissingRequiredFieldError(field_spec.source)
-
-        return _NO_VALUE
 
     if (field_spec.filter is not None) and not field_spec.filter(value):
         return _NO_VALUE
