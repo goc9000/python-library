@@ -167,9 +167,11 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
 
         if field.convert is not None:
             mut_globals[f'converter{index}'] = field.convert
-            setter_lines.append(f"{value_var} = converter{index}({value_var})")
+            value_expr = f"converter{index}({value_var})"
+        else:
+            value_expr = value_var
 
-        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
+        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
 
         _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
 
