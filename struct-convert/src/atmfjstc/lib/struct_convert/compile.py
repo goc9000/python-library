@@ -115,17 +115,13 @@ def _setup_field_getter(source_type: SourceType, none_means_missing: bool) -> Fi
     return _adjust_nones
 
 
-def _setup_field_setter(destination_spec: DestinationSpec) -> FieldSetter:
-    def _dict_setter(dest_dict, field, value):
-        dest_dict[field] = value
-
-    def _obj_setter(dest_obj, field, value):
-        setattr(dest_obj, field, value)
-
+def _compile_set_field(
+    mut_code_lines: list[str], destination_var: str, destination_spec: DestinationSpec, field: str, value_expr: str
+):
     if destination_spec.type == DestinationType.DICT:
-        return _dict_setter
+        mut_code_lines.append(f"{destination_var}[{field!r}] = {value_expr}")
     elif destination_spec.type == DestinationType.OBJ:
-        return _obj_setter
+        mut_code_lines.append(f"setattr({destination_var}, {field!r}, {value_expr})")
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
@@ -145,17 +141,21 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
 
 def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, destination_var: str, spec: ConversionSpec):
     getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
-    setter = _setup_field_setter(spec.destination)
 
     for index, field in enumerate(spec.fields):
         value_expr = _compile_get_field(
-            mut_code_lines, mut_globals, field.destination, spec.source_type, spec.none_means_missing
+            mut_code_lines, mut_globals, field.source, spec.source_type, spec.none_means_missing
         )
-        value_expr = _drop_to_variable(mut_code_lines, value_expr, 'value')
+        value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
 
-        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter, setter)
+        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
 
-        mut_code_lines.append(f"converter_core{index}(source, {destination_var}, {value_expr})")
+        mut_code_lines.append(f"{value_var} = converter_core{index}(source, {destination_var}, {value_var})")
+
+        mut_code_lines.append(f"if {value_var} is not _NO_VALUE:")
+        setter_lines = []
+        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_var)
+        mut_code_lines.extend(f"    {line}" for line in setter_lines)
 
 
 def _compile_get_field(
@@ -189,14 +189,11 @@ def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> st
     return var_name
 
 
-def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter, setter: FieldSetter) -> Callable:
+def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter) -> Callable:
     def _convert_core(source, destination, obtained_value):
         field_getter = lambda field_name: getter(source, field_name)
 
-        value = do_convert(field_spec, field_getter, obtained_value)
-
-        if value is not _NO_VALUE:
-            setter(destination, field_spec.destination, value)
+        return do_convert(field_spec, field_getter, obtained_value)
 
     return _convert_core
 
