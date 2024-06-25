@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence, Hashable, Iterable, Set
 from typing import Optional, TypeVar, Callable, Any, Union
 
-from .spec import ConversionSpec, SourceType, DestinationType, FieldSpec
+from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, RawFieldSpecs, NormalizedRawFieldSpec
 from .errors import ConvertStructCompileError
 
@@ -14,7 +14,7 @@ def parse_conversion_spec(
 
     return ConversionSpec(
         source_type=parse_source_type(raw_source_type),
-        destination_type=parse_destination_type(raw_dest_type),
+        destination=parse_destination_spec(raw_dest_type),
         fields=fields,
         ignored_fields=frozenset([*ignored_fields, *ignore]),
         return_unparsed=return_unparsed,
@@ -31,17 +31,17 @@ def parse_source_type(raw_source_type: RawSourceType) -> SourceType:
         raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
 
 
-def parse_destination_type(raw_dest_type: RawDestinationType) -> DestinationType:
+def parse_destination_spec(raw_dest_type: RawDestinationType) -> DestinationSpec:
     if raw_dest_type in {'dict'}:
-        return DestinationType.DICT
+        return DestinationSpec(type=DestinationType.DICT, by_ref=False)
     elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
-        return DestinationType.DICT_BY_REF
+        return DestinationSpec(type=DestinationType.DICT, by_ref=True)
     elif raw_dest_type in {
         '&obj', '@obj', 'obj-by-ref', 'obj-by-reference',
         '&object', '@object', 'object-by-ref', 'object-by-reference',
         '&class', '@class', 'class-by-ref', 'class-by-reference'
     }:
-        return DestinationType.OBJ_BY_REF
+        return DestinationSpec(type=DestinationType.OBJ, by_ref=False)
     else:
         raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
 
