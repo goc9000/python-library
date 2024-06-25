@@ -63,7 +63,8 @@ def make_struct_converter(
       skipped (not set in the destination) if the source field is missing.
     - `skip_empty`: If set to True (default false), the field will be skipped if it has an "empty" value, i.e. 0, False,
       None, or an empty collection.
-    - `skip_if`: The field will be skipped if it is equal to this value.
+    - `skip_if`: The field will be skipped if it is equal to this value. A list or set of values can also be provided
+      (but not a tuple or frozenset, which will be considered one value).
     - `if_different`: Specifies a field in the source to which this field will be compared. It will be skipped unless
       it is different. Useful for backing up values.
     - `convert`: Specifies a function that will be called to convert this field's value before writing it to the

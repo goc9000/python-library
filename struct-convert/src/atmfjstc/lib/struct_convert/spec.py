@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from collections.abc import Set
+from collections.abc import Set, Hashable
 from typing import Optional, Callable
 from enum import Enum, auto
 
@@ -26,7 +26,7 @@ class FieldSpec:
     destination: str  # Name of field to copy data to
     required: bool = False
     skip_empty: bool = False
-    filter: Optional[Callable[[any], bool]] = None
+    skip_if: Set[Hashable, ...] = frozenset()
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
 

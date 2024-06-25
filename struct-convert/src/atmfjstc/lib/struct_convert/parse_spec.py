@@ -123,7 +123,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
                 if _typecheck(value, bool):
                     init_params['skip_empty'] = True
             elif key == 'skip_if':
-                filters.append((2, _make_not_eq_filter(value)))
+                init_params[key] = _parse_skip_if_set(value)
             elif key == 'convert':
                 init_params[key] = _parse_converter(value)
             elif key == 'store':
@@ -158,8 +158,16 @@ def _typecheck(value: T, expected_type) -> T:
     return value
 
 
-def _make_not_eq_filter(value: Any) -> Callable[[Any], bool]:
-    return lambda x: x != value
+def _parse_skip_if_set(value_or_values: Union[Hashable, list[Hashable], set[Hashable]]) -> Set[Hashable]:
+    if isinstance(value_or_values, (list, set)):
+        for value in value_or_values:
+            _typecheck(value, Hashable)
+
+        return frozenset(value_or_values)
+
+    _typecheck(value_or_values, Hashable)
+
+    return frozenset([value_or_values])
 
 
 def _parse_converter(converter_spec: Union[Callable[[Any], Any], str]) -> Callable[[Any], Any]:

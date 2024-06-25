@@ -157,6 +157,13 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
                 condition=f"not (({') or ('.join(empty_conditions)}))"
             ))
 
+        if len(field.skip_if) > 0:
+            mut_globals[f'skip_if{index}'] = field.skip_if
+
+            filters.append(dict(
+                condition=f"{value_var} not in skip_if{index}"
+            ))
+
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field)
         filters.append(dict(
             setup=[
@@ -214,9 +221,6 @@ def _setup_conversion_core_for_field(field_spec: FieldSpec) -> Callable:
 
 def do_convert(field_spec: FieldSpec, obtained_value: Any) -> Any:
     value = obtained_value
-
-    if (field_spec.filter is not None) and not field_spec.filter(value):
-        return _NO_VALUE
 
     return value
 
