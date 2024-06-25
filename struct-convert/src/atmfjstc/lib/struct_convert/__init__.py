@@ -76,7 +76,12 @@ def make_struct_converter(
       - ``'hex'``: Converts a `bytes` value to a hex string
 
     - `store`: Any value specified here will be stored at the destination regardless of what the value read from the
-      source was. Equivalent to a converter that only returns a fixed value. Mutually exclusive with `convert`.
+      source was. The value will only be written if the field was not skipped.
+
+      The value can be specified either as a constant value, or as a class or callable (which will be called with no
+      parameters to produce a value).
+
+      Mutually exclusive with `convert`.
 
     Alternatively, one can instead provide a dict like ``dict(ignore=True)`` which will cause the field in the source
     with that name to be ignored. This has the same effect as not specifying the field at all, but this affects the
