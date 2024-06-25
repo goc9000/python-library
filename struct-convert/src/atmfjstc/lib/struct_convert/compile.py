@@ -14,11 +14,10 @@ _NO_VALUE = Token()
 
 def compile_converter(spec: ConversionSpec) -> Callable:
     unhandled_getter = _setup_unhandled_getter(spec.source_type, spec.fields, spec.ignored_fields)
-    source_dest_finder = _setup_source_dest_finder(spec.destination)
     getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
     setter = _setup_field_setter(spec.destination)
 
-    converter_core = _setup_conversion_core(spec.fields, source_dest_finder, getter, setter)
+    converter_core = _setup_conversion_core(spec.fields, getter, setter)
 
     parameters = _compile_converter_params(spec.destination)
     return_values = _compile_return_values(spec.destination, spec.return_unparsed)
@@ -31,7 +30,8 @@ def compile_converter(spec: ConversionSpec) -> Callable:
         unhandled_getter=unhandled_getter,
     )
 
-    code_lines.append(f"source, destination = converter_core({', '.join(parameters)})")
+    code_lines.append(f"source, destination = {', '.join(_compile_source_dest_finder(spec.destination))}")
+    code_lines.append(f"source, destination = converter_core(source, destination)")
     code_lines.append(f"return {', '.join(return_values)}")
 
     code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
@@ -85,17 +85,11 @@ def _setup_unhandled_getter(
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
 
-def _setup_source_dest_finder(destination_spec: DestinationSpec) -> SourceDestFinder:
-    def _get_with_dest_by_reference(mut_dest, source):
-        return source, mut_dest
-
-    def _get_with_dest_new_dict(source):
-        return source, dict()
-
+def _compile_source_dest_finder(destination_spec: DestinationSpec) -> tuple[str, str]:
     if destination_spec.by_ref:
-        return _get_with_dest_by_reference
+        return 'source', 'mut_dest'
     elif destination_spec.type == DestinationType.DICT:
-        return _get_with_dest_new_dict
+        return 'source', 'dict()'
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
@@ -154,12 +148,8 @@ def _compile_return_values(destination_spec: DestinationSpec, return_unparsed_op
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
 
-def _setup_conversion_core(
-    fields: ParsedFieldSpecs, source_dest_finder: SourceDestFinder, getter: FieldGetter, setter: FieldSetter
-) -> Callable:
-    def _convert_core(*args):
-        source, destination = source_dest_finder(*args)
-
+def _setup_conversion_core(fields: ParsedFieldSpecs, getter: FieldGetter, setter: FieldSetter) -> Callable:
+    def _convert_core(source, destination):
         field_getter = lambda field_name: getter(source, field_name)
 
         for field_spec in fields:
