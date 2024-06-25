@@ -17,23 +17,22 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     source_dest_finder = _setup_source_dest_finder(spec.destination)
     getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
     setter = _setup_field_setter(spec.destination)
-    result_extractor = \
-        _setup_result_extractor(spec.source_type, spec.destination, spec.return_unparsed, unhandled_getter)
 
     converter_core = _setup_conversion_core(spec.fields, source_dest_finder, getter, setter)
 
     parameters = _compile_converter_params(spec.destination)
+    return_values = _compile_return_values(spec.destination, spec.return_unparsed)
 
     func_header = f"def convert({', '.join(parameters)}):"
     code_lines = []
 
     globals = dict(
         converter_core=converter_core,
-        result_extractor=result_extractor,
+        unhandled_getter=unhandled_getter,
     )
 
     code_lines.append(f"source, destination = converter_core({', '.join(parameters)})")
-    code_lines.append(f"return result_extractor(source, destination)")
+    code_lines.append(f"return {', '.join(return_values)}")
 
     code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
 
@@ -140,26 +139,17 @@ def _setup_field_setter(destination_spec: DestinationSpec) -> FieldSetter:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
 
-def _setup_result_extractor(
-    source_type: SourceType, destination_spec: DestinationSpec,
-    return_unparsed_option: bool, unhandled_getter: UnhandledGetter
-) -> ResultExtractor:
-    def _return_none(_source, _dest):
-        return None
-
-    def _return_unparsed(source, _dest):
-        return unhandled_getter(source)
-
-    def _return_dest(_source, dest):
-        return dest
-
-    def _return_dest_and_unparsed(source, dest):
-        return dest, unhandled_getter(source)
-
+def _compile_return_values(destination_spec: DestinationSpec, return_unparsed_option: bool) -> list[str]:
     if destination_spec.by_ref:
-        return _return_unparsed if return_unparsed_option else _return_none
+        if return_unparsed_option:
+            return ['unhandled_getter(source)']
+        else:
+            return ['None']
     elif destination_spec.type == DestinationType.DICT:
-        return _return_dest_and_unparsed if return_unparsed_option else _return_dest
+        if return_unparsed_option:
+            return ['destination', 'unhandled_getter(source)']
+        else:
+            return ['destination']
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
