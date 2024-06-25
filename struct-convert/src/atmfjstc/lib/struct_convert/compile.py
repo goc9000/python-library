@@ -53,36 +53,42 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
-def _compile_unhandled_getter(
-    mut_code_lines: list[str], mut_globals: dict,
-    source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
-):
-    all_srcs = set(field.source for field in fields) | ignored_fields
-    all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
-
-    if source_type == SourceType.DICT:
-        mut_code_lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
-    elif source_type == SourceType.OBJ:
-        mut_globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
-
-        mut_code_lines.extend([
-            'unhandled_fields = dict()',
-            'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
-            f"    if k not in {all_srcs_set}:",
-            '        try:',
-            '            unhandled_fields[k] = getattr(source, k)',
-            '        except Exception:',
-            '            pass',
-        ])
-    else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
-
-
 def _compile_init_destination(destination_spec: DestinationSpec) -> str:
     if destination_spec.type == DestinationType.DICT:
         return 'dict()'
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+
+
+def _compile_get_field(
+    mut_code_lines: list[str], mut_globals: dict, field: str, source_type: SourceType, none_means_missing: bool,
+    temp_name: str = 'value'
+) -> str:
+    mut_globals['_NO_VALUE'] = _NO_VALUE
+
+    if source_type == SourceType.DICT:
+        result = f"source.get({field!r}, _NO_VALUE)"
+    elif source_type == SourceType.OBJ:
+        result = f"getattr(source, {field!r}, _NO_VALUE)"
+    else:
+        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
+
+    if none_means_missing:
+        _drop_to_variable(mut_code_lines, result, temp_name)
+        mut_code_lines.append(f"if {temp_name} is None:")
+        mut_code_lines.append(f"     {temp_name} = _NO_VALUE")
+        result = temp_name
+
+    return result
+
+
+def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> str:
+    if re.match(r'^[a-z0-9_]+$', expr, re.I):
+        return expr
+
+    mut_code_lines.append(f"{var_name} = {expr}")
+
+    return var_name
 
 
 def _compile_set_field(
@@ -182,37 +188,6 @@ def _maybe_indent(mut_code_lines: list[str], header: Optional[str] = None):
     mut_code_lines.extend(f"    {line}" for line in temp_lines)
 
 
-def _compile_get_field(
-    mut_code_lines: list[str], mut_globals: dict, field: str, source_type: SourceType, none_means_missing: bool,
-    temp_name: str = 'value'
-) -> str:
-    mut_globals['_NO_VALUE'] = _NO_VALUE
-
-    if source_type == SourceType.DICT:
-        result = f"source.get({field!r}, _NO_VALUE)"
-    elif source_type == SourceType.OBJ:
-        result = f"getattr(source, {field!r}, _NO_VALUE)"
-    else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
-
-    if none_means_missing:
-        _drop_to_variable(mut_code_lines, result, temp_name)
-        mut_code_lines.append(f"if {temp_name} is None:")
-        mut_code_lines.append(f"     {temp_name} = _NO_VALUE")
-        result = temp_name
-
-    return result
-
-
-def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> str:
-    if re.match(r'^[a-z0-9_]+$', expr, re.I):
-        return expr
-
-    mut_code_lines.append(f"{var_name} = {expr}")
-
-    return var_name
-
-
 def _setup_conversion_core_for_field(field_spec: FieldSpec) -> Callable:
     def _convert_core(obtained_value):
         return do_convert(field_spec, obtained_value)
@@ -230,3 +205,28 @@ def do_convert(field_spec: FieldSpec, obtained_value: Any) -> Any:
         value = field_spec.convert(value)
 
     return value
+
+
+def _compile_unhandled_getter(
+    mut_code_lines: list[str], mut_globals: dict,
+    source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
+):
+    all_srcs = set(field.source for field in fields) | ignored_fields
+    all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
+
+    if source_type == SourceType.DICT:
+        mut_code_lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
+    elif source_type == SourceType.OBJ:
+        mut_globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
+
+        mut_code_lines.extend([
+            'unhandled_fields = dict()',
+            'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
+            f"    if k not in {all_srcs_set}:",
+            '        try:',
+            '            unhandled_fields[k] = getattr(source, k)',
+            '        except Exception:',
+            '            pass',
+        ])
+    else:
+        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
