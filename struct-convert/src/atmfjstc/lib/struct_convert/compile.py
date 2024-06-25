@@ -145,6 +145,18 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
                 condition=f"{value_var} != {other_var}"
             ))
 
+        if field.skip_empty:
+            empty_conditions = [
+                f"{value_var} is False",
+                f"{value_var} is None",
+                f"isinstance({value_var}, int) and (value == 0)",
+                f"hasattr({value_var}, '__len__') and (len(value) == 0)",
+            ]
+
+            filters.append(dict(
+                condition=f"not (({') or ('.join(empty_conditions)}))"
+            ))
+
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field)
         filters.append(dict(
             setup=[
@@ -205,9 +217,6 @@ def do_convert(field_spec: FieldSpec, obtained_value: Any) -> Any:
 
     if (field_spec.filter is not None) and not field_spec.filter(value):
         return _NO_VALUE
-
-    if field_spec.convert is not None:
-        value = field_spec.convert(value)
 
     return value
 

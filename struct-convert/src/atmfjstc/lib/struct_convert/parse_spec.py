@@ -121,7 +121,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
                 init_params['required'] = _typecheck(value, bool)
             elif key == 'skip_empty':
                 if _typecheck(value, bool):
-                    filters.append((1, _is_nonempty))
+                    init_params['skip_empty'] = True
             elif key == 'skip_if':
                 filters.append((2, _make_not_eq_filter(value)))
             elif key == 'convert':
@@ -156,13 +156,6 @@ def _typecheck(value: T, expected_type) -> T:
         raise TypeError(f"Expected {expected_type}, got {type(value).__name__}")
 
     return value
-
-
-def _is_nonempty(value: Any) -> bool:
-    return not (
-        (value is False) or (value is None) or (isinstance(value, int) and (value == 0)) or
-        (hasattr(value, '__len__') and (len(value) == 0))
-    )
 
 
 def _make_not_eq_filter(value: Any) -> Callable[[Any], bool]:
