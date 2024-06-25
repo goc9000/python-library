@@ -20,7 +20,7 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     result_extractor = \
         _setup_result_extractor(spec.source_type, spec.destination, spec.return_unparsed, unhandled_getter)
 
-    converter_core = _setup_conversion_core(spec.fields, source_dest_finder, getter, setter, result_extractor)
+    converter_core = _setup_conversion_core(spec.fields, source_dest_finder, getter, setter)
 
     parameters = _compile_converter_params(spec.destination)
 
@@ -29,9 +29,11 @@ def compile_converter(spec: ConversionSpec) -> Callable:
 
     globals = dict(
         converter_core=converter_core,
+        result_extractor=result_extractor,
     )
 
-    code_lines.append(f"return converter_core({', '.join(parameters)})")
+    code_lines.append(f"source, destination = converter_core({', '.join(parameters)})")
+    code_lines.append(f"return result_extractor(source, destination)")
 
     code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
 
@@ -163,8 +165,7 @@ def _setup_result_extractor(
 
 
 def _setup_conversion_core(
-    fields: ParsedFieldSpecs, source_dest_finder: SourceDestFinder, getter: FieldGetter, setter: FieldSetter,
-    result_extractor: ResultExtractor
+    fields: ParsedFieldSpecs, source_dest_finder: SourceDestFinder, getter: FieldGetter, setter: FieldSetter
 ) -> Callable:
     def _convert_core(*args):
         source, destination = source_dest_finder(*args)
@@ -177,7 +178,7 @@ def _setup_conversion_core(
             if value is not _NO_VALUE:
                 setter(destination, field_spec.destination, value)
 
-        return result_extractor(source, destination)
+        return source, destination
 
     return _convert_core
 
