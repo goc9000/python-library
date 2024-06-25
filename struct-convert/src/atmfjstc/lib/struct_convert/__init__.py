@@ -1,12 +1,13 @@
-from typing import Callable, Any, Iterable, Set, Tuple, Union
+from collections.abc import Set
+from typing import Callable, Any, Iterable, Tuple, Union
 from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs, RawFieldSpec
-from .spec import SourceType, DestinationType, FieldSpec
-from .parse_spec import parse_source_type, parse_destination_type, parse_field_spec
+from .spec import ConversionSpec, SourceType, DestinationType, FieldSpec
+from .parse_spec import parse_conversion_spec
 from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
 
@@ -20,8 +21,8 @@ StructConverter = Callable
 
 
 def make_struct_converter(
-    source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs,
-    return_unparsed: bool = False, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs, ignore: Iterable[str] = (),
+    return_unparsed: bool = False, none_means_missing: bool = True
 ) -> StructConverter:
     """
     General purpose utility for making functions that convert from a simple structure in dict or object format, to
@@ -154,20 +155,24 @@ def make_struct_converter(
     - All runtime errors (bad data) cause a `ConvertStructRuntimeError` subclass to be thrown.
     """
 
-    source_type = parse_source_type(source_type)
-    dest_type = parse_destination_type(dest_type)
+    spec = parse_conversion_spec(
+        source_type, dest_type, fields,
+        ignore=ignore,
+        return_unparsed=return_unparsed,
+        none_means_missing=none_means_missing,
+    )
 
-    field_specs, ignored_fields = _parse_fields(fields)
-    unhandled_getter = _setup_unhandled_getter(source_type, field_specs, ignored_fields, ignore)
-    source_dest_finder = _setup_source_dest_finder(dest_type)
-    getter = _setup_field_getter(source_type, none_means_missing)
-    setter = _setup_field_setter(dest_type)
-    result_extractor = _setup_result_extractor(source_type, dest_type, return_unparsed, unhandled_getter)
+    unhandled_getter = _setup_unhandled_getter(spec.source_type, spec.fields, spec.ignored_fields)
+    source_dest_finder = _setup_source_dest_finder(spec.destination_type)
+    getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
+    setter = _setup_field_setter(spec.destination_type)
+    result_extractor = \
+        _setup_result_extractor(spec.source_type, spec.destination_type, spec.return_unparsed, unhandled_getter)
 
-    return _setup_conversion_core(field_specs, source_dest_finder, getter, setter, result_extractor)
+    return _setup_conversion_core(spec.fields, source_dest_finder, getter, setter, result_extractor)
 
 
-ParsedFieldSpecs = list[FieldSpec]
+ParsedFieldSpecs = tuple[FieldSpec, ...]
 UnhandledGetter = Callable[[Mapping], dict]
 SourceDestFinder = Callable[..., Tuple[Any, Any]]
 FieldGetter = Callable[[Any, str], Any]
@@ -176,28 +181,10 @@ ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
 ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
 
 
-def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
-    out_fields = []
-    ignored_fields = set()
-
-    for field, raw_field_spec in fields.items():
-        try:
-            parsed_field_spec = parse_field_spec(raw_field_spec, field)
-
-            if parsed_field_spec is not None:
-                out_fields.append(parsed_field_spec)
-            else:
-                ignored_fields.add(field)
-        except Exception as e:
-            raise ConvertStructCompileError(f"Invalid field spec for field '{field}'") from e
-
-    return out_fields, ignored_fields
-
-
 def _setup_unhandled_getter(
-    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str], ignore_fields_option: Iterable[str]
+    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
 ) -> UnhandledGetter:
-    all_srcs = set(field.source for field in fields) | set(ignore_fields_option or set()) | ignored_fields
+    all_srcs = set(field.source for field in fields) | ignored_fields
 
     def _dict_unhandled_getter(source_dict):
         return {k: v for k, v in source_dict.items() if k not in all_srcs}

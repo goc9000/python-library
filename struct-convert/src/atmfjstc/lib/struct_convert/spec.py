@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections.abc import Set
 from typing import Optional, Callable
 from enum import Enum, auto
 
@@ -22,3 +23,13 @@ class FieldSpec:
     filter: Optional[Callable[[any], bool]] = None
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
+
+
+@dataclass(frozen=True)
+class ConversionSpec:
+    source_type: SourceType
+    destination_type: DestinationType
+    fields: tuple[FieldSpec, ...]
+    ignored_fields: Set[str]
+    return_unparsed: bool
+    none_means_missing: bool

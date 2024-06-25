@@ -1,9 +1,25 @@
-from collections.abc import Mapping, Sequence, Hashable
+from collections.abc import Mapping, Sequence, Hashable, Iterable, Set
 from typing import Optional, TypeVar, Callable, Any, Union
 
-from .spec import SourceType, DestinationType, FieldSpec
-from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, NormalizedRawFieldSpec
+from .spec import ConversionSpec, SourceType, DestinationType, FieldSpec
+from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, RawFieldSpecs, NormalizedRawFieldSpec
 from .errors import ConvertStructCompileError
+
+
+def parse_conversion_spec(
+    raw_source_type: RawSourceType, raw_dest_type: RawDestinationType, raw_fields: RawFieldSpecs,
+    ignore: Iterable[str] = (), return_unparsed: bool = False, none_means_missing: bool = True
+) -> ConversionSpec:
+    fields, ignored_fields = parse_fields(raw_fields)
+
+    return ConversionSpec(
+        source_type=parse_source_type(raw_source_type),
+        destination_type=parse_destination_type(raw_dest_type),
+        fields=fields,
+        ignored_fields=frozenset([*ignored_fields, *ignore]),
+        return_unparsed=return_unparsed,
+        none_means_missing=none_means_missing,
+    )
 
 
 def parse_source_type(raw_source_type: RawSourceType) -> SourceType:
@@ -28,6 +44,24 @@ def parse_destination_type(raw_dest_type: RawDestinationType) -> DestinationType
         return DestinationType.OBJ_BY_REF
     else:
         raise ConvertStructCompileError(f"Invalid destination type: {raw_dest_type!r}")
+
+
+def parse_fields(fields: RawFieldSpecs) -> tuple[tuple[FieldSpec, ...], Set[str]]:
+    out_fields = []
+    ignored_fields = set()
+
+    for field, raw_field_spec in fields.items():
+        try:
+            parsed_field_spec = parse_field_spec(raw_field_spec, field)
+
+            if parsed_field_spec is not None:
+                out_fields.append(parsed_field_spec)
+            else:
+                ignored_fields.add(field)
+        except Exception as e:
+            raise ConvertStructCompileError(f"Invalid field spec for field '{field}'") from e
+
+    return tuple(out_fields), frozenset(ignored_fields)
 
 
 def normalize_raw_field_spec(raw_field_spec: RawFieldSpec) -> NormalizedRawFieldSpec:
