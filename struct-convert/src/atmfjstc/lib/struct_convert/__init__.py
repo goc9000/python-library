@@ -311,7 +311,7 @@ def _setup_conversion_core(
         field_getter = lambda field_name: getter(source, field_name)
 
         for dest_field, field_spec in fields:
-            value = field_spec.do_convert(field_getter)
+            value = do_convert(field_spec, field_getter)
 
             if value is not _NO_VALUE:
                 setter(destination, dest_field, value)
@@ -328,25 +328,6 @@ class ConvertStructFieldSpec:
     filter: Optional[Callable[[any], bool]] = None
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
-
-    def do_convert(self, field_getter: Callable[[str], Any]) -> Any:
-        value = field_getter(self.source)
-
-        if value is _NO_VALUE:
-            if self.required:
-                raise ConvertStructMissingRequiredFieldError(self.source)
-
-            return _NO_VALUE
-
-        if (self.filter is not None) and not self.filter(value):
-            return _NO_VALUE
-        if (self.if_different is not None) and (value == field_getter(self.if_different)):
-            return _NO_VALUE
-
-        if self.convert is not None:
-            value = self.convert(value)
-
-        return value
 
     @staticmethod
     def parse(raw_field_spec: RawFieldSpec, default_source: str) -> Optional['ConvertStructFieldSpec']:
@@ -453,3 +434,23 @@ def _parse_store(value: Hashable) -> Callable[[Any], Any]:
         raise TypeError("Only constant (hashable) values may be stored") from None
 
     return lambda _: value
+
+
+def do_convert(field_spec: ConvertStructFieldSpec, field_getter: Callable[[str], Any]) -> Any:
+    value = field_getter(field_spec.source)
+
+    if value is _NO_VALUE:
+        if field_spec.required:
+            raise ConvertStructMissingRequiredFieldError(field_spec.source)
+
+        return _NO_VALUE
+
+    if (field_spec.filter is not None) and not field_spec.filter(value):
+        return _NO_VALUE
+    if (field_spec.if_different is not None) and (value == field_getter(field_spec.if_different)):
+        return _NO_VALUE
+
+    if field_spec.convert is not None:
+        value = field_spec.convert(value)
+
+    return value
