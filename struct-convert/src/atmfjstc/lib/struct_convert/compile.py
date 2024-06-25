@@ -53,15 +53,12 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
-ParsedFieldSpecs = tuple[FieldSpec, ...]
-UnhandledGetter = Callable[[Mapping], dict]
 FieldGetter = Callable[[Any, str], Any]
-FieldSetter = Callable[[Any, str, Any], None]
 
 
 def _compile_unhandled_getter(
     mut_code_lines: list[str], mut_globals: dict,
-    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
+    source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
 ):
     all_srcs = set(field.source for field in fields) | ignored_fields
     all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
@@ -150,7 +147,7 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
 
         mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
 
-        mut_code_lines.append(f"{value_var} = converter_core{index}(source, {destination_var}, {value_var})")
+        mut_code_lines.append(f"{value_var} = converter_core{index}(source, {value_var})")
 
         mut_code_lines.append(f"if {value_var} is not _NO_VALUE:")
         setter_lines = []
@@ -190,7 +187,7 @@ def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> st
 
 
 def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter) -> Callable:
-    def _convert_core(source, destination, obtained_value):
+    def _convert_core(source, obtained_value):
         field_getter = lambda field_name: getter(source, field_name)
 
         return do_convert(field_spec, field_getter, obtained_value)
