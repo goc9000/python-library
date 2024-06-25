@@ -53,9 +53,6 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
-FieldGetter = Callable[[Any, str], Any]
-
-
 def _compile_unhandled_getter(
     mut_code_lines: list[str], mut_globals: dict,
     source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
@@ -86,30 +83,6 @@ def _compile_init_destination(destination_spec: DestinationSpec) -> str:
         return 'dict()'
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
-
-
-def _setup_field_getter(source_type: SourceType, none_means_missing: bool) -> FieldGetter:
-    def _dict_getter(source_dict, field):
-        return source_dict.get(field, _NO_VALUE)
-
-    def _obj_getter(source_obj, field):
-        return getattr(source_obj, field, _NO_VALUE)
-
-    if source_type == SourceType.DICT:
-        base_getter = _dict_getter
-    elif source_type == SourceType.OBJ:
-        base_getter = _obj_getter
-    else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
-
-    if not none_means_missing:
-        return base_getter
-
-    def _adjust_nones(source, field):
-        value = base_getter(source, field)
-        return value if value is not None else _NO_VALUE
-
-    return _adjust_nones
 
 
 def _compile_set_field(
