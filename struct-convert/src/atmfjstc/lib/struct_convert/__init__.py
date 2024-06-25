@@ -1,4 +1,4 @@
-from typing import Callable, Any, Iterable, Set, List, Tuple, Union
+from typing import Callable, Any, Iterable, Set, Tuple, Union
 from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
@@ -167,7 +167,7 @@ def make_struct_converter(
     return _setup_conversion_core(field_specs, source_dest_finder, getter, setter, result_extractor)
 
 
-ParsedFieldSpecs = List[Tuple[str,'FieldSpec']]
+ParsedFieldSpecs = list[FieldSpec]
 UnhandledGetter = Callable[[Mapping], dict]
 SourceDestFinder = Callable[..., Tuple[Any, Any]]
 FieldGetter = Callable[[Any, str], Any]
@@ -185,7 +185,7 @@ def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
             parsed_field_spec = parse_field_spec(raw_field_spec, field)
 
             if parsed_field_spec is not None:
-                out_fields.append((field, parsed_field_spec))
+                out_fields.append(parsed_field_spec)
             else:
                 ignored_fields.add(field)
         except Exception as e:
@@ -197,7 +197,7 @@ def _parse_fields(fields: RawFieldSpecs) -> Tuple[ParsedFieldSpecs, Set[str]]:
 def _setup_unhandled_getter(
     source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str], ignore_fields_option: Iterable[str]
 ) -> UnhandledGetter:
-    all_srcs = set(field.source for _, field in fields) | set(ignore_fields_option or set()) | ignored_fields
+    all_srcs = set(field.source for field in fields) | set(ignore_fields_option or set()) | ignored_fields
 
     def _dict_unhandled_getter(source_dict):
         return {k: v for k, v in source_dict.items() if k not in all_srcs}
@@ -309,11 +309,11 @@ def _setup_conversion_core(
 
         field_getter = lambda field_name: getter(source, field_name)
 
-        for dest_field, field_spec in fields:
+        for field_spec in fields:
             value = do_convert(field_spec, field_getter)
 
             if value is not _NO_VALUE:
-                setter(destination, dest_field, value)
+                setter(destination, field_spec.destination, value)
 
         return result_extractor(source, destination)
 

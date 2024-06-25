@@ -53,10 +53,11 @@ def normalize_raw_field_spec(raw_field_spec: RawFieldSpec) -> NormalizedRawField
     raise ConvertStructCompileError(f"Can't parse field spec of type {type(raw_field_spec).__name__}")
 
 
-def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optional[FieldSpec]:
+def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional[FieldSpec]:
     if isinstance(raw_field_spec, FieldSpec):
         return raw_field_spec
 
+    destination = _expect_field_name(destination)
     normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
 
     if 'ignore' in normalized_raw_field_spec:
@@ -70,7 +71,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optio
     if ('store' in normalized_raw_field_spec) and ('convert' in normalized_raw_field_spec):
         raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
 
-    init_params = dict(source=default_source)
+    init_params = dict(destination=destination, source=destination)
     filters = []
 
     # How ironic that the struct converter itself would be excellent at doing the job of the following code!

@@ -17,6 +17,7 @@ class DestinationType(Enum):
 @dataclass(frozen=True)
 class FieldSpec:
     source: str  # Name of field to copy data from
+    destination: str  # Name of field to copy data to
     required: bool = False
     filter: Optional[Callable[[any], bool]] = None
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
