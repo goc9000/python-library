@@ -25,7 +25,6 @@ def compile_converter(spec: ConversionSpec) -> Callable:
 
     globals = dict(
         converter_core=converter_core,
-        get_obj_likely_data_fields_with_defaults=get_obj_likely_data_fields_with_defaults,
     )
 
     if spec.destination.by_ref:
@@ -39,7 +38,7 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     return_values = _compile_return_values(spec.destination)
 
     if spec.return_unparsed:
-        _compile_unhandled_getter(code_lines, spec.source_type, spec.fields, spec.ignored_fields)
+        _compile_unhandled_getter(code_lines, globals, spec.source_type, spec.fields, spec.ignored_fields)
         return_values.append('unhandled_fields')
 
     if len(return_values) > 0:
@@ -66,7 +65,8 @@ FieldSetter = Callable[[Any, str, Any], None]
 
 
 def _compile_unhandled_getter(
-    mut_code_lines: list[str], source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
+    mut_code_lines: list[str], mut_globals: dict,
+    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
 ):
     all_srcs = set(field.source for field in fields) | ignored_fields
     all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
@@ -74,6 +74,8 @@ def _compile_unhandled_getter(
     if source_type == SourceType.DICT:
         mut_code_lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
     elif source_type == SourceType.OBJ:
+        mut_globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
+
         mut_code_lines.extend([
             'unhandled_fields = dict()',
             'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
