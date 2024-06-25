@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Hashable, Any, Iterable, Set, List, Tuple, Union, TypeVar
+from typing import Callable, Any, Iterable, Set, List, Tuple, Union
 from collections.abc import Mapping
 
 from atmfjstc.lib.py_lang_utils.token import Token
@@ -6,7 +6,7 @@ from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with
 
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs, RawFieldSpec
 from .spec import SourceType, DestinationType, FieldSpec
-from .parse_spec import parse_source_type, parse_destination_type, normalize_raw_field_spec
+from .parse_spec import parse_source_type, parse_destination_type, parse_field_spec
 from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
 
@@ -318,112 +318,6 @@ def _setup_conversion_core(
         return result_extractor(source, destination)
 
     return _convert_core
-
-
-def parse_field_spec(raw_field_spec: RawFieldSpec, default_source: str) -> Optional[FieldSpec]:
-    if isinstance(raw_field_spec, FieldSpec):
-        return raw_field_spec
-
-    normalized_raw_field_spec = normalize_raw_field_spec(raw_field_spec)
-
-    if 'ignore' in normalized_raw_field_spec:
-        if not normalized_raw_field_spec['ignore']:
-            raise ConvertStructCompileError("If 'ignore' is set, it must be True")
-        if len(normalized_raw_field_spec) > 1:
-            raise ConvertStructCompileError("If 'ignore' is set, it must be the only key")
-
-        return None
-
-    if ('store' in normalized_raw_field_spec) and ('convert' in normalized_raw_field_spec):
-        raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
-
-    init_params = dict(source=default_source)
-    filters = []
-
-    # How ironic that the struct converter itself would be excellent at doing the job of the following code!
-    # Chicken and the egg...
-
-    for key, value in normalized_raw_field_spec.items():
-        try:
-            if key == 'src':
-                init_params['source'] = _expect_field_name(value)
-            elif key == 'if_different':
-                init_params[key] = _expect_field_name(value)
-            elif key == 'req':
-                init_params['required'] = _typecheck(value, bool)
-            elif key == 'skip_empty':
-                if _typecheck(value, bool):
-                    filters.append((1, _is_nonempty))
-            elif key == 'skip_if':
-                filters.append((2, _make_not_eq_filter(value)))
-            elif key == 'convert':
-                init_params[key] = _parse_converter(value)
-            elif key == 'store':
-                init_params['convert'] = _parse_store(value)
-            else:
-                raise KeyError("Don't recognize this field")
-        except Exception as e:
-            raise ConvertStructCompileError(f"Invalid field spec parameter '{key}'") from e
-
-    if len(filters) > 0:
-        init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
-
-    return FieldSpec(**init_params)
-
-
-def _expect_field_name(value: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError(f"Field name expected, got {type(value).__name__}")
-    if str == '':
-        raise ValueError("Field name cannot be empty")
-
-    return value
-
-
-T = TypeVar('T')
-
-
-def _typecheck(value: T, expected_type) -> T:
-    if not isinstance(value, expected_type):
-        raise TypeError(f"Expected {expected_type}, got {type(value).__name__}")
-
-    return value
-
-
-def _is_nonempty(value: Any) -> bool:
-    return not (
-        (value is False) or (value is None) or (isinstance(value, int) and (value == 0)) or
-        (hasattr(value, '__len__') and (len(value) == 0))
-    )
-
-
-def _make_not_eq_filter(value: Any) -> Callable[[Any], bool]:
-    return lambda x: x != value
-
-
-def _parse_converter(converter_spec: Union[Callable[[Any], Any], str]) -> Callable[[Any], Any]:
-    _typecheck(converter_spec, (str, Callable))
-
-    if not isinstance(converter_spec, str):
-        return converter_spec
-
-    if converter_spec == 'utf8':
-        return lambda x: x.decode('utf-8')
-    elif converter_spec == 'hex':
-        return lambda x: x.hex()
-
-    raise ValueError(f"Unknown built-in converter: '{converter_spec}'")
-
-
-def _parse_store(value: Hashable) -> Callable[[Any], Any]:
-    _typecheck(value, Hashable)
-
-    try:
-        _ = hash(value)
-    except Exception:
-        raise TypeError("Only constant (hashable) values may be stored") from None
-
-    return lambda _: value
 
 
 def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any]) -> Any:
