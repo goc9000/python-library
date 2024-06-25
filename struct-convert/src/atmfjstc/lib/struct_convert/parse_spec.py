@@ -106,7 +106,6 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
         raise ConvertStructCompileError("The 'store' and 'convert' parameters are mutually exclusive")
 
     init_params = dict(destination=destination, source=destination)
-    filters = []
 
     # How ironic that the struct converter itself would be excellent at doing the job of the following code!
     # Chicken and the egg...
@@ -132,9 +131,6 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
                 raise KeyError("Don't recognize this field")
         except Exception as e:
             raise ConvertStructCompileError(f"Invalid field spec parameter '{key}'") from e
-
-    if len(filters) > 0:
-        init_params['filter'] = lambda x: all(filt(x) for _, filt in sorted(filters, key=lambda pair: pair[0]))
 
     return FieldSpec(**init_params)
 

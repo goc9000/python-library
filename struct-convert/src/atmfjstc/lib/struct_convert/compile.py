@@ -1,8 +1,7 @@
 import re
 
 from collections.abc import Set
-from typing import Callable, Any, Optional
-from contextlib import contextmanager
+from typing import Callable
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
@@ -164,14 +163,6 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
                 condition=f"{value_var} not in skip_if{index}"
             ))
 
-        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field)
-        filters.append(dict(
-            setup=[
-                f"{value_var} = converter_core{index}({value_var})"
-            ],
-            condition=f"{value_var} is not _NO_VALUE"
-        ))
-
         setter_lines = []
 
         if field.convert is not None:
@@ -198,31 +189,6 @@ def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[di
     _compile_conversion_with_filters(sub_lines, filters_rest, setter_lines)
 
     mut_code_lines.extend(f"    {line}" for line in sub_lines)
-
-
-@contextmanager
-def _maybe_indent(mut_code_lines: list[str], header: Optional[str] = None):
-    if header is not None:
-        mut_code_lines.append(f"{header}:")
-
-    temp_lines = []
-
-    yield mut_code_lines if header is None else temp_lines
-
-    mut_code_lines.extend(f"    {line}" for line in temp_lines)
-
-
-def _setup_conversion_core_for_field(field_spec: FieldSpec) -> Callable:
-    def _convert_core(obtained_value):
-        return do_convert(field_spec, obtained_value)
-
-    return _convert_core
-
-
-def do_convert(field_spec: FieldSpec, obtained_value: Any) -> Any:
-    value = obtained_value
-
-    return value
 
 
 def _compile_unhandled_getter(
