@@ -61,11 +61,8 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
 
 ParsedFieldSpecs = tuple[FieldSpec, ...]
 UnhandledGetter = Callable[[Mapping], dict]
-SourceDestFinder = Callable[..., Tuple[Any, Any]]
 FieldGetter = Callable[[Any, str], Any]
 FieldSetter = Callable[[Any, str, Any], None]
-ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
-ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
 
 
 def _compile_unhandled_getter(
