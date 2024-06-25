@@ -137,8 +137,6 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
 
 
 def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, destination_var: str, spec: ConversionSpec):
-    getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
-
     for index, field in enumerate(spec.fields):
         value_expr = _compile_get_field(
             mut_code_lines, mut_globals, field.source, spec.source_type, spec.none_means_missing
@@ -156,10 +154,22 @@ def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, desti
                 condition=f"{value_var} is not _NO_VALUE"
             ))
 
-        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field, getter)
+        if field.if_different is not None:
+            setup_lines = []
+            other_value_expr = _compile_get_field(
+                setup_lines, mut_globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
+            )
+            other_var = _drop_to_variable(setup_lines, other_value_expr, 'other')
+
+            filters.append(dict(
+                setup=setup_lines,
+                condition=f"{value_var} != {other_var}"
+            ))
+
+        mut_globals[f'converter_core{index}'] = _setup_conversion_core_for_field(field)
         filters.append(dict(
             setup=[
-                f"{value_var} = converter_core{index}(source, {value_var})"
+                f"{value_var} = converter_core{index}({value_var})"
             ],
             condition=f"{value_var} is not _NO_VALUE"
         ))
@@ -230,21 +240,17 @@ def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> st
     return var_name
 
 
-def _setup_conversion_core_for_field(field_spec: FieldSpec, getter: FieldGetter) -> Callable:
-    def _convert_core(source, obtained_value):
-        field_getter = lambda field_name: getter(source, field_name)
-
-        return do_convert(field_spec, field_getter, obtained_value)
+def _setup_conversion_core_for_field(field_spec: FieldSpec) -> Callable:
+    def _convert_core(obtained_value):
+        return do_convert(field_spec, obtained_value)
 
     return _convert_core
 
 
-def do_convert(field_spec: FieldSpec, field_getter: Callable[[str], Any], obtained_value: Any) -> Any:
+def do_convert(field_spec: FieldSpec, obtained_value: Any) -> Any:
     value = obtained_value
 
     if (field_spec.filter is not None) and not field_spec.filter(value):
-        return _NO_VALUE
-    if (field_spec.if_different is not None) and (value == field_getter(field_spec.if_different)):
         return _NO_VALUE
 
     if field_spec.convert is not None:
