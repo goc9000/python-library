@@ -13,7 +13,6 @@ _NO_VALUE = Token()
 
 
 def compile_converter(spec: ConversionSpec) -> Callable:
-    unhandled_getter = _setup_unhandled_getter(spec.source_type, spec.fields, spec.ignored_fields)
     getter = _setup_field_getter(spec.source_type, spec.none_means_missing)
     setter = _setup_field_setter(spec.destination)
 
@@ -26,7 +25,7 @@ def compile_converter(spec: ConversionSpec) -> Callable:
 
     globals = dict(
         converter_core=converter_core,
-        unhandled_getter=unhandled_getter,
+        get_obj_likely_data_fields_with_defaults=get_obj_likely_data_fields_with_defaults,
     )
 
     if spec.destination.by_ref:
@@ -37,7 +36,12 @@ def compile_converter(spec: ConversionSpec) -> Callable:
 
     code_lines.append(f"converter_core(source, {destination_var})")
 
-    return_values = _compile_return_values(spec.destination, spec.return_unparsed)
+    return_values = _compile_return_values(spec.destination)
+
+    if spec.return_unparsed:
+        _compile_unhandled_getter(code_lines, spec.source_type, spec.fields, spec.ignored_fields)
+        return_values.append('unhandled_fields')
+
     if len(return_values) > 0:
         code_lines.append(f"return {', '.join(return_values)}")
 
@@ -64,30 +68,24 @@ ConvertReturnValue = Union[None, dict, Any, Tuple[Any, dict]]
 ResultExtractor = Callable[[Any, Any], ConvertReturnValue]
 
 
-def _setup_unhandled_getter(
-    source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
-) -> UnhandledGetter:
+def _compile_unhandled_getter(
+    mut_code_lines: list[str], source_type: SourceType, fields: ParsedFieldSpecs, ignored_fields: Set[str]
+):
     all_srcs = set(field.source for field in fields) | ignored_fields
-
-    def _dict_unhandled_getter(source_dict):
-        return {k: v for k, v in source_dict.items() if k not in all_srcs}
-
-    def _obj_unhandled_getter(source_obj):
-        result = dict()
-
-        for k in get_obj_likely_data_fields_with_defaults(source_obj, include_properties=False).keys():
-            if k not in all_srcs:
-                try:
-                    result[k] = getattr(source_obj, k)
-                except Exception:
-                    pass
-
-        return result
+    all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
 
     if source_type == SourceType.DICT:
-        return _dict_unhandled_getter
+        mut_code_lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
     elif source_type == SourceType.OBJ:
-        return _obj_unhandled_getter
+        mut_code_lines.extend([
+            'unhandled_fields = dict()',
+            'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
+            f"    if k not in {all_srcs_set}:",
+            '        try:',
+            '            unhandled_fields[k] = getattr(source, k)',
+            '        except Exception:',
+            '            pass',
+        ])
     else:
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
@@ -138,7 +136,7 @@ def _setup_field_setter(destination_spec: DestinationSpec) -> FieldSetter:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
 
-def _compile_return_values(destination_spec: DestinationSpec, return_unparsed_option: bool) -> list[str]:
+def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
     return_values = []
 
     if destination_spec.by_ref:
@@ -147,9 +145,6 @@ def _compile_return_values(destination_spec: DestinationSpec, return_unparsed_op
         return_values.append('destination')
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
-
-    if return_unparsed_option:
-        return_values.append('unhandled_getter(source)')
 
     return return_values
 
