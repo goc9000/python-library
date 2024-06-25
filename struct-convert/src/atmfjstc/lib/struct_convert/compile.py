@@ -29,8 +29,13 @@ def compile_converter(spec: ConversionSpec) -> Callable:
         unhandled_getter=unhandled_getter,
     )
 
-    code_lines.append(f"destination = {_compile_dest_finder(spec.destination)}")
-    code_lines.append(f"converter_core(source, destination)")
+    if spec.destination.by_ref:
+        destination_var = 'mut_dest'
+    else:
+        code_lines.append(f"destination = {_compile_init_destination(spec.destination)}")
+        destination_var = 'destination'
+
+    code_lines.append(f"converter_core(source, {destination_var})")
 
     return_values = _compile_return_values(spec.destination, spec.return_unparsed)
     if len(return_values) > 0:
@@ -87,10 +92,8 @@ def _setup_unhandled_getter(
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
 
-def _compile_dest_finder(destination_spec: DestinationSpec) -> str:
-    if destination_spec.by_ref:
-        return 'mut_dest'
-    elif destination_spec.type == DestinationType.DICT:
+def _compile_init_destination(destination_spec: DestinationSpec) -> str:
+    if destination_spec.type == DestinationType.DICT:
         return 'dict()'
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
