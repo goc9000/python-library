@@ -27,29 +27,25 @@ def make_struct_converter(
 
       - ``'dict'``: Any type whose fields can be read with ``obj.get('field_name')``, such as a `dict` or, more
         generally, a `Mapping`.
-
-        - The ``dict`` class itself (but not a subclass) can also be used as an alias
-
       - ``'object'``: Any type whose fields can be read with ``obj.field_name``, such as any object with public fields.
-
-        - The aliases ``'obj'``, ``object`` (the type)  and ``'class'`` can also be used
 
     - `destination_type` can be one of:
 
       - ``'dict'``: The converter will return a new `dict` containing the converted fields.
-
-        - The ``dict`` class itself (but not a subclass) can also be used as an alias
-
       - ``'dict-by-reference'``: The converter will receive an existing dict (or `MutableMapping`) and write converted
         fields to it accordingly.
-
-        - The aliases ``'dict-by-ref'``, ``'&dict'`` and ``'@dict'`` can also be used
-
       - ``'object-by-reference'``: The converter will receive an existing object and set converted fields in it
         accordingly.
 
-        - The aliases ``'obj[ect]-by-ref'``, ``'class-by-ref'``, ``'&obj[ect]'``, ``'@obj[ect]'``, ``'&class'``,  and
-          ``'@class'`` can also be used
+    - The following aliases can also be used for specifying the above:
+
+      - dict source: ``dict`` (the class itself instead of the ``'dict'`` text. Note that a subclass will not do)
+      - object source: ``'obj'``, ``object`` (the type), ``'class'``
+      - dict destination: ``dict`` (the type)
+      - dict-by-reference destination: ``'dict-by-ref'``, ``'&dict'``, ``'@dict'``
+      - object-by-reference destination: ``'obj[ect]-by-ref'``, ``'class-by-ref'``, ``'&obj[ect]'``, ``'@obj[ect]'``,
+          ``'&class'``, ``'@class'``
+
 
     Field Specifications
     --------------------
