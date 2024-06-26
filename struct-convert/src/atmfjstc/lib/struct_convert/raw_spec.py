@@ -1,10 +1,10 @@
-from typing import Union, Any
+from typing import Union, Any, Type
 
 from collections.abc import Mapping, Sequence
 
 
-RawSourceType = str
-RawDestinationType = str
+RawSourceType = Union[str, Type]
+RawDestinationType = Union[str, Type]
 
 NormalizedRawFieldSpec = Mapping[str, Any]
 RawFieldSpec = Union[None, bool, str, NormalizedRawFieldSpec, Sequence['RawFieldSpec']]

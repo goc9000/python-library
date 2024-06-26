@@ -27,13 +27,19 @@ def make_struct_converter(
 
       - ``'dict'``: Any type whose fields can be read with ``obj.get('field_name')``, such as a `dict` or, more
         generally, a `Mapping`.
+
+        - The ``dict`` class itself (but not a subclass) can also be used as an alias
+
       - ``'object'``: Any type whose fields can be read with ``obj.field_name``, such as any object with public fields.
 
-        - The aliases ``'obj'`` and ``'class'`` can also be used
+        - The aliases ``'obj'``, ``object`` (the type)  and ``'class'`` can also be used
 
     - `destination_type` can be one of:
 
       - ``'dict'``: The converter will return a new `dict` containing the converted fields.
+
+        - The ``dict`` class itself (but not a subclass) can also be used as an alias
+
       - ``'dict-by-reference'``: The converter will receive an existing dict (or `MutableMapping`) and write converted
         fields to it accordingly.
 

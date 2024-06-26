@@ -23,16 +23,16 @@ def parse_conversion_spec(
 
 
 def parse_source_type(raw_source_type: RawSourceType) -> SourceType:
-    if raw_source_type in {'dict'}:
+    if raw_source_type in {'dict', dict}:
         return SourceType.DICT
-    elif raw_source_type in {'obj', 'object', 'class'}:
+    elif raw_source_type in {'obj', 'object', object, 'class'}:
         return SourceType.OBJ
     else:
         raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
 
 
 def parse_destination_spec(raw_dest_type: RawDestinationType) -> DestinationSpec:
-    if raw_dest_type in {'dict'}:
+    if raw_dest_type in {'dict', dict}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=False)
     elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=True)
