@@ -43,6 +43,7 @@ class FieldSpec:
     if_different: Optional[str] = None  # Only copy if it is different to this other field (before conversion)
     convert: Optional[Callable[[any], any]] = None
     store: Optional[ConstSpec] = None
+    default: Optional[ConstSpec] = None
 
 
 @dataclass(frozen=True)

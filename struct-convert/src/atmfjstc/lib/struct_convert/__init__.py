@@ -85,6 +85,11 @@ def make_struct_converter(
       parameters to produce a value).
 
       Mutually exclusive with `convert`.
+    - `default`: Any value specified here will be stored at the destination if the source field was not present or
+      if it was skipped for any reason.
+
+      The value can be specified either as a constant value, or as a class or callable (which will be called with no
+      parameters to produce a value).
 
     Alternatively, one can instead provide a dict like ``dict(ignore=True)`` which will cause the field in the source
     with that name to be ignored. This has the same effect as not specifying the field at all, but this affects the

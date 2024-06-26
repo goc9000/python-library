@@ -129,7 +129,7 @@ def parse_field_spec(raw_field_spec: RawFieldSpec, destination: str) -> Optional
                 init_params[key] = _parse_skip_if_set(value)
             elif key == 'convert':
                 init_params[key] = _parse_converter(value)
-            elif key == 'store':
+            elif key in ('store', 'default'):
                 init_params[key] = _parse_const(value)
             else:
                 raise KeyError("Don't recognize this field")

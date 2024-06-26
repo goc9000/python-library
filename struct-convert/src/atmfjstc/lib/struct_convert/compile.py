@@ -8,7 +8,7 @@ from typing import Callable, Optional, NamedTuple, Type
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
-from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec
+from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec, ConstSpec
 from .errors import ConvertStructCompileError, ConvertStructWrongSourceTypeError, ConvertStructMissingRequiredFieldError
 
 
@@ -254,11 +254,14 @@ def _compile_field_conversion_core(
 
     _compile_conversion_with_filters(
         context, filters,
-        _compile_final_setter_code(destination, field, value_var)
+        _compile_final_setter_code(destination, field, value_var),
+        _compile_default_setter_code(destination, field, field.default) if field.default is not None else None,
     )
 
 
-def _compile_final_setter_code(destination: _DestinationInfo, field: FieldSpec, value_var: str):
+def _compile_final_setter_code(
+    destination: _DestinationInfo, field: FieldSpec, value_var: str
+) -> Callable[[_CompileContext], None]:
     def _render_setter(ctx: _CompileContext):
         if field.store is not None:
             if field.store.factory is not None:
@@ -275,8 +278,24 @@ def _compile_final_setter_code(destination: _DestinationInfo, field: FieldSpec, 
     return _render_setter
 
 
+def _compile_default_setter_code(
+    destination: _DestinationInfo, field: FieldSpec, default_spec: ConstSpec
+) -> Optional[Callable[[_CompileContext], None]]:
+    def _render_setter(ctx: _CompileContext):
+        if default_spec.factory is not None:
+            value_expr = f"{ctx.expose_new('factory', default_spec.factory)}()"
+        else:
+            value_expr = f"{ctx.expose_new('const', default_spec.constant)}"
+
+        _compile_set_field(ctx, destination, field.destination, value_expr)
+
+    return _render_setter
+
+
 def _compile_conversion_with_filters(
-    context: _CompileContext, filters: list[dict], render_setter: Callable[[_CompileContext], None]
+    context: _CompileContext, filters: list[dict],
+    render_setter: Callable[[_CompileContext], None],
+    render_default_setter: Optional[Callable[[_CompileContext], None]]
 ):
     if len(filters) == 0:
         render_setter(context)
@@ -290,7 +309,11 @@ def _compile_conversion_with_filters(
         condition = filter['prepare_condition'](context)
 
     with context.indent(f"if {condition}:"):
-        _compile_conversion_with_filters(context, filters_rest, render_setter)
+        _compile_conversion_with_filters(context, filters_rest, render_setter, render_default_setter)
+
+    if render_default_setter is not None:
+        with context.indent(f"else:"):
+            render_default_setter(context)
 
 
 def _compile_unhandled_getter(
