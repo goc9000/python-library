@@ -1,6 +1,7 @@
 import re
 
 from collections.abc import Set
+from collections import Counter
 from contextlib import contextmanager
 from typing import Callable, Optional, NamedTuple
 
@@ -43,7 +44,8 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         source = _compile_setup_source(context, spec)
         destination = _compile_setup_destination(context, spec.destination)
 
-        _compile_conversion_core(context, spec.fields, destination, source)
+        for field in spec.fields:
+            _compile_field_conversion_core(context, field, destination, source)
 
         return_values = _compile_return_values(destination)
 
@@ -73,10 +75,12 @@ class _CompileContext:
 
     _lines: list[str]
     _indent: int = 0
+    _discriminants: Counter[str]
 
     def __init__(self):
         self.globals = dict()
         self._lines = []
+        self._discriminants = Counter()
 
     def render(self) -> str:
         return "\n".join(self._lines)
@@ -100,6 +104,14 @@ class _CompileContext:
             yield
         finally:
             self._indent -= 1
+
+    def expose_new(self, prefix: str, value) -> str:
+        var_name = f"{prefix}_{self._discriminants[prefix]}"
+
+        self.globals[var_name] = value
+        self._discriminants[prefix] += 1
+
+        return var_name
 
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
@@ -180,17 +192,8 @@ def _compile_return_values(destination: _DestinationInfo) -> list[str]:
     return return_values
 
 
-def _compile_conversion_core(
-    context: _CompileContext, fields: tuple[FieldSpec, ...], destination: _DestinationInfo, source: _SourceInfo
-):
-    for index, field in enumerate(fields):
-        discriminant = f"_{index}"
-
-        _compile_field_conversion_core(context, field, discriminant, destination, source)
-
-
 def _compile_field_conversion_core(
-    context: _CompileContext, field: FieldSpec, discriminant: str, destination: _DestinationInfo, source: _SourceInfo
+    context: _CompileContext, field: FieldSpec, destination: _DestinationInfo, source: _SourceInfo
 ):
     value_expr = _compile_get_field(context, source, field.source)
     value_var = _drop_to_variable(context, value_expr, 'value')
@@ -232,23 +235,18 @@ def _compile_field_conversion_core(
         ))
 
     if len(field.skip_if) > 0:
-        context.globals[f'skip_if{discriminant}'] = field.skip_if
-
         filters.append(dict(
-            condition=f"{value_var} not in skip_if{discriminant}"
+            condition=f"{value_var} not in {context.expose_new('skip_if', field.skip_if)}"
         ))
 
     def _render_setter(ctx: _CompileContext):
         if field.store is not None:
             if field.store.factory is not None:
-                context.globals[f'factory{discriminant}'] = field.store.factory
-                value_expr = f"factory{discriminant}()"
+                value_expr = f"{context.expose_new('factory', field.store.factory)}()"
             else:
-                context.globals[f'const{discriminant}'] = field.store.constant
-                value_expr = f"const{discriminant}"
+                value_expr = f"{context.expose_new('const', field.store.constant)}"
         elif field.convert is not None:
-            context.globals[f'converter{discriminant}'] = field.convert
-            value_expr = f"converter{discriminant}({value_var})"
+            value_expr = f"{context.expose_new('converter', field.convert)}({value_var})"
         else:
             value_expr = value_var
 
