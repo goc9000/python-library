@@ -129,71 +129,80 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
 
 def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, destination_var: str, spec: ConversionSpec):
     for index, field in enumerate(spec.fields):
-        value_expr = _compile_get_field(
-            mut_code_lines, mut_globals, field.source, spec.source_type, spec.none_means_missing
+        discriminant = f"_{index}"
+
+        _compile_field_conversion_core(mut_code_lines, mut_globals, field, discriminant, destination_var, spec)
+
+
+def _compile_field_conversion_core(
+    mut_code_lines: list[str], mut_globals: dict, field: FieldSpec, discriminant: str, destination_var: str,
+    spec: ConversionSpec
+):
+    value_expr = _compile_get_field(
+        mut_code_lines, mut_globals, field.source, spec.source_type, spec.none_means_missing
+    )
+    value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
+
+    if field.required:
+        mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
+        mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+
+    filters = []
+
+    if not field.required:
+        filters.append(dict(
+            condition=f"{value_var} is not _NO_VALUE"
+        ))
+
+    if field.if_different is not None:
+        setup_lines = []
+        other_value_expr = _compile_get_field(
+            setup_lines, mut_globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
         )
-        value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
+        other_var = _drop_to_variable(setup_lines, other_value_expr, 'other')
 
-        if field.required:
-            mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
-            mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+        filters.append(dict(
+            setup=setup_lines,
+            condition=f"{value_var} != {other_var}"
+        ))
 
-        filters = []
+    if field.skip_empty:
+        empty_conditions = [
+            f"{value_var} is False",
+            f"{value_var} is None",
+            f"isinstance({value_var}, int) and (value == 0)",
+            f"hasattr({value_var}, '__len__') and (len(value) == 0)",
+        ]
 
-        if not field.required:
-            filters.append(dict(
-                condition=f"{value_var} is not _NO_VALUE"
-            ))
+        filters.append(dict(
+            condition=f"not (({') or ('.join(empty_conditions)}))"
+        ))
 
-        if field.if_different is not None:
-            setup_lines = []
-            other_value_expr = _compile_get_field(
-                setup_lines, mut_globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
-            )
-            other_var = _drop_to_variable(setup_lines, other_value_expr, 'other')
+    if len(field.skip_if) > 0:
+        mut_globals[f'skip_if{discriminant}'] = field.skip_if
 
-            filters.append(dict(
-                setup=setup_lines,
-                condition=f"{value_var} != {other_var}"
-            ))
+        filters.append(dict(
+            condition=f"{value_var} not in skip_if{discriminant}"
+        ))
 
-        if field.skip_empty:
-            empty_conditions = [
-                f"{value_var} is False",
-                f"{value_var} is None",
-                f"isinstance({value_var}, int) and (value == 0)",
-                f"hasattr({value_var}, '__len__') and (len(value) == 0)",
-            ]
+    setter_lines = []
 
-            filters.append(dict(
-                condition=f"not (({') or ('.join(empty_conditions)}))"
-            ))
-
-        if len(field.skip_if) > 0:
-            mut_globals[f'skip_if{index}'] = field.skip_if
-
-            filters.append(dict(
-                condition=f"{value_var} not in skip_if{index}"
-            ))
-
-        setter_lines = []
-
-        if field.store is not None:
-            if field.store.factory is not None:
-                mut_globals[f'factory{index}'] = field.store.factory
-                value_expr = f"factory{index}()"
-            else:
-                mut_globals[f'const{index}'] = field.store.constant
-                value_expr = f"const{index}"
-        elif field.convert is not None:
-            mut_globals[f'converter{index}'] = field.convert
-            value_expr = f"converter{index}({value_var})"
+    if field.store is not None:
+        if field.store.factory is not None:
+            mut_globals[f'factory{discriminant}'] = field.store.factory
+            value_expr = f"factory{discriminant}()"
         else:
-            value_expr = value_var
+            mut_globals[f'const{discriminant}'] = field.store.constant
+            value_expr = f"const{discriminant}"
+    elif field.convert is not None:
+        mut_globals[f'converter{discriminant}'] = field.convert
+        value_expr = f"converter{discriminant}({value_var})"
+    else:
+        value_expr = value_var
 
-        _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
+    _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
 
-        _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
+    _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
 
 
 def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[dict], setter_lines: list[str]):
