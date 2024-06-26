@@ -209,24 +209,25 @@ def _compile_field_conversion_core(
 
     _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
 
-    _compile_conversion_with_filters(context.lines, filters, setter_lines)
+    _compile_conversion_with_filters(context, filters, setter_lines)
 
 
-def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[dict], setter_lines: list[str]):
+def _compile_conversion_with_filters(context: _CompileContext, filters: list[dict], setter_lines: list[str]):
     if len(filters) == 0:
-        mut_code_lines.extend(setter_lines)
+        context.lines.extend(setter_lines)
         return
 
     filter, *filters_rest = filters
 
-    mut_code_lines.extend(filter.get('setup', []))
+    context.lines.extend(filter.get('setup', []))
 
-    mut_code_lines.append(f"if {filter['condition']}:")
+    context.lines.append(f"if {filter['condition']}:")
 
-    sub_lines = []
-    _compile_conversion_with_filters(sub_lines, filters_rest, setter_lines)
+    sub_context = _CompileContext()
+    sub_context.globals = context.globals
+    _compile_conversion_with_filters(sub_context, filters_rest, setter_lines)
 
-    mut_code_lines.extend(f"    {line}" for line in sub_lines)
+    context.lines.extend(f"    {line}" for line in sub_context.lines)
 
 
 def _compile_unhandled_getter(
