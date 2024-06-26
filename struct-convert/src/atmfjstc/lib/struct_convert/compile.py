@@ -43,7 +43,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         source = _compile_setup_source(spec)
         destination = _compile_setup_destination(context, spec.destination)
 
-        _compile_conversion_core(context, destination, source, spec)
+        _compile_conversion_core(context, spec.fields, destination, source)
 
         return_values = _compile_return_values(destination)
 
@@ -174,9 +174,9 @@ def _compile_return_values(destination: _DestinationInfo) -> list[str]:
 
 
 def _compile_conversion_core(
-    context: _CompileContext, destination: _DestinationInfo, source: _SourceInfo, spec: ConversionSpec
+    context: _CompileContext, fields: tuple[FieldSpec, ...], destination: _DestinationInfo, source: _SourceInfo
 ):
-    for index, field in enumerate(spec.fields):
+    for index, field in enumerate(fields):
         discriminant = f"_{index}"
 
         _compile_field_conversion_core(context, field, discriminant, destination, source)
