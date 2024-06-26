@@ -2,7 +2,7 @@ from typing import Callable, Iterable
 
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs
 from .parse_spec import parse_conversion_spec
-from .compile import compile_converter
+from .compile import compile_converter, debug_compile_converter
 
 
 __version__ = '0.0.0'
@@ -160,3 +160,21 @@ def make_struct_converter(
     )
 
     return compile_converter(spec)
+
+
+def debug_make_struct_converter(
+    source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs, ignore: Iterable[str] = (),
+    return_unparsed: bool = False, none_means_missing: bool = True
+) -> dict:
+    """
+    Debug version of `make_struct_converter` that just returns the code that would have been compiled.
+    """
+
+    spec = parse_conversion_spec(
+        source_type, dest_type, fields,
+        ignore=ignore,
+        return_unparsed=return_unparsed,
+        none_means_missing=none_means_missing,
+    )
+
+    return debug_compile_converter(spec)

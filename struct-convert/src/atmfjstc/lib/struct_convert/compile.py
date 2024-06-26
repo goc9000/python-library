@@ -14,12 +14,32 @@ _NO_VALUE = Token()
 
 
 def compile_converter(spec: ConversionSpec) -> Callable:
+    code, globals = _compile_converter(spec)
+
+    try:
+        exec(code, globals)
+
+        return globals['convert']
+    except Exception as e:
+        raise ConvertStructCompileError("Failed to compile converter") from e
+
+
+def debug_compile_converter(spec: ConversionSpec) -> dict:
+    code, globals = _compile_converter(spec)
+
+    return {
+        'code': code,
+        'globals': globals,
+    }
+
+
+def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
+    code_lines = []
+    globals = dict()
+
     parameters = _compile_converter_params(spec.destination)
 
     func_header = f"def convert({', '.join(parameters)}):"
-    code_lines = []
-
-    globals = dict()
 
     if spec.destination.by_ref:
         destination_var = 'mut_dest'
@@ -38,14 +58,7 @@ def compile_converter(spec: ConversionSpec) -> Callable:
     if len(return_values) > 0:
         code_lines.append(f"return {', '.join(return_values)}")
 
-    code = "\n".join([func_header, *(f"    {line}" for line in code_lines)])
-
-    try:
-        exec(code, globals)
-
-        return globals['convert']
-    except Exception as e:
-        raise ConvertStructCompileError("Failed to compile converter") from e
+    return "\n".join([func_header, *(f"    {line}" for line in code_lines)]), globals
 
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
