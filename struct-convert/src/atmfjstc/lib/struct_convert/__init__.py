@@ -6,7 +6,7 @@ from .parse_spec import parse_conversion_spec
 from .compile import compile_converter, debug_compile_converter
 
 
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 
 StructConverter = Callable
@@ -195,8 +195,8 @@ def debug_make_struct_converter(
     return debug_compile_converter(spec)
 
 
-T = TypeVar('T', bound=Type)
-U = TypeVar('U', bound=Type)
+T = TypeVar('T')
+U = TypeVar('U')
 
 
 def make_dict_to_dict_converter(
@@ -248,7 +248,7 @@ def make_dict_to_dict_by_ref_converter_with_unhandled(
 
 
 def make_dict_to_class_converter(
-    dest_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    dest_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[Mapping], T]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -260,7 +260,7 @@ def make_dict_to_class_converter(
 
 
 def make_dict_to_class_converter_with_unhandled(
-    dest_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    dest_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[Mapping], tuple[T, dict]]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -272,7 +272,7 @@ def make_dict_to_class_converter_with_unhandled(
 
 
 def make_dict_to_class_by_ref_converter(
-    dest_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    dest_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T, Mapping], None]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -284,7 +284,7 @@ def make_dict_to_class_by_ref_converter(
 
 
 def make_dict_to_class_by_ref_converter_with_unhandled(
-    dest_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    dest_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T, Mapping], dict]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -296,7 +296,7 @@ def make_dict_to_class_by_ref_converter_with_unhandled(
 
 
 def make_class_to_dict_converter(
-    source_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T], dict]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -308,7 +308,7 @@ def make_class_to_dict_converter(
 
 
 def make_class_to_dict_converter_with_unhandled(
-    source_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T], tuple[dict, dict]]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -320,7 +320,7 @@ def make_class_to_dict_converter_with_unhandled(
 
 
 def make_class_to_dict_by_ref_converter(
-    source_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[MutableMapping, T], None]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -332,7 +332,7 @@ def make_class_to_dict_by_ref_converter(
 
 
 def make_class_to_dict_by_ref_converter_with_unhandled(
-    source_class: T, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[MutableMapping, T], dict]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -344,7 +344,8 @@ def make_class_to_dict_by_ref_converter_with_unhandled(
 
 
 def make_class_to_class_converter(
-    source_class: T, dest_class: U, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], dest_class: Type[U], fields: RawFieldSpecs,
+    ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T], U]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -356,7 +357,8 @@ def make_class_to_class_converter(
 
 
 def make_class_to_class_converter_with_unhandled(
-    source_class: T, dest_class: U, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], dest_class: Type[U], fields: RawFieldSpecs,
+    ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[T], tuple[U, dict]]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -368,7 +370,8 @@ def make_class_to_class_converter_with_unhandled(
 
 
 def make_class_to_class_by_ref_converter(
-    source_class: T, dest_class: U, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], dest_class: Type[U], fields: RawFieldSpecs,
+    ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[U, T], None]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
@@ -380,7 +383,8 @@ def make_class_to_class_by_ref_converter(
 
 
 def make_class_to_class_by_ref_converter_with_unhandled(
-    source_class: T, dest_class: U, fields: RawFieldSpecs, ignore: Iterable[str] = (), none_means_missing: bool = True
+    source_class: Type[T], dest_class: Type[U], fields: RawFieldSpecs,
+    ignore: Iterable[str] = (), none_means_missing: bool = True
 ) -> Callable[[U, T], dict]:
     """
     Shortcut for `make_struct_converter` with more precise typing.
