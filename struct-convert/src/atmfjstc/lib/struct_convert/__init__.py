@@ -1,9 +1,7 @@
 from typing import Callable, Iterable
 
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpecs
-from .spec import SourceType, DestinationType, FieldSpec
 from .parse_spec import parse_conversion_spec
-from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 from .compile import compile_converter
 
 
