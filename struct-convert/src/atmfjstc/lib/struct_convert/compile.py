@@ -34,8 +34,7 @@ def debug_compile_converter(spec: ConversionSpec) -> dict:
 
 
 def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
-    code_lines = []
-    globals = dict()
+    context = _CompileContext()
 
     parameters = _compile_converter_params(spec.destination)
 
@@ -44,21 +43,30 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
     if spec.destination.by_ref:
         destination_var = 'mut_dest'
     else:
-        code_lines.append(f"destination = {_compile_init_destination(spec.destination)}")
+        context.lines.append(f"destination = {_compile_init_destination(spec.destination)}")
         destination_var = 'destination'
 
-    _compile_conversion_core(code_lines, globals, destination_var, spec)
+    _compile_conversion_core(context, destination_var, spec)
 
     return_values = _compile_return_values(spec.destination)
 
     if spec.return_unparsed:
-        _compile_unhandled_getter(code_lines, globals, spec.source_type, spec.fields, spec.ignored_fields)
+        _compile_unhandled_getter(context, spec.source_type, spec.fields, spec.ignored_fields)
         return_values.append('unhandled_fields')
 
     if len(return_values) > 0:
-        code_lines.append(f"return {', '.join(return_values)}")
+        context.lines.append(f"return {', '.join(return_values)}")
 
-    return "\n".join([func_header, *(f"    {line}" for line in code_lines)]), globals
+    return "\n".join([func_header, *(f"    {line}" for line in context.lines)]), context.globals
+
+
+class _CompileContext:
+    lines: list[str]
+    globals: dict
+
+    def __init__(self):
+        self.lines = []
+        self.globals = dict()
 
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
@@ -127,25 +135,24 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
     return return_values
 
 
-def _compile_conversion_core(mut_code_lines: list[str], mut_globals: dict, destination_var: str, spec: ConversionSpec):
+def _compile_conversion_core(context: _CompileContext, destination_var: str, spec: ConversionSpec):
     for index, field in enumerate(spec.fields):
         discriminant = f"_{index}"
 
-        _compile_field_conversion_core(mut_code_lines, mut_globals, field, discriminant, destination_var, spec)
+        _compile_field_conversion_core(context, field, discriminant, destination_var, spec)
 
 
 def _compile_field_conversion_core(
-    mut_code_lines: list[str], mut_globals: dict, field: FieldSpec, discriminant: str, destination_var: str,
-    spec: ConversionSpec
+    context: _CompileContext, field: FieldSpec, discriminant: str, destination_var: str, spec: ConversionSpec
 ):
     value_expr = _compile_get_field(
-        mut_code_lines, mut_globals, field.source, spec.source_type, spec.none_means_missing
+        context.lines, context.globals, field.source, spec.source_type, spec.none_means_missing
     )
-    value_var = _drop_to_variable(mut_code_lines, value_expr, 'value')
+    value_var = _drop_to_variable(context.lines, value_expr, 'value')
 
     if field.required:
-        mut_code_lines.append(f"if {value_var} is _NO_VALUE:")
-        mut_code_lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+        context.lines.append(f"if {value_var} is _NO_VALUE:")
+        context.lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
 
     filters = []
 
@@ -157,7 +164,7 @@ def _compile_field_conversion_core(
     if field.if_different is not None:
         setup_lines = []
         other_value_expr = _compile_get_field(
-            setup_lines, mut_globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
+            setup_lines, context.globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
         )
         other_var = _drop_to_variable(setup_lines, other_value_expr, 'other')
 
@@ -179,7 +186,7 @@ def _compile_field_conversion_core(
         ))
 
     if len(field.skip_if) > 0:
-        mut_globals[f'skip_if{discriminant}'] = field.skip_if
+        context.globals[f'skip_if{discriminant}'] = field.skip_if
 
         filters.append(dict(
             condition=f"{value_var} not in skip_if{discriminant}"
@@ -189,20 +196,20 @@ def _compile_field_conversion_core(
 
     if field.store is not None:
         if field.store.factory is not None:
-            mut_globals[f'factory{discriminant}'] = field.store.factory
+            context.globals[f'factory{discriminant}'] = field.store.factory
             value_expr = f"factory{discriminant}()"
         else:
-            mut_globals[f'const{discriminant}'] = field.store.constant
+            context.globals[f'const{discriminant}'] = field.store.constant
             value_expr = f"const{discriminant}"
     elif field.convert is not None:
-        mut_globals[f'converter{discriminant}'] = field.convert
+        context.globals[f'converter{discriminant}'] = field.convert
         value_expr = f"converter{discriminant}({value_var})"
     else:
         value_expr = value_var
 
     _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
 
-    _compile_conversion_with_filters(mut_code_lines, filters, setter_lines)
+    _compile_conversion_with_filters(context.lines, filters, setter_lines)
 
 
 def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[dict], setter_lines: list[str]):
@@ -223,18 +230,17 @@ def _compile_conversion_with_filters(mut_code_lines: list[str], filters: list[di
 
 
 def _compile_unhandled_getter(
-    mut_code_lines: list[str], mut_globals: dict,
-    source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
+    context: _CompileContext, source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
 ):
     all_srcs = set(field.source for field in fields) | ignored_fields
     all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
 
     if source_type == SourceType.DICT:
-        mut_code_lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
+        context.lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
     elif source_type == SourceType.OBJ:
-        mut_globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
+        context.globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
 
-        mut_code_lines.extend([
+        context.lines.extend([
             'unhandled_fields = dict()',
             'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
             f"    if k not in {all_srcs_set}:",
