@@ -47,7 +47,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         for field in spec.fields:
             _compile_field_conversion_core(context, field, destination, source)
 
-        return_values = _compile_return_values(destination)
+        return_values = _compile_return_values(context, destination)
 
         if spec.return_unparsed:
             _compile_unhandled_getter(context, spec.source, spec.fields, spec.ignored_fields)
@@ -61,6 +61,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
 
 class _DestinationInfo(NamedTuple):
     spec: DestinationSpec
+    type_for_set: DestinationType
     variable: str
 
 
@@ -141,14 +142,20 @@ def _compile_setup_source(context: _CompileContext, spec: ConversionSpec) -> _So
 def _compile_setup_destination(context: _CompileContext, destination_spec: DestinationSpec) -> _DestinationInfo:
     if destination_spec.by_ref:
         destination_var = 'mut_dest'
+        type_for_set = destination_spec.type
     else:
         if destination_spec.type == DestinationType.DICT:
             context.add_line('destination = dict()')
             destination_var = 'destination'
+            type_for_set = DestinationType.DICT
+        elif destination_spec.type == DestinationType.OBJ:
+            context.add_line('staging = dict()')
+            destination_var = 'staging'
+            type_for_set = DestinationType.DICT
         else:
             raise AssertionError(f"Unhandled destination type: {destination_spec.type}")
 
-    return _DestinationInfo(spec=destination_spec, variable=destination_var)
+    return _DestinationInfo(spec=destination_spec, variable=destination_var, type_for_set=type_for_set)
 
 
 def _compile_get_field(context: _CompileContext, source: _SourceInfo, field: str, temp_name: str = 'value') -> str:
@@ -180,20 +187,22 @@ def _drop_to_variable(context: _CompileContext, expr: str, var_name: str) -> str
 
 
 def _compile_set_field(context: _CompileContext, destination: _DestinationInfo, field: str, value_expr: str):
-    if destination.spec.type == DestinationType.DICT:
+    if destination.type_for_set == DestinationType.DICT:
         context.add_line(f"{destination.variable}[{field!r}] = {value_expr}")
-    elif destination.spec.type == DestinationType.OBJ:
+    elif destination.type_for_set == DestinationType.OBJ:
         context.add_line(f"setattr({destination.variable}, {field!r}, {value_expr})")
     else:
-        raise AssertionError(f"Unhandled destination type: {destination.spec.type}")
+        raise AssertionError(f"Unhandled destination type: {destination.type_for_set}")
 
 
-def _compile_return_values(destination: _DestinationInfo) -> list[str]:
+def _compile_return_values(context: _CompileContext, destination: _DestinationInfo) -> list[str]:
     if destination.spec.by_ref:
         return []
 
     if destination.spec.type == DestinationType.DICT:
         return [destination.variable]
+    elif destination.spec.type == DestinationType.OBJ:
+        return [f"{context.expose_type(destination.spec.class_)}(**{destination.variable})"]
     else:
         raise AssertionError(f"Unhandled destination type: {destination.spec.type}")
 

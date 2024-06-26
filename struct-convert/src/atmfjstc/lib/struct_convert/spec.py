@@ -24,6 +24,7 @@ class DestinationType(Enum):
 class DestinationSpec:
     type: DestinationType
     by_ref: bool
+    class_: Optional[Type] = None
 
 
 @dataclass(frozen=True)

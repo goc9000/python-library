@@ -33,6 +33,8 @@ def make_struct_converter(
     - `destination_type` can be one of:
 
       - ``'dict'``: The converter will return a new `dict` containing the converted fields.
+      - (class name): The converted will return a new object of this class, initialized with the converted fields.
+        Particularly useful for dataclasses.
       - ``'dict-by-reference'``: The converter will receive an existing dict (or `MutableMapping`) and write converted
         fields to it accordingly.
       - ``'object-by-reference'``: The converter will receive an existing object and set converted fields in it

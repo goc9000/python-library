@@ -36,6 +36,8 @@ def parse_source_spec(raw_source_type: RawSourceType) -> SourceSpec:
 def parse_destination_spec(raw_dest_type: RawDestinationType) -> DestinationSpec:
     if raw_dest_type in {'dict', dict}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=False)
+    elif isinstance(raw_dest_type, Type):
+        return DestinationSpec(type=DestinationType.OBJ, class_=raw_dest_type, by_ref=False)
     elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=True)
     elif raw_dest_type in {
