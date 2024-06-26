@@ -9,7 +9,8 @@ from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec, ConstSpec
-from .errors import ConvertStructCompileError, ConvertStructWrongSourceTypeError, ConvertStructMissingRequiredFieldError
+from .errors import ConvertStructCompileError, ConvertStructWrongSourceTypeError, \
+    ConvertStructWrongDestinationTypeError, ConvertStructMissingRequiredFieldError
 
 
 _NO_VALUE = Token()
@@ -143,6 +144,15 @@ def _compile_setup_destination(context: _CompileContext, destination_spec: Desti
     if destination_spec.by_ref:
         destination_var = 'mut_dest'
         type_for_set = destination_spec.type
+
+        if (destination_spec.type == DestinationType.OBJ) and (destination_spec.class_ is not None):
+            dest_class_repr = context.expose_type(destination_spec.class_)
+
+            with context.indent(f"if not isinstance({destination_var}, {dest_class_repr}):"):
+                exc_class = context.expose_type(ConvertStructWrongDestinationTypeError)
+                context.add_line(
+                    f"raise {exc_class}({dest_class_repr}, {destination_var}.__class__)"
+                )
     else:
         if destination_spec.type == DestinationType.DICT:
             context.add_line('destination = dict()')

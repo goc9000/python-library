@@ -31,3 +31,14 @@ class ConvertStructWrongSourceTypeError(ConvertStructRuntimeError):
 
         self.expected_type = expected_type
         self.actual_type = actual_type
+
+
+class ConvertStructWrongDestinationTypeError(ConvertStructRuntimeError):
+    expected_type: Type
+    actual_type: Type
+
+    def __init__(self, expected_type: Type, actual_type: Type):
+        super().__init__(f"Expected destination of type '{expected_type.__name__}', got '{actual_type.__name__}'")
+
+        self.expected_type = expected_type
+        self.actual_type = actual_type

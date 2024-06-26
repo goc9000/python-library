@@ -8,13 +8,14 @@ from .errors import ConvertStructCompileError
 
 def parse_conversion_spec(
     raw_source_type: RawSourceType, raw_dest_type: RawDestinationType, raw_fields: RawFieldSpecs,
-    ignore: Iterable[str] = (), return_unparsed: bool = False, none_means_missing: bool = True
+    ignore: Iterable[str] = (), return_unparsed: bool = False, none_means_missing: bool = True,
+    dest_by_reference: bool = False
 ) -> ConversionSpec:
     fields, ignored_fields = parse_fields(raw_fields)
 
     return ConversionSpec(
         source=parse_source_spec(raw_source_type),
-        destination=parse_destination_spec(raw_dest_type),
+        destination=parse_destination_spec(raw_dest_type, dest_by_reference),
         fields=fields,
         ignored_fields=frozenset([*ignored_fields, *ignore]),
         return_unparsed=return_unparsed,
@@ -33,11 +34,11 @@ def parse_source_spec(raw_source_type: RawSourceType) -> SourceSpec:
         raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
 
 
-def parse_destination_spec(raw_dest_type: RawDestinationType) -> DestinationSpec:
+def parse_destination_spec(raw_dest_type: RawDestinationType, dest_by_reference: bool = False) -> DestinationSpec:
     if raw_dest_type in {'dict', dict}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=False)
     elif isinstance(raw_dest_type, Type):
-        return DestinationSpec(type=DestinationType.OBJ, class_=raw_dest_type, by_ref=False)
+        return DestinationSpec(type=DestinationType.OBJ, class_=raw_dest_type, by_ref=dest_by_reference)
     elif raw_dest_type in {'&dict', '@dict', 'dict-by-ref', 'dict-by-reference'}:
         return DestinationSpec(type=DestinationType.DICT, by_ref=True)
     elif raw_dest_type in {

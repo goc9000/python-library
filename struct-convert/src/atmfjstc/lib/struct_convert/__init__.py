@@ -13,7 +13,7 @@ StructConverter = Callable
 
 def make_struct_converter(
     source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs, ignore: Iterable[str] = (),
-    return_unparsed: bool = False, none_means_missing: bool = True
+    return_unparsed: bool = False, none_means_missing: bool = True, dest_by_reference: bool = False
 ) -> StructConverter:
     """
     General purpose utility for making functions that convert from a simple structure in dict or object format, to
@@ -39,6 +39,8 @@ def make_struct_converter(
         fields to it accordingly.
       - ``'object-by-reference'``: The converter will receive an existing object and set converted fields in it
         accordingly.
+      - (class name) with `dest_by_reference=` set to ``True``: Like ``object-by-reference``, and also checks that the
+        destination object is of that specific class.
 
     - The following aliases can also be used for specifying the above:
 
@@ -167,6 +169,7 @@ def make_struct_converter(
         ignore=ignore,
         return_unparsed=return_unparsed,
         none_means_missing=none_means_missing,
+        dest_by_reference=dest_by_reference,
     )
 
     return compile_converter(spec)
@@ -174,7 +177,7 @@ def make_struct_converter(
 
 def debug_make_struct_converter(
     source_type: RawSourceType, dest_type: RawDestinationType, fields: RawFieldSpecs, ignore: Iterable[str] = (),
-    return_unparsed: bool = False, none_means_missing: bool = True
+    return_unparsed: bool = False, none_means_missing: bool = True, dest_by_reference: bool = False
 ) -> dict:
     """
     Debug version of `make_struct_converter` that just returns the code that would have been compiled.
@@ -185,6 +188,7 @@ def debug_make_struct_converter(
         ignore=ignore,
         return_unparsed=return_unparsed,
         none_means_missing=none_means_missing,
+        dest_by_reference=dest_by_reference,
     )
 
     return debug_compile_converter(spec)
