@@ -26,6 +26,8 @@ def make_struct_converter(
     another structure in dict or object format, optionally excluding, renaming, converting or checking fields as they
     are accessed.
 
+    DEPRECATED. Use spun-off `atmfjstc-struct-convert` package, which has superior performance and more features.
+
     The Source and Destination Types
     --------------------------------
 
