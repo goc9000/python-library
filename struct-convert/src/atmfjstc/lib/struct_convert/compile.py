@@ -40,15 +40,11 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
     parameters = _compile_converter_params(spec.destination)
 
     with context.indent(f"def convert({', '.join(parameters)}):"):
-        if spec.destination.by_ref:
-            destination_var = 'mut_dest'
-        else:
-            context.add_line(f"destination = {_compile_init_destination(spec.destination)}")
-            destination_var = 'destination'
+        destination = _compile_setup_destination(context, spec.destination)
 
-        _compile_conversion_core(context, _DestinationInfo(spec=spec.destination, variable=destination_var), spec)
+        _compile_conversion_core(context, destination, spec)
 
-        return_values = _compile_return_values(spec.destination)
+        return_values = _compile_return_values(destination)
 
         if spec.return_unparsed:
             _compile_unhandled_getter(context, spec.source_type, spec.fields, spec.ignored_fields)
@@ -103,11 +99,17 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
-def _compile_init_destination(destination_spec: DestinationSpec) -> str:
-    if destination_spec.type == DestinationType.DICT:
-        return 'dict()'
+def _compile_setup_destination(context: _CompileContext, destination_spec: DestinationSpec) -> _DestinationInfo:
+    if destination_spec.by_ref:
+        destination_var = 'mut_dest'
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+        if destination_spec.type == DestinationType.DICT:
+            context.add_line('destination = dict()')
+            destination_var = 'destination'
+        else:
+            raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+
+    return _DestinationInfo(spec=destination_spec, variable=destination_var)
 
 
 def _compile_get_field(
@@ -149,15 +151,15 @@ def _compile_set_field(context: _CompileContext, destination: _DestinationInfo, 
         raise ConvertStructCompileError(f"Unsupported destination info: {destination}")
 
 
-def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
+def _compile_return_values(destination: _DestinationInfo) -> list[str]:
     return_values = []
 
-    if destination_spec.by_ref:
+    if destination.spec.by_ref:
         pass
-    elif destination_spec.type == DestinationType.DICT:
-        return_values.append('destination')
+    elif destination.spec.type == DestinationType.DICT:
+        return_values.append(destination.variable)
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+        raise ConvertStructCompileError(f"Unsupported destination type: {destination.spec}")
 
     return return_values
 
