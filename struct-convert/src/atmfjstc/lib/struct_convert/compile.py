@@ -162,15 +162,16 @@ def _compile_field_conversion_core(
         ))
 
     if field.if_different is not None:
-        setup_lines = []
-        other_value_expr = _compile_get_field(
-            setup_lines, context.globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
-        )
-        other_var = _drop_to_variable(setup_lines, other_value_expr, 'other')
+        def _prepare_if_different(ctx: _CompileContext):
+            other_value_expr = _compile_get_field(
+                ctx.lines, ctx.globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
+            )
+            other_var = _drop_to_variable(ctx.lines, other_value_expr, 'other')
+
+            return f"{value_var} != {other_var}"
 
         filters.append(dict(
-            setup=setup_lines,
-            condition=f"{value_var} != {other_var}"
+            prepare_condition=_prepare_if_different,
         ))
 
     if field.skip_empty:
@@ -220,9 +221,12 @@ def _compile_conversion_with_filters(
 
     filter, *filters_rest = filters
 
-    context.lines.extend(filter.get('setup', []))
+    if 'condition' in filter:
+        condition = filter['condition']
+    else:
+        condition = filter['prepare_condition'](context)
 
-    context.lines.append(f"if {filter['condition']}:")
+    context.lines.append(f"if {condition}:")
 
     sub_context = _CompileContext()
     sub_context.globals = context.globals
