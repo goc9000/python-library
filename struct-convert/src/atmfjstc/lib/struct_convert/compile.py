@@ -1,7 +1,8 @@
 import re
 
 from collections.abc import Set
-from typing import Callable
+from contextlib import contextmanager
+from typing import Callable, Optional
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
@@ -38,44 +39,56 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
 
     parameters = _compile_converter_params(spec.destination)
 
-    func_header = f"def convert({', '.join(parameters)}):"
+    with context.indent(f"def convert({', '.join(parameters)}):"):
+        if spec.destination.by_ref:
+            destination_var = 'mut_dest'
+        else:
+            context.add_line(f"destination = {_compile_init_destination(spec.destination)}")
+            destination_var = 'destination'
 
-    if spec.destination.by_ref:
-        destination_var = 'mut_dest'
-    else:
-        context.add_line(f"destination = {_compile_init_destination(spec.destination)}")
-        destination_var = 'destination'
+        _compile_conversion_core(context, destination_var, spec)
 
-    _compile_conversion_core(context, destination_var, spec)
+        return_values = _compile_return_values(spec.destination)
 
-    return_values = _compile_return_values(spec.destination)
+        if spec.return_unparsed:
+            _compile_unhandled_getter(context, spec.source_type, spec.fields, spec.ignored_fields)
+            return_values.append('unhandled_fields')
 
-    if spec.return_unparsed:
-        _compile_unhandled_getter(context, spec.source_type, spec.fields, spec.ignored_fields)
-        return_values.append('unhandled_fields')
+        if len(return_values) > 0:
+            context.add_line(f"return {', '.join(return_values)}")
 
-    if len(return_values) > 0:
-        context.add_line(f"return {', '.join(return_values)}")
-
-    return "\n".join([func_header, *(f"    {line}" for line in context.lines)]), context.globals
+    return "\n".join(context.lines), context.globals
 
 
 class _CompileContext:
     lines: list[str]
     globals: dict
 
+    _indent: int = 0
+
     def __init__(self):
         self.lines = []
         self.globals = dict()
 
     def add_line(self, line: str) -> '_CompileContext':
-        self.lines.append(line)
+        self.lines.append(f"{' ' * (self._indent * 4)}{line}")
         return self
 
     def add_lines(self, *lines: str) -> '_CompileContext':
         for line in lines:
             self.add_line(line)
         return self
+
+    @contextmanager
+    def indent(self, header: Optional[str] = None):
+        if header is not None:
+            self.add_line(header)
+
+        try:
+            self._indent += 1
+            yield
+        finally:
+            self._indent -= 1
 
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
@@ -103,8 +116,8 @@ def _compile_get_field(
 
     if none_means_missing:
         _drop_to_variable(context, result, temp_name)
-        context.add_line(f"if {temp_name} is None:")
-        context.add_line(f"     {temp_name} = _NO_VALUE")
+        with context.indent(f"if {temp_name} is None:"):
+            context.add_line(f"{temp_name} = _NO_VALUE")
         result = temp_name
 
     return result
@@ -157,8 +170,8 @@ def _compile_field_conversion_core(
     value_var = _drop_to_variable(context, value_expr, 'value')
 
     if field.required:
-        context.add_line(f"if {value_var} is _NO_VALUE:")
-        context.add_line(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+        with context.indent(f"if {value_var} is _NO_VALUE:"):
+            context.add_line(f"raise ConvertStructMissingRequiredFieldError({field.source!r})")
 
     filters = []
 
@@ -231,13 +244,8 @@ def _compile_conversion_with_filters(
     else:
         condition = filter['prepare_condition'](context)
 
-    context.add_line(f"if {condition}:")
-
-    sub_context = _CompileContext()
-    sub_context.globals = context.globals
-    _compile_conversion_with_filters(sub_context, filters_rest, render_setter)
-
-    context.add_lines(*(f"    {line}" for line in sub_context.lines))
+    with context.indent(f"if {condition}:"):
+        _compile_conversion_with_filters(context, filters_rest, render_setter)
 
 
 def _compile_unhandled_getter(
@@ -251,14 +259,15 @@ def _compile_unhandled_getter(
     elif source_type == SourceType.OBJ:
         context.globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
 
-        context.add_lines(
-            'unhandled_fields = dict()',
-            'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
-            f"    if k not in {all_srcs_set}:",
-            '        try:',
-            '            unhandled_fields[k] = getattr(source, k)',
-            '        except Exception:',
-            '            pass',
-        )
+        context.add_line('unhandled_fields = dict()')
+
+        with context.indent(
+            'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():'
+        ):
+            with context.indent(f"if k not in {all_srcs_set}:"):
+                with context.indent('try:'):
+                    context.add_line('unhandled_fields[k] = getattr(source, k)')
+                with context.indent('except Exception:'):
+                    context.add_line('pass')
     else:
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
