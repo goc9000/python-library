@@ -9,6 +9,11 @@ class SourceType(Enum):
     OBJ = auto()
 
 
+@dataclass(frozen=True)
+class SourceSpec:
+    type: SourceType
+
+
 class DestinationType(Enum):
     DICT = auto()
     OBJ = auto()
@@ -40,7 +45,7 @@ class FieldSpec:
 
 @dataclass(frozen=True)
 class ConversionSpec:
-    source_type: SourceType
+    source: SourceSpec
     destination: DestinationSpec
     fields: tuple[FieldSpec, ...]
     ignored_fields: Set[str]

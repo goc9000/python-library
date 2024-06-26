@@ -7,7 +7,7 @@ from typing import Callable, Optional, NamedTuple
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
-from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec
+from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec
 from .errors import ConvertStructCompileError
 
 
@@ -48,7 +48,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         return_values = _compile_return_values(destination)
 
         if spec.return_unparsed:
-            _compile_unhandled_getter(context, spec.source_type, spec.fields, spec.ignored_fields)
+            _compile_unhandled_getter(context, spec.source, spec.fields, spec.ignored_fields)
             return_values.append('unhandled_fields')
 
         if len(return_values) > 0:
@@ -63,7 +63,7 @@ class _DestinationInfo(NamedTuple):
 
 
 class _SourceInfo(NamedTuple):
-    type: SourceType
+    spec: SourceSpec
     variable: str
     none_means_missing: bool
 
@@ -107,7 +107,7 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
 
 
 def _compile_setup_source(spec: ConversionSpec) -> _SourceInfo:
-    return _SourceInfo(type=spec.source_type, variable='source', none_means_missing=spec.none_means_missing)
+    return _SourceInfo(spec=spec.source, variable='source', none_means_missing=spec.none_means_missing)
 
 
 def _compile_setup_destination(context: _CompileContext, destination_spec: DestinationSpec) -> _DestinationInfo:
@@ -126,12 +126,12 @@ def _compile_setup_destination(context: _CompileContext, destination_spec: Desti
 def _compile_get_field(context: _CompileContext, source: _SourceInfo, field: str, temp_name: str = 'value') -> str:
     context.globals['_NO_VALUE'] = _NO_VALUE
 
-    if source.type == SourceType.DICT:
+    if source.spec.type == SourceType.DICT:
         result = f"{source.variable}.get({field!r}, _NO_VALUE)"
-    elif source.type == SourceType.OBJ:
+    elif source.spec.type == SourceType.OBJ:
         result = f"getattr({source.variable}, {field!r}, _NO_VALUE)"
     else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source.type}")
+        raise ConvertStructCompileError(f"Unsupported source type: {source.spec.type}")
 
     if source.none_means_missing:
         _drop_to_variable(context, result, temp_name)
@@ -267,14 +267,14 @@ def _compile_conversion_with_filters(
 
 
 def _compile_unhandled_getter(
-    context: _CompileContext, source_type: SourceType, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
+    context: _CompileContext, source_spec: SourceSpec, fields: tuple[FieldSpec, ...], ignored_fields: Set[str]
 ):
     all_srcs = set(field.source for field in fields) | ignored_fields
     all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
 
-    if source_type == SourceType.DICT:
+    if source_spec.type == SourceType.DICT:
         context.add_line('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
-    elif source_type == SourceType.OBJ:
+    elif source_spec.type == SourceType.OBJ:
         context.globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
 
         context.add_line('unhandled_fields = dict()')
@@ -288,4 +288,4 @@ def _compile_unhandled_getter(
                 with context.indent('except Exception:'):
                     context.add_line('pass')
     else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
+        raise ConvertStructCompileError(f"Unsupported source spec: {source_spec}")

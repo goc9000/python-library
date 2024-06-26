@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence, Hashable, Iterable, Set
 from typing import Optional, TypeVar, Callable, Any, Union, Type
 
-from .spec import ConversionSpec, SourceType, DestinationType, DestinationSpec, FieldSpec, ConstSpec
+from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec, ConstSpec
 from .raw_spec import RawSourceType, RawDestinationType, RawFieldSpec, RawFieldSpecs, NormalizedRawFieldSpec
 from .errors import ConvertStructCompileError
 
@@ -13,7 +13,7 @@ def parse_conversion_spec(
     fields, ignored_fields = parse_fields(raw_fields)
 
     return ConversionSpec(
-        source_type=parse_source_type(raw_source_type),
+        source=parse_source_spec(raw_source_type),
         destination=parse_destination_spec(raw_dest_type),
         fields=fields,
         ignored_fields=frozenset([*ignored_fields, *ignore]),
@@ -22,11 +22,11 @@ def parse_conversion_spec(
     )
 
 
-def parse_source_type(raw_source_type: RawSourceType) -> SourceType:
+def parse_source_spec(raw_source_type: RawSourceType) -> SourceSpec:
     if raw_source_type in {'dict', dict}:
-        return SourceType.DICT
+        return SourceSpec(type=SourceType.DICT)
     elif raw_source_type in {'obj', 'object', object, 'class'}:
-        return SourceType.OBJ
+        return SourceSpec(type=SourceType.OBJ)
     else:
         raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
 
