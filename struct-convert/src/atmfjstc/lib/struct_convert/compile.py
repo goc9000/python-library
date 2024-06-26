@@ -2,7 +2,7 @@ import re
 
 from collections.abc import Set
 from contextlib import contextmanager
-from typing import Callable, Optional
+from typing import Callable, Optional, NamedTuple
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
@@ -46,7 +46,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
             context.add_line(f"destination = {_compile_init_destination(spec.destination)}")
             destination_var = 'destination'
 
-        _compile_conversion_core(context, destination_var, spec)
+        _compile_conversion_core(context, _DestinationInfo(spec=spec.destination, variable=destination_var), spec)
 
         return_values = _compile_return_values(spec.destination)
 
@@ -58,6 +58,11 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
             context.add_line(f"return {', '.join(return_values)}")
 
     return context.render(), context.globals
+
+
+class _DestinationInfo(NamedTuple):
+    spec: DestinationSpec
+    variable: str
 
 
 class _CompileContext:
@@ -135,15 +140,13 @@ def _drop_to_variable(context: _CompileContext, expr: str, var_name: str) -> str
     return var_name
 
 
-def _compile_set_field(
-    context: _CompileContext, destination_var: str, destination_spec: DestinationSpec, field: str, value_expr: str
-):
-    if destination_spec.type == DestinationType.DICT:
-        context.add_line(f"{destination_var}[{field!r}] = {value_expr}")
-    elif destination_spec.type == DestinationType.OBJ:
-        context.add_line(f"setattr({destination_var}, {field!r}, {value_expr})")
+def _compile_set_field(context: _CompileContext, destination: _DestinationInfo, field: str, value_expr: str):
+    if destination.spec.type == DestinationType.DICT:
+        context.add_line(f"{destination.variable}[{field!r}] = {value_expr}")
+    elif destination.spec.type == DestinationType.OBJ:
+        context.add_line(f"setattr({destination.variable}, {field!r}, {value_expr})")
     else:
-        raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+        raise ConvertStructCompileError(f"Unsupported destination info: {destination}")
 
 
 def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
@@ -159,15 +162,15 @@ def _compile_return_values(destination_spec: DestinationSpec) -> list[str]:
     return return_values
 
 
-def _compile_conversion_core(context: _CompileContext, destination_var: str, spec: ConversionSpec):
+def _compile_conversion_core(context: _CompileContext, destination: _DestinationInfo, spec: ConversionSpec):
     for index, field in enumerate(spec.fields):
         discriminant = f"_{index}"
 
-        _compile_field_conversion_core(context, field, discriminant, destination_var, spec)
+        _compile_field_conversion_core(context, field, discriminant, destination, spec)
 
 
 def _compile_field_conversion_core(
-    context: _CompileContext, field: FieldSpec, discriminant: str, destination_var: str, spec: ConversionSpec
+    context: _CompileContext, field: FieldSpec, discriminant: str, destination: _DestinationInfo, spec: ConversionSpec
 ):
     value_expr = _compile_get_field(context, field.source, spec.source_type, spec.none_means_missing)
     value_var = _drop_to_variable(context, value_expr, 'value')
@@ -228,7 +231,7 @@ def _compile_field_conversion_core(
         else:
             value_expr = value_var
 
-        _compile_set_field(ctx, destination_var, spec.destination, field.destination, value_expr)
+        _compile_set_field(ctx, destination, field.destination, value_expr)
 
     _compile_conversion_with_filters(context, filters, _render_setter)
 
