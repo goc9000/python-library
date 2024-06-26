@@ -93,7 +93,7 @@ def _compile_get_field(
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
     if none_means_missing:
-        _drop_to_variable(context.lines, result, temp_name)
+        _drop_to_variable(context, result, temp_name)
         context.lines.append(f"if {temp_name} is None:")
         context.lines.append(f"     {temp_name} = _NO_VALUE")
         result = temp_name
@@ -101,11 +101,11 @@ def _compile_get_field(
     return result
 
 
-def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> str:
+def _drop_to_variable(context: _CompileContext, expr: str, var_name: str) -> str:
     if re.match(r'^[a-z0-9_]+$', expr, re.I):
         return expr
 
-    mut_code_lines.append(f"{var_name} = {expr}")
+    context.lines.append(f"{var_name} = {expr}")
 
     return var_name
 
@@ -145,7 +145,7 @@ def _compile_field_conversion_core(
     context: _CompileContext, field: FieldSpec, discriminant: str, destination_var: str, spec: ConversionSpec
 ):
     value_expr = _compile_get_field(context, field.source, spec.source_type, spec.none_means_missing)
-    value_var = _drop_to_variable(context.lines, value_expr, 'value')
+    value_var = _drop_to_variable(context, value_expr, 'value')
 
     if field.required:
         context.lines.append(f"if {value_var} is _NO_VALUE:")
@@ -162,7 +162,7 @@ def _compile_field_conversion_core(
         def _prepare_if_different(ctx: _CompileContext):
             other_value_expr = \
                 _compile_get_field(ctx, field.if_different, spec.source_type, spec.none_means_missing, 'other')
-            other_var = _drop_to_variable(ctx.lines, other_value_expr, 'other')
+            other_var = _drop_to_variable(ctx, other_value_expr, 'other')
 
             return f"{value_var} != {other_var}"
 
