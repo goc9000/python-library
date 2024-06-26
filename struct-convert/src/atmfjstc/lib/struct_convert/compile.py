@@ -192,29 +192,30 @@ def _compile_field_conversion_core(
             condition=f"{value_var} not in skip_if{discriminant}"
         ))
 
-    setter_lines = []
-
-    if field.store is not None:
-        if field.store.factory is not None:
-            context.globals[f'factory{discriminant}'] = field.store.factory
-            value_expr = f"factory{discriminant}()"
+    def _render_setter(ctx: _CompileContext):
+        if field.store is not None:
+            if field.store.factory is not None:
+                context.globals[f'factory{discriminant}'] = field.store.factory
+                value_expr = f"factory{discriminant}()"
+            else:
+                context.globals[f'const{discriminant}'] = field.store.constant
+                value_expr = f"const{discriminant}"
+        elif field.convert is not None:
+            context.globals[f'converter{discriminant}'] = field.convert
+            value_expr = f"converter{discriminant}({value_var})"
         else:
-            context.globals[f'const{discriminant}'] = field.store.constant
-            value_expr = f"const{discriminant}"
-    elif field.convert is not None:
-        context.globals[f'converter{discriminant}'] = field.convert
-        value_expr = f"converter{discriminant}({value_var})"
-    else:
-        value_expr = value_var
+            value_expr = value_var
 
-    _compile_set_field(setter_lines, destination_var, spec.destination, field.destination, value_expr)
+        _compile_set_field(ctx.lines, destination_var, spec.destination, field.destination, value_expr)
 
-    _compile_conversion_with_filters(context, filters, setter_lines)
+    _compile_conversion_with_filters(context, filters, _render_setter)
 
 
-def _compile_conversion_with_filters(context: _CompileContext, filters: list[dict], setter_lines: list[str]):
+def _compile_conversion_with_filters(
+    context: _CompileContext, filters: list[dict], render_setter: Callable[[_CompileContext], None]
+):
     if len(filters) == 0:
-        context.lines.extend(setter_lines)
+        render_setter(context)
         return
 
     filter, *filters_rest = filters
@@ -225,7 +226,7 @@ def _compile_conversion_with_filters(context: _CompileContext, filters: list[dic
 
     sub_context = _CompileContext()
     sub_context.globals = context.globals
-    _compile_conversion_with_filters(sub_context, filters_rest, setter_lines)
+    _compile_conversion_with_filters(sub_context, filters_rest, render_setter)
 
     context.lines.extend(f"    {line}" for line in sub_context.lines)
 
