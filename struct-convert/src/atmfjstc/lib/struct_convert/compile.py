@@ -72,6 +72,11 @@ class _CompileContext:
         self.lines.append(line)
         return self
 
+    def add_lines(self, *lines: str) -> '_CompileContext':
+        for line in lines:
+            self.add_line(line)
+        return self
+
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
@@ -232,7 +237,7 @@ def _compile_conversion_with_filters(
     sub_context.globals = context.globals
     _compile_conversion_with_filters(sub_context, filters_rest, render_setter)
 
-    context.lines.extend(f"    {line}" for line in sub_context.lines)
+    context.add_lines(*(f"    {line}" for line in sub_context.lines))
 
 
 def _compile_unhandled_getter(
@@ -246,7 +251,7 @@ def _compile_unhandled_getter(
     elif source_type == SourceType.OBJ:
         context.globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
 
-        context.lines.extend([
+        context.add_lines(
             'unhandled_fields = dict()',
             'for k in get_obj_likely_data_fields_with_defaults(source, include_properties=False).keys():',
             f"    if k not in {all_srcs_set}:",
@@ -254,6 +259,6 @@ def _compile_unhandled_getter(
             '            unhandled_fields[k] = getattr(source, k)',
             '        except Exception:',
             '            pass',
-        ])
+        )
     else:
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
