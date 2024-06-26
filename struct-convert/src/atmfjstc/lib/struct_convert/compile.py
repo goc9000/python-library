@@ -8,7 +8,7 @@ from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec
-from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
+from .errors import ConvertStructCompileError, ConvertStructWrongSourceTypeError, ConvertStructMissingRequiredFieldError
 
 
 _NO_VALUE = Token()
@@ -40,7 +40,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
     parameters = _compile_converter_params(spec.destination)
 
     with context.indent(f"def convert({', '.join(parameters)}):"):
-        source = _compile_setup_source(spec)
+        source = _compile_setup_source(context, spec)
         destination = _compile_setup_destination(context, spec.destination)
 
         _compile_conversion_core(context, spec.fields, destination, source)
@@ -106,7 +106,14 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
     return ('mut_dest', 'source') if destination_spec.by_ref else ('source',)
 
 
-def _compile_setup_source(spec: ConversionSpec) -> _SourceInfo:
+def _compile_setup_source(context: _CompileContext, spec: ConversionSpec) -> _SourceInfo:
+    if spec.source.class_ is not None:
+        context.globals['source_class'] = spec.source.class_
+        context.globals['ConvertStructWrongSourceTypeError'] = ConvertStructWrongSourceTypeError
+
+        with context.indent("if not isinstance(source, source_class):"):
+            context.add_line("raise ConvertStructWrongSourceTypeError(source_class, source.__class__)")
+
     return _SourceInfo(spec=spec.source, variable='source', none_means_missing=spec.none_means_missing)
 
 

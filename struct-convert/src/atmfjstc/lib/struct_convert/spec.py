@@ -12,6 +12,7 @@ class SourceType(Enum):
 @dataclass(frozen=True)
 class SourceSpec:
     type: SourceType
+    class_: Optional[Type] = None
 
 
 class DestinationType(Enum):

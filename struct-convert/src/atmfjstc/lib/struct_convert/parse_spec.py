@@ -27,6 +27,8 @@ def parse_source_spec(raw_source_type: RawSourceType) -> SourceSpec:
         return SourceSpec(type=SourceType.DICT)
     elif raw_source_type in {'obj', 'object', object, 'class'}:
         return SourceSpec(type=SourceType.OBJ)
+    elif isinstance(raw_source_type, Type):
+        return SourceSpec(type=SourceType.OBJ, class_=raw_source_type)
     else:
         raise ConvertStructCompileError(f"Invalid source type: {raw_source_type!r}")
 

@@ -28,6 +28,7 @@ def make_struct_converter(
       - ``'dict'``: Any type whose fields can be read with ``obj.get('field_name')``, such as a `dict` or, more
         generally, a `Mapping`.
       - ``'object'``: Any type whose fields can be read with ``obj.field_name``, such as any object with public fields.
+      - (class name): Behaves like ``'object'``, and also checks that the source object is of that specific class
 
     - `destination_type` can be one of:
 
