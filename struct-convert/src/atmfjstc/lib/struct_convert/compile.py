@@ -57,21 +57,24 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         if len(return_values) > 0:
             context.add_line(f"return {', '.join(return_values)}")
 
-    return "\n".join(context.lines), context.globals
+    return context.render(), context.globals
 
 
 class _CompileContext:
-    lines: list[str]
     globals: dict
 
+    _lines: list[str]
     _indent: int = 0
 
     def __init__(self):
-        self.lines = []
         self.globals = dict()
+        self._lines = []
+
+    def render(self) -> str:
+        return "\n".join(self._lines)
 
     def add_line(self, line: str) -> '_CompileContext':
-        self.lines.append(f"{' ' * (self._indent * 4)}{line}")
+        self._lines.append(f"{' ' * (self._indent * 4)}{line}")
         return self
 
     def add_lines(self, *lines: str) -> '_CompileContext':
