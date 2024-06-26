@@ -252,20 +252,27 @@ def _compile_field_conversion_core(
             condition=f"{value_var} not in {context.expose_new('skip_if', field.skip_if)}"
         ))
 
+    _compile_conversion_with_filters(
+        context, filters,
+        _compile_final_setter_code(destination, field, value_var)
+    )
+
+
+def _compile_final_setter_code(destination: _DestinationInfo, field: FieldSpec, value_var: str):
     def _render_setter(ctx: _CompileContext):
         if field.store is not None:
             if field.store.factory is not None:
-                value_expr = f"{context.expose_new('factory', field.store.factory)}()"
+                value_expr = f"{ctx.expose_new('factory', field.store.factory)}()"
             else:
-                value_expr = f"{context.expose_new('const', field.store.constant)}"
+                value_expr = f"{ctx.expose_new('const', field.store.constant)}"
         elif field.convert is not None:
-            value_expr = f"{context.expose_new('converter', field.convert)}({value_var})"
+            value_expr = f"{ctx.expose_new('converter', field.convert)}({value_var})"
         else:
             value_expr = value_var
 
         _compile_set_field(ctx, destination, field.destination, value_expr)
 
-    _compile_conversion_with_filters(context, filters, _render_setter)
+    return _render_setter
 
 
 def _compile_conversion_with_filters(
