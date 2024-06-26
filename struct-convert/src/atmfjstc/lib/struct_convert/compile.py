@@ -146,7 +146,7 @@ def _compile_setup_destination(context: _CompileContext, destination_spec: Desti
             context.add_line('destination = dict()')
             destination_var = 'destination'
         else:
-            raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
+            raise AssertionError(f"Unhandled destination type: {destination_spec.type}")
 
     return _DestinationInfo(spec=destination_spec, variable=destination_var)
 
@@ -159,7 +159,7 @@ def _compile_get_field(context: _CompileContext, source: _SourceInfo, field: str
     elif source.spec.type == SourceType.OBJ:
         result = f"getattr({source.variable}, {field!r}, _NO_VALUE)"
     else:
-        raise ConvertStructCompileError(f"Unsupported source type: {source.spec.type}")
+        raise AssertionError(f"Unhandled source type: {source.spec.type}")
 
     if source.none_means_missing:
         _drop_to_variable(context, result, temp_name)
@@ -185,20 +185,17 @@ def _compile_set_field(context: _CompileContext, destination: _DestinationInfo, 
     elif destination.spec.type == DestinationType.OBJ:
         context.add_line(f"setattr({destination.variable}, {field!r}, {value_expr})")
     else:
-        raise ConvertStructCompileError(f"Unsupported destination info: {destination}")
+        raise AssertionError(f"Unhandled destination type: {destination.spec.type}")
 
 
 def _compile_return_values(destination: _DestinationInfo) -> list[str]:
-    return_values = []
-
     if destination.spec.by_ref:
-        pass
-    elif destination.spec.type == DestinationType.DICT:
-        return_values.append(destination.variable)
-    else:
-        raise ConvertStructCompileError(f"Unsupported destination type: {destination.spec}")
+        return []
 
-    return return_values
+    if destination.spec.type == DestinationType.DICT:
+        return [destination.variable]
+    else:
+        raise AssertionError(f"Unhandled destination type: {destination.spec.type}")
 
 
 def _compile_field_conversion_core(
@@ -302,4 +299,4 @@ def _compile_unhandled_getter(
                 with context.indent('except Exception:'):
                     context.add_line('pass')
     else:
-        raise ConvertStructCompileError(f"Unsupported source spec: {source_spec}")
+        raise AssertionError(f"Unhandled source type: {source_spec.type}")
