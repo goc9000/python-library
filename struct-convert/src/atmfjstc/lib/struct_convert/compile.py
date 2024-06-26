@@ -8,7 +8,7 @@ from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
 
 from .spec import ConversionSpec, SourceType, SourceSpec, DestinationType, DestinationSpec, FieldSpec
-from .errors import ConvertStructCompileError
+from .errors import ConvertStructCompileError, ConvertStructMissingRequiredFieldError
 
 
 _NO_VALUE = Token()
@@ -190,6 +190,8 @@ def _compile_field_conversion_core(
 
     if field.required:
         with context.indent(f"if {value_var} is _NO_VALUE:"):
+            context.globals['ConvertStructMissingRequiredFieldError'] = ConvertStructMissingRequiredFieldError
+
             context.add_line(f"raise ConvertStructMissingRequiredFieldError({field.source!r})")
 
     filters = []
