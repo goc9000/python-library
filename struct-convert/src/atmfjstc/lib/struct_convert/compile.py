@@ -81,10 +81,9 @@ def _compile_init_destination(destination_spec: DestinationSpec) -> str:
 
 
 def _compile_get_field(
-    mut_code_lines: list[str], mut_globals: dict, field: str, source_type: SourceType, none_means_missing: bool,
-    temp_name: str = 'value'
+    context: _CompileContext, field: str, source_type: SourceType, none_means_missing: bool, temp_name: str = 'value'
 ) -> str:
-    mut_globals['_NO_VALUE'] = _NO_VALUE
+    context.globals['_NO_VALUE'] = _NO_VALUE
 
     if source_type == SourceType.DICT:
         result = f"source.get({field!r}, _NO_VALUE)"
@@ -94,9 +93,9 @@ def _compile_get_field(
         raise ConvertStructCompileError(f"Unsupported source type: {source_type}")
 
     if none_means_missing:
-        _drop_to_variable(mut_code_lines, result, temp_name)
-        mut_code_lines.append(f"if {temp_name} is None:")
-        mut_code_lines.append(f"     {temp_name} = _NO_VALUE")
+        _drop_to_variable(context.lines, result, temp_name)
+        context.lines.append(f"if {temp_name} is None:")
+        context.lines.append(f"     {temp_name} = _NO_VALUE")
         result = temp_name
 
     return result
@@ -145,9 +144,7 @@ def _compile_conversion_core(context: _CompileContext, destination_var: str, spe
 def _compile_field_conversion_core(
     context: _CompileContext, field: FieldSpec, discriminant: str, destination_var: str, spec: ConversionSpec
 ):
-    value_expr = _compile_get_field(
-        context.lines, context.globals, field.source, spec.source_type, spec.none_means_missing
-    )
+    value_expr = _compile_get_field(context, field.source, spec.source_type, spec.none_means_missing)
     value_var = _drop_to_variable(context.lines, value_expr, 'value')
 
     if field.required:
@@ -163,9 +160,8 @@ def _compile_field_conversion_core(
 
     if field.if_different is not None:
         def _prepare_if_different(ctx: _CompileContext):
-            other_value_expr = _compile_get_field(
-                ctx.lines, ctx.globals, field.if_different, spec.source_type, spec.none_means_missing, 'other'
-            )
+            other_value_expr = \
+                _compile_get_field(ctx, field.if_different, spec.source_type, spec.none_means_missing, 'other')
             other_var = _drop_to_variable(ctx.lines, other_value_expr, 'other')
 
             return f"{value_var} != {other_var}"
