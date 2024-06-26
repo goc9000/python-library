@@ -43,7 +43,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
     if spec.destination.by_ref:
         destination_var = 'mut_dest'
     else:
-        context.lines.append(f"destination = {_compile_init_destination(spec.destination)}")
+        context.add_line(f"destination = {_compile_init_destination(spec.destination)}")
         destination_var = 'destination'
 
     _compile_conversion_core(context, destination_var, spec)
@@ -55,7 +55,7 @@ def _compile_converter(spec: ConversionSpec) -> tuple[str, dict]:
         return_values.append('unhandled_fields')
 
     if len(return_values) > 0:
-        context.lines.append(f"return {', '.join(return_values)}")
+        context.add_line(f"return {', '.join(return_values)}")
 
     return "\n".join([func_header, *(f"    {line}" for line in context.lines)]), context.globals
 
@@ -67,6 +67,10 @@ class _CompileContext:
     def __init__(self):
         self.lines = []
         self.globals = dict()
+
+    def add_line(self, line: str) -> '_CompileContext':
+        self.lines.append(line)
+        return self
 
 
 def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, ...]:
@@ -94,8 +98,8 @@ def _compile_get_field(
 
     if none_means_missing:
         _drop_to_variable(context, result, temp_name)
-        context.lines.append(f"if {temp_name} is None:")
-        context.lines.append(f"     {temp_name} = _NO_VALUE")
+        context.add_line(f"if {temp_name} is None:")
+        context.add_line(f"     {temp_name} = _NO_VALUE")
         result = temp_name
 
     return result
@@ -105,7 +109,7 @@ def _drop_to_variable(context: _CompileContext, expr: str, var_name: str) -> str
     if re.match(r'^[a-z0-9_]+$', expr, re.I):
         return expr
 
-    context.lines.append(f"{var_name} = {expr}")
+    context.add_line(f"{var_name} = {expr}")
 
     return var_name
 
@@ -114,9 +118,9 @@ def _compile_set_field(
     context: _CompileContext, destination_var: str, destination_spec: DestinationSpec, field: str, value_expr: str
 ):
     if destination_spec.type == DestinationType.DICT:
-        context.lines.append(f"{destination_var}[{field!r}] = {value_expr}")
+        context.add_line(f"{destination_var}[{field!r}] = {value_expr}")
     elif destination_spec.type == DestinationType.OBJ:
-        context.lines.append(f"setattr({destination_var}, {field!r}, {value_expr})")
+        context.add_line(f"setattr({destination_var}, {field!r}, {value_expr})")
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
@@ -148,8 +152,8 @@ def _compile_field_conversion_core(
     value_var = _drop_to_variable(context, value_expr, 'value')
 
     if field.required:
-        context.lines.append(f"if {value_var} is _NO_VALUE:")
-        context.lines.append(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
+        context.add_line(f"if {value_var} is _NO_VALUE:")
+        context.add_line(f"    raise ConvertStructMissingRequiredFieldError({field.source!r})")
 
     filters = []
 
@@ -222,7 +226,7 @@ def _compile_conversion_with_filters(
     else:
         condition = filter['prepare_condition'](context)
 
-    context.lines.append(f"if {condition}:")
+    context.add_line(f"if {condition}:")
 
     sub_context = _CompileContext()
     sub_context.globals = context.globals
@@ -238,7 +242,7 @@ def _compile_unhandled_getter(
     all_srcs_set = ('{' + ', '.join(repr(item) for item in all_srcs) + '}') if len(all_srcs) > 0 else 'set()'
 
     if source_type == SourceType.DICT:
-        context.lines.append('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
+        context.add_line('unhandled_fields = {k: v for k, v in source.items() if k not in ' + all_srcs_set + '}')
     elif source_type == SourceType.OBJ:
         context.globals['get_obj_likely_data_fields_with_defaults'] = get_obj_likely_data_fields_with_defaults
 
