@@ -112,12 +112,12 @@ def _drop_to_variable(mut_code_lines: list[str], expr: str, var_name: str) -> st
 
 
 def _compile_set_field(
-    mut_code_lines: list[str], destination_var: str, destination_spec: DestinationSpec, field: str, value_expr: str
+    context: _CompileContext, destination_var: str, destination_spec: DestinationSpec, field: str, value_expr: str
 ):
     if destination_spec.type == DestinationType.DICT:
-        mut_code_lines.append(f"{destination_var}[{field!r}] = {value_expr}")
+        context.lines.append(f"{destination_var}[{field!r}] = {value_expr}")
     elif destination_spec.type == DestinationType.OBJ:
-        mut_code_lines.append(f"setattr({destination_var}, {field!r}, {value_expr})")
+        context.lines.append(f"setattr({destination_var}, {field!r}, {value_expr})")
     else:
         raise ConvertStructCompileError(f"Unsupported destination type: {destination_spec}")
 
@@ -206,7 +206,7 @@ def _compile_field_conversion_core(
         else:
             value_expr = value_var
 
-        _compile_set_field(ctx.lines, destination_var, spec.destination, field.destination, value_expr)
+        _compile_set_field(ctx, destination_var, spec.destination, field.destination, value_expr)
 
     _compile_conversion_with_filters(context, filters, _render_setter)
 
