@@ -3,7 +3,7 @@ import re
 from collections.abc import Set
 from collections import Counter
 from contextlib import contextmanager
-from typing import Callable, Optional, NamedTuple
+from typing import Callable, Optional, NamedTuple, Type
 
 from atmfjstc.lib.py_lang_utils.token import Token
 from atmfjstc.lib.py_lang_utils.data_objs import get_obj_likely_data_fields_with_defaults
@@ -105,6 +105,14 @@ class _CompileContext:
         finally:
             self._indent -= 1
 
+    def expose_type(self, cls: Type) -> str:
+        if cls.__name__ in dir(__builtins__):
+            return cls.__name__
+
+        self.globals[cls.__name__] = cls
+
+        return cls.__name__
+
     def expose_new(self, prefix: str, value) -> str:
         var_name = f"{prefix}_{self._discriminants[prefix]}"
 
@@ -120,11 +128,12 @@ def _compile_converter_params(destination_spec: DestinationSpec) -> tuple[str, .
 
 def _compile_setup_source(context: _CompileContext, spec: ConversionSpec) -> _SourceInfo:
     if spec.source.class_ is not None:
-        context.globals['source_class'] = spec.source.class_
-        context.globals['ConvertStructWrongSourceTypeError'] = ConvertStructWrongSourceTypeError
+        src_class_repr = context.expose_type(spec.source.class_)
 
-        with context.indent("if not isinstance(source, source_class):"):
-            context.add_line("raise ConvertStructWrongSourceTypeError(source_class, source.__class__)")
+        with context.indent(f"if not isinstance(source, {src_class_repr}):"):
+            context.add_line(
+                f"raise {context.expose_type(ConvertStructWrongSourceTypeError)}({src_class_repr}, source.__class__)"
+            )
 
     return _SourceInfo(spec=spec.source, variable='source', none_means_missing=spec.none_means_missing)
 
@@ -200,9 +209,7 @@ def _compile_field_conversion_core(
 
     if field.required:
         with context.indent(f"if {value_var} is _NO_VALUE:"):
-            context.globals['ConvertStructMissingRequiredFieldError'] = ConvertStructMissingRequiredFieldError
-
-            context.add_line(f"raise ConvertStructMissingRequiredFieldError({field.source!r})")
+            context.add_line(f"raise {context.expose_type(ConvertStructMissingRequiredFieldError)}({field.source!r})")
 
     filters = []
 
