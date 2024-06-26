@@ -5,7 +5,7 @@ from .parse_spec import parse_conversion_spec
 from .compile import compile_converter, debug_compile_converter
 
 
-__version__ = '0.0.0'
+__version__ = '1.0.0'
 
 
 StructConverter = Callable
