@@ -88,7 +88,11 @@ def open_safe_output_file(
         OutputFileAlreadyExistsError: If the output file already exists and we are in 'deny' overwrite mode
         OutputFilePermissionsError: If opening the file failed due to inadequate permissions
         OutputFileOpenError: If opening the file failed due to any other reason
+        ValueError: If any arguments to this function are invalid
     """
+
+    if overwrite not in ['deny', 'safe', 'unsafe']:
+        raise ValueError(f"overwrite= argument must be either 'deny', 'safe' or 'unsafe' (got: {overwrite!r})")
 
     path = PurePath(path)
     active_path = Path(path)
