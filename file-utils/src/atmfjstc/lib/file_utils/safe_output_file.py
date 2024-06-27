@@ -84,6 +84,9 @@ def open_safe_output_file(
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
         OutputFileBlockedByNonFileError: If a non-file (e.g. directory) entry by that name already exists
+        OutputFileAlreadyExistsError: If the output file already exists and we are in 'deny' overwrite mode
+        OutputFilePermissionsError: If opening the file failed due to inadequate permissions
+        OutputFileOpenError: If opening the file failed due to any other reason
     """
 
     path = PurePath(path)
@@ -92,13 +95,20 @@ def open_safe_output_file(
     if active_path.exists():
         if not active_path.is_file():
             raise OutputFileBlockedByNonFileError(path)
+        if overwrite == 'deny':
+            raise OutputFileAlreadyExistsError(path)
 
     mode = ('x' if (overwrite == 'deny') else 'w')
 
-    if text:
-        handle = open(path, mode + 't', encoding=encoding, errors=errors, newline=newline, buffering=buffering)
-    else:
-        handle = open(path, mode + 'b', buffering=buffering)
+    try:
+        if text:
+            handle = open(path, mode + 't', encoding=encoding, errors=errors, newline=newline, buffering=buffering)
+        else:
+            handle = open(path, mode + 'b', buffering=buffering)
+    except PermissionError as e:
+        raise OutputFilePermissionsError(path) from e
+    except Exception as e:
+        raise OutputFileOpenError(path) from e
 
     return _SafeOutputFile(handle)
 
@@ -143,3 +153,18 @@ class OutputFileBlockedByNonFileError(SafeOutputFileError):
             path,
             message or f"Output file '{path}' cannot be created because a non-file entry by that name already exists"
         )
+
+
+class OutputFileAlreadyExistsError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(path, message or f"Output file '{path}' already exists and overwrite is not allowed")
+
+
+class OutputFilePermissionsError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(path, message or f"No permissions to open output file '{path}'")
+
+
+class OutputFileOpenError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(path, message or f"Output file '{path}' could not be opened")
