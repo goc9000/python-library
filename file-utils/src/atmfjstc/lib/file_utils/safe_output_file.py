@@ -50,9 +50,9 @@ be called as early as possible in the program, and it automatically ensures that
 Caution: This module is not designed to be thread or multiprocess-safe.
 """
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
-from typing import Optional, Literal
+from typing import Optional, Literal, IO
 
 from atmfjstc.lib.file_utils import PathType
 
@@ -83,7 +83,15 @@ def open_safe_output_file(
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
     """
-    raise NotImplementedError
+
+    mode = ('x' if (overwrite == 'deny') else 'w')
+
+    if text:
+        handle = open(path, mode + 't', encoding=encoding, errors=errors, newline=newline, buffering=buffering)
+    else:
+        handle = open(path, mode + 'b', buffering=buffering)
+
+    return _SafeOutputFile(handle)
 
 
 class SafeOutputFileError(RuntimeError):
@@ -91,4 +99,25 @@ class SafeOutputFileError(RuntimeError):
 
 
 class SafeOutputFile(metaclass=ABCMeta):
-    pass
+    """
+    An interface that represents an open output file.
+    """
+
+    @property
+    @abstractmethod
+    def handle(self) -> IO:
+        """
+        The file object (as returned by e.g. `open()`) that data can be written to
+        """
+        raise NotImplementedError
+
+
+class _SafeOutputFile(SafeOutputFile):
+    _handle: IO
+
+    def __init__(self, handle: IO):
+        self._handle = handle
+
+    @property
+    def handle(self) -> IO:
+        return self._handle
