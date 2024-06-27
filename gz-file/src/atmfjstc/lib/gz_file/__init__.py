@@ -37,7 +37,7 @@ from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader, BinaryReaderFor
 from atmfjstc.lib.file_utils.fileobj import FileObjSliceReader
 
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 
 GZIP_MAGIC = b'\x1f\x8b'
