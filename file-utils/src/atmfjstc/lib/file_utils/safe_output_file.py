@@ -50,8 +50,9 @@ be called as early as possible in the program, and it automatically ensures that
 Caution: This module is not designed to be thread or multiprocess-safe.
 """
 
-from abc import ABCMeta, abstractmethod
+import atexit
 
+from abc import ABCMeta, abstractmethod
 from typing import Optional, Literal, IO
 from pathlib import Path, PurePath
 
@@ -110,7 +111,11 @@ def open_safe_output_file(
     except Exception as e:
         raise OutputFileOpenError(path) from e
 
-    return _SafeOutputFile(handle)
+    record = _SafeOutputFile(handle)
+
+    atexit.register(record.finish)
+
+    return record
 
 
 class SafeOutputFile(metaclass=ABCMeta):
@@ -126,16 +131,33 @@ class SafeOutputFile(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def finish(self):
+        """
+        Resolves the fate of the output file by preserving or deleting it as appropriate.
+
+        Once this function has been called once, calling it again has no effect.
+        """
+        raise NotImplementedError
+
 
 class _SafeOutputFile(SafeOutputFile):
     _handle: IO
+    _finished: bool
 
     def __init__(self, handle: IO):
         self._handle = handle
+        self._finished = False
 
     @property
     def handle(self) -> IO:
         return self._handle
+
+    def finish(self):
+        if self._finished:
+            return
+
+        self._finished = True
 
 
 class SafeOutputFileError(Exception):
