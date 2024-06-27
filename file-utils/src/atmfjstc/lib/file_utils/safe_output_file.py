@@ -53,6 +53,7 @@ Caution: This module is not designed to be thread or multiprocess-safe.
 from abc import ABCMeta, abstractmethod
 
 from typing import Optional, Literal, IO
+from pathlib import Path, PurePath
 
 from atmfjstc.lib.file_utils import PathType
 
@@ -82,7 +83,15 @@ def open_safe_output_file(
 
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
+        OutputFileBlockedByNonFileError: If a non-file (e.g. directory) entry by that name already exists
     """
+
+    path = PurePath(path)
+    active_path = Path(path)
+
+    if active_path.exists():
+        if not active_path.is_file():
+            raise OutputFileBlockedByNonFileError(path)
 
     mode = ('x' if (overwrite == 'deny') else 'w')
 
@@ -92,10 +101,6 @@ def open_safe_output_file(
         handle = open(path, mode + 'b', buffering=buffering)
 
     return _SafeOutputFile(handle)
-
-
-class SafeOutputFileError(RuntimeError):
-    pass
 
 
 class SafeOutputFile(metaclass=ABCMeta):
@@ -121,3 +126,20 @@ class _SafeOutputFile(SafeOutputFile):
     @property
     def handle(self) -> IO:
         return self._handle
+
+
+class SafeOutputFileError(Exception):
+    path: PurePath
+
+    def __init__(self, path: PurePath, message: str):
+        self.path = path
+
+        super().__init__(message)
+
+
+class OutputFileBlockedByNonFileError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(
+            path,
+            message or f"Output file '{path}' cannot be created because a non-file entry by that name already exists"
+        )
