@@ -51,6 +51,7 @@ Caution: This module is not designed to be thread or multiprocess-safe.
 """
 
 import atexit
+import os
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Literal, IO
@@ -118,7 +119,7 @@ def open_safe_output_file(
     except Exception as e:
         raise OutputFileOpenError(path) from e
 
-    record = _SafeOutputFile(handle, success)
+    record = _SafeOutputFile(handle, success, active_path)
 
     atexit.register(record.finish)
 
@@ -174,13 +175,15 @@ class _SafeOutputFile(SafeOutputFile):
     _commit: bool
     _abandon: bool
     _success: Literal['nonempty', 'commit']
+    _path: Path
 
-    def __init__(self, handle: IO, success: Literal['nonempty', 'commit']):
+    def __init__(self, handle: IO, success: Literal['nonempty', 'commit'], path: Path):
         self._handle = handle
         self._finished = False
         self._commit = False
         self._abandon = False
         self._success = success
+        self._path = path
 
     @property
     def handle(self) -> IO:
@@ -217,7 +220,11 @@ class _SafeOutputFile(SafeOutputFile):
             self._discard()
 
     def _is_nonempty(self) -> bool:
-        return False
+        if not self._handle.closed:
+            self._handle.seek(0, os.SEEK_END)
+            return self._handle.tell() > 0
+
+        return self._path.stat().st_size > 0
 
     def _keep(self):
         pass  # Not implemented yet
