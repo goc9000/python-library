@@ -194,6 +194,14 @@ class SafeOutputFile(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def path(self) -> PurePath:
+        """
+        The path to the output file.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def commit(self, finish_now: bool = True):
         """
@@ -245,6 +253,10 @@ class _SafeOutputFile(SafeOutputFile):
     @property
     def handle(self) -> IO:
         return self._handle
+
+    @property
+    def path(self) -> PurePath:
+        return PurePath(self._path)
 
     def commit(self, finish_now: bool = True):
         self._commit = True
