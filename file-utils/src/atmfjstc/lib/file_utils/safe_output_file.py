@@ -58,6 +58,7 @@ from typing import Optional, Literal, IO
 from pathlib import Path, PurePath
 
 from atmfjstc.lib.file_utils import PathType
+from atmfjstc.lib.error_utils import ignore_errors
 
 
 def open_safe_output_file(
@@ -227,10 +228,17 @@ class _SafeOutputFile(SafeOutputFile):
         return self._path.stat().st_size > 0
 
     def _keep(self):
-        pass  # Not implemented yet
+        pass
 
     def _discard(self):
-        pass  # Not implemented yet
+        # Ensure the file is closed (on POSIX it's OK to delete a file while it's being accessed, but not so sure on
+        # Windows or other systems)
+        if not self._handle.closed:
+            with ignore_errors():
+                self._handle.close()
+
+        with ignore_errors():
+            self._path.unlink()
 
 
 class SafeOutputFileError(Exception):
