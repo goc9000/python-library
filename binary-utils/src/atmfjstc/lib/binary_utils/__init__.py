@@ -10,4 +10,4 @@ modules written in C or some other systems programming language.
 """
 
 
-__version__ = '1.2.2'
+__version__ = '1.2.3'
