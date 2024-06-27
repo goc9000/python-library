@@ -19,7 +19,7 @@ expensive.
 What if we open the output file *before* performing the analysis? This allows us to catch errors early on and solves
 most of the problems mentioned above. However, now we need to handle the case when the program fails before being
 able to write to the output file. The zero-sized output file needs to be deleted, so that the final state on disk is
-the same as if the output file had been scheduled to be open only after the analyiss.
+the same as if the output file had been scheduled to be open only after the analysis.
 
 A further complication ensues when we allow for the possibility of the output file overwriting another file at the
 same location (usually a previous version of the output). Ideally we would want to preserve the old output if the
@@ -30,7 +30,7 @@ Solution
 --------
 
 This module provides a `open_safe_output_file` function that transparently handles all of the above cases. It should
-be called as early as possible in the program and it automatically ensures that:
+be called as early as possible in the program, and it automatically ensures that:
 
 - A zero-length output file is created immediately, thus validating that we have permission for creating files and that
   the filename is valid
@@ -39,13 +39,13 @@ be called as early as possible in the program and it automatically ensures that:
 
 - The application will hold on to the file while the analysis is executing, preventing other applications from
   accidentally taking up that file entry
-- If the application crashes without having called `write` on the file, then:
+- If the application crashes or otherwise fails, then:
 
-  - The temporary zero-length output file will be deleted
+  - The zero-length or partially written output file will be deleted
   - The previous output file, if any, will be restored
 
-- Otherwise, if `write` has been called, and the file is closed or the program exits, changes will be persisted. The
-  file will remain on disk and any previous version will be deleted.
+- Otherwise, if the analysis/operation completes successfully, changes will be persisted. The file will remain on disk
+  and any previous version will be deleted.
 
 Caution: This module is not designed to be thread or multiprocess-safe.
 """
