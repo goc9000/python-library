@@ -102,7 +102,7 @@ def open_safe_output_file(
     path = PurePath(path)
     active_path = Path(path)
 
-    if active_path.exists():
+    if _path_exists(active_path):
         if not active_path.is_file():
             raise OutputFileBlockedByNonFileError(path)
         if overwrite == 'deny':
@@ -125,6 +125,16 @@ def open_safe_output_file(
     atexit.register(record.finish)
 
     return record
+
+
+def _path_exists(path: Path) -> bool:
+    # Unlike path.exists(), this also handles broken symlinks (only on Python >=3.10 can we use follow_symlinks=False)
+    try:
+        _ = path.lstat()
+    except FileNotFoundError:
+        return False
+
+    return True
 
 
 class SafeOutputFile(metaclass=ABCMeta):
