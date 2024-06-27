@@ -50,15 +50,11 @@ be called as early as possible in the program and it automatically ensures that:
 Caution: This module is not designed to be thread or multiprocess-safe.
 """
 
-import atexit
+from abc import ABCMeta
 
-from io import IOBase
-
-from typing import IO, Optional, Any, AnyStr, Iterable
-from pathlib import Path
+from typing import Optional
 
 from atmfjstc.lib.file_utils import PathType
-from atmfjstc.lib.error_utils import ignore_errors
 
 
 def open_safe_output_file(
@@ -85,126 +81,12 @@ def open_safe_output_file(
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
     """
-    success = False
-    outfile = None
-
-    try:
-        path = Path(path)
-        outfile = SafeOutputFile(path)
-        atexit.register(outfile._cleanup)
-
-        if path.exists():
-            if not path.is_file():
-                raise RuntimeError("There is already a non-file entry by that name")
-            if not overwrite:
-                raise RuntimeError("File already exists and overwrite is disabled")
-
-            backup_path = path.with_name(path.name + '.backup')
-            if backup_path.is_file():
-                raise RuntimeError(f"Cannot back up existing file to path '{backup_path}' as it already exists")
-
-            path.rename(backup_path)
-
-            outfile._backup_path = backup_path
-
-        mode = ('w' if overwrite else 'x')
-
-        if text:
-            outfile._handle = open(
-                path, mode + 't', encoding=encoding, errors=errors, newline=newline, buffering=buffering
-            )
-        else:
-            outfile._handle = open(path, mode + 'b', buffering=buffering)
-
-        success = True
-
-        return outfile
-    except Exception as e:
-        raise SafeOutputFileError(f"Could not open output file '{path}'") from e
-    finally:
-        if (not success) and (outfile is not None):
-            outfile._cleanup()
+    raise NotImplementedError
 
 
 class SafeOutputFileError(RuntimeError):
     pass
 
 
-class SafeOutputFile(IOBase, IO):
-    """
-    A file object-like instance representing an output file.
-
-    Do not interfere with the underscore-preceded methods and fields.
-    """
-
-    _path: Path
-    _backup_path: Optional[Path] = None
-    _handle: Optional[IO] = None
-    _persist: bool = False
-    _did_cleanup: bool = False
-
-    def __init__(self, path):
-        self._path = path
-
-    @property
-    def path(self) -> Path:
-        return self._path
-
-    def writelines(self, lines: Iterable[AnyStr]) -> None:
-        if self._handle is None:
-            raise ValueError("Output file not initialized")
-
-        self._handle.writelines(lines)
-
-        self._persist = True
-
-    def write(self, data: AnyStr) -> int:
-        if self._handle is None:
-            raise ValueError("Output file not initialized")
-
-        result = self._handle.write(data)
-
-        self._persist = True
-
-        return result
-
-    def persist(self):
-        self._persist = True
-
-    def close(self) -> None:
-        if self._handle is not None:
-            self._handle.close()
-
-        self._cleanup()
-
-    # Allow access to all other methods of the underlying file object
-    def __getattr__(self, name: str) -> Any:
-        if self._handle is None:
-            raise ValueError("Output file not initialized")
-
-        return getattr(self._handle, name)
-
-    def _cleanup(self):
-        if self._did_cleanup:
-            return
-
-        self._did_cleanup = True
-
-        # Ensure file is closed
-        if self._handle is not None:
-            with ignore_errors():
-                if not self._handle.closed:
-                    self._handle.close()
-
-        if self._persist:
-            if self._backup_path is not None:
-                with ignore_errors():
-                    self._backup_path.unlink()
-        else:
-            if self._handle is not None:
-                with ignore_errors():
-                    self._path.unlink()
-
-            if self._backup_path is not None:
-                with ignore_errors():
-                    self._backup_path.rename(self._path)
+class SafeOutputFile(metaclass=ABCMeta):
+    pass
