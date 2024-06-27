@@ -52,13 +52,13 @@ Caution: This module is not designed to be thread or multiprocess-safe.
 
 from abc import ABCMeta
 
-from typing import Optional
+from typing import Optional, Literal
 
 from atmfjstc.lib.file_utils import PathType
 
 
 def open_safe_output_file(
-    path: PathType, overwrite: bool = False, text: bool = False,
+    path: PathType, text: bool = False, overwrite: Literal['deny', 'safe', 'unsafe'] = 'deny',
     encoding: Optional[str] = 'utf-8', errors: Optional[str] = None, newline: Optional[str] = None, buffering: int = -1
 ) -> 'SafeOutputFile':
     """
@@ -66,17 +66,19 @@ def open_safe_output_file(
 
     Args:
         path: The path of the file to open.
-        overwrite: By default, this function will refuse to overwrite an existing file of the same name. Set this to
-            True to enable a 'safe overwrite' in which any existing file will be replaced, but only if the write
-            completes successfully.
         text: By default, the file is opened in binary mode. Set this to True to open it in text mode.
+        overwrite: If 'deny' (the default), the function will simply fail if the output file already exists. If 'safe',
+            existing output files will be treated in the safe manner described in the package documentation (i.e. moved
+            out of the way and replaced only if the operation was successful). If 'unsafe', files will be overwritten
+            blindly.
         encoding: See the built-in `open` function.
         errors: See the built-in `open` function.
         newline: See the built-in `open` function.
         buffering: See the built-in `open` function.
 
     Returns:
-        An open file object-like instance for the output file.
+        A `SafeOutputFile` object that contains methods and properties for accessing the output file stream and deciding
+        its fate (reject or commit changes) etc.
 
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
