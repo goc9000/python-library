@@ -89,6 +89,7 @@ def open_safe_output_file(
 
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
+        OutputFileParentDirAbsentError: If the parent directory of the output file does not exist
         OutputFileBlockedByNonFileError: If a non-file (e.g. directory) entry by that name already exists
         OutputFileAlreadyExistsError: If the output file already exists and we are in 'deny' overwrite mode
         OutputFilePermissionsError: If opening the file failed due to inadequate permissions
@@ -101,6 +102,9 @@ def open_safe_output_file(
 
     path = PurePath(path)
     active_path = Path(path)
+
+    if not active_path.parent.is_dir():
+        raise OutputFileParentDirAbsentError(path)
 
     if _path_exists(active_path):
         if not active_path.is_file():
@@ -258,6 +262,14 @@ class SafeOutputFileError(Exception):
         self.path = path
 
         super().__init__(message)
+
+
+class OutputFileParentDirAbsentError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(
+            path,
+            message or f"Output file '{path}' cannot be created because its parent directory does not exist"
+        )
 
 
 class OutputFileBlockedByNonFileError(SafeOutputFileError):
