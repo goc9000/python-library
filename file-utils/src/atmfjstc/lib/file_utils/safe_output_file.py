@@ -63,8 +63,9 @@ from atmfjstc.lib.error_utils import ignore_errors
 
 def open_safe_output_file(
     path: PathType, text: bool = False, overwrite: Literal['deny', 'safe', 'unsafe'] = 'deny',
-    success: Literal['nonempty', 'commit'] = 'nonempty', encoding: Optional[str] = 'utf-8',
-    errors: Optional[str] = None, newline: Optional[str] = None, buffering: int = -1
+    success: Literal['nonempty', 'commit'] = 'nonempty', create_parent_dirs: bool = False,
+    create_parent_mode: int = 0o755, encoding: Optional[str] = 'utf-8', errors: Optional[str] = None,
+    newline: Optional[str] = None, buffering: int = -1
 ) -> 'SafeOutputFile':
     """
     Open an output file in the safe manner as described in the package documentation.
@@ -78,6 +79,9 @@ def open_safe_output_file(
             blindly.
         success: If 'nonempty' (the default), the output file will be preserved if any content was written to it. For
             'commit', the file will be preserved only if `commit()` was explicitly called.
+        create_parent_dirs: If True, parent directories for the output file will be created if missing. By default,
+            missing parents will generate an error.
+        create_parent_mode: The mode with which parent directories will be created, if `create_parent_dirs` is True
         encoding: See the built-in `open` function.
         errors: See the built-in `open` function.
         newline: See the built-in `open` function.
@@ -90,6 +94,7 @@ def open_safe_output_file(
     Raises:
         SafeOutputFileError: For any failures in setting up the file (e.g. already exists, I/O error etc.)
         OutputFileParentDirAbsentError: If the parent directory of the output file does not exist
+        OutputFileCreateParentDirError: If a parent directory of output file could not be created
         OutputFileBlockedByNonFileError: If a non-file (e.g. directory) entry by that name already exists
         OutputFileAlreadyExistsError: If the output file already exists and we are in 'deny' overwrite mode
         OutputFilePermissionsError: If opening the file failed due to inadequate permissions
@@ -104,7 +109,11 @@ def open_safe_output_file(
     active_path = Path(path)
 
     if not active_path.parent.is_dir():
-        raise OutputFileParentDirAbsentError(path)
+        if not create_parent_dirs:
+            raise OutputFileParentDirAbsentError(path)
+
+        # Path.mkdir(parents=True) ignores mode, so we resort to this
+        _mk_parents_rec(active_path.parent, create_parent_mode, path)
 
     if _path_exists(active_path):
         if not active_path.is_file():
@@ -139,6 +148,17 @@ def _path_exists(path: Path) -> bool:
         return False
 
     return True
+
+
+def _mk_parents_rec(parent_path: Path, mode: int, outfile_path: PurePath):
+    if not parent_path.parent.exists():
+        _mk_parents_rec(parent_path.parent, mode, outfile_path)
+
+    try:
+        parent_path.mkdir(mode=mode)
+        return
+    except Exception as e:
+        raise OutputFileCreateParentDirError(outfile_path, PurePath(parent_path)) from e
 
 
 class SafeOutputFile(metaclass=ABCMeta):
@@ -269,6 +289,17 @@ class OutputFileParentDirAbsentError(SafeOutputFileError):
         super().__init__(
             path,
             message or f"Output file '{path}' cannot be created because its parent directory does not exist"
+        )
+
+
+class OutputFileCreateParentDirError(SafeOutputFileError):
+    parent_path: PurePath
+
+    def __init__(self, path: PurePath, parent_path: PurePath, message: Optional[str] = None):
+        self.parent_path = parent_path
+
+        super().__init__(
+            path, message or f"Can't create parent directory '{parent_path}' needed for output file '{path}'"
         )
 
 
