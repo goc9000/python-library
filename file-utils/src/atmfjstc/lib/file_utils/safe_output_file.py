@@ -97,6 +97,10 @@ def open_safe_output_file(
         OutputFileCreateParentDirError: If a parent directory of output file could not be created
         OutputFileBlockedByNonFileError: If a non-file (e.g. directory) entry by that name already exists
         OutputFileAlreadyExistsError: If the output file already exists and we are in 'deny' overwrite mode
+        OutputFileBackupAlreadyExistsError: If we are operating in 'safe' overwrite mode and a backup already exists
+            (left over from a crashed run?)
+        OutputFileBackupMoveError: If we are operating in 'safe' overwrite mode and the previous version of the output
+            cannot be backed up (permissions issue?)
         OutputFilePermissionsError: If opening the file failed due to inadequate permissions
         OutputFileOpenError: If opening the file failed due to any other reason
         ValueError: If any arguments to this function are invalid
@@ -107,6 +111,7 @@ def open_safe_output_file(
 
     path = PurePath(path)
     active_path = Path(path)
+    backup_path = None
 
     if not active_path.parent.is_dir():
         if not create_parent_dirs:
@@ -120,20 +125,35 @@ def open_safe_output_file(
             raise OutputFileBlockedByNonFileError(path)
         if overwrite == 'deny':
             raise OutputFileAlreadyExistsError(path)
+        elif overwrite == 'safe':
+            backup_path = active_path.with_name(path.name + '.backup')
+            if _path_exists(backup_path):
+                raise OutputFileBackupAlreadyExistsError(path, PurePath(backup_path))
+
+            try:
+                active_path.rename(backup_path)
+            except Exception as e:
+                raise OutputFileBackupMoveError(path) from e
 
     mode = ('x' if (overwrite == 'deny') else 'w')
 
+    cancel_backup = True
     try:
         if text:
             handle = open(path, mode + 't', encoding=encoding, errors=errors, newline=newline, buffering=buffering)
         else:
             handle = open(path, mode + 'b', buffering=buffering)
+
+        cancel_backup = False
     except PermissionError as e:
         raise OutputFilePermissionsError(path) from e
     except Exception as e:
         raise OutputFileOpenError(path) from e
+    finally:
+        if cancel_backup and (backup_path is not None):
+            backup_path.rename(active_path)
 
-    record = _SafeOutputFile(handle, success, active_path)
+    record = _SafeOutputFile(handle, success, active_path, backup_path)
 
     atexit.register(record.finish)
 
@@ -211,14 +231,16 @@ class _SafeOutputFile(SafeOutputFile):
     _abandon: bool
     _success: Literal['nonempty', 'commit']
     _path: Path
+    _backup_path: Optional[Path]
 
-    def __init__(self, handle: IO, success: Literal['nonempty', 'commit'], path: Path):
+    def __init__(self, handle: IO, success: Literal['nonempty', 'commit'], path: Path, backup_path: Optional[Path]):
         self._handle = handle
         self._finished = False
         self._commit = False
         self._abandon = False
         self._success = success
         self._path = path
+        self._backup_path = backup_path
 
     @property
     def handle(self) -> IO:
@@ -262,7 +284,9 @@ class _SafeOutputFile(SafeOutputFile):
         return self._path.stat().st_size > 0
 
     def _keep(self):
-        pass
+        if self._backup_path is not None:
+            with ignore_errors():
+                self._backup_path.unlink()
 
     def _discard(self):
         # Ensure the file is closed (on POSIX it's OK to delete a file while it's being accessed, but not so sure on
@@ -273,6 +297,10 @@ class _SafeOutputFile(SafeOutputFile):
 
         with ignore_errors():
             self._path.unlink()
+
+        if self._backup_path is not None:
+            with ignore_errors():
+                self._backup_path.rename(self._path)
 
 
 class SafeOutputFileError(Exception):
@@ -314,6 +342,25 @@ class OutputFileBlockedByNonFileError(SafeOutputFileError):
 class OutputFileAlreadyExistsError(SafeOutputFileError):
     def __init__(self, path: PurePath, message: Optional[str] = None):
         super().__init__(path, message or f"Output file '{path}' already exists and overwrite is not allowed")
+
+
+class OutputFileBackupAlreadyExistsError(SafeOutputFileError):
+    backup_path: PurePath
+
+    def __init__(self, path: PurePath, backup_path: PurePath, message: Optional[str] = None):
+        self.backup_path = backup_path
+
+        super().__init__(
+            path, message or f"Can't back up previous version of output file as the path '{backup_path}' already exists"
+        )
+
+
+class OutputFileBackupMoveError(SafeOutputFileError):
+    def __init__(self, path: PurePath, message: Optional[str] = None):
+        super().__init__(
+            path,
+            message or f"Can't create output file '{path}' because its previous cannot be moved out of the way"
+        )
 
 
 class OutputFilePermissionsError(SafeOutputFileError):
