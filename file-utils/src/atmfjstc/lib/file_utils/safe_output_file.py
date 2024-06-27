@@ -61,7 +61,8 @@ from atmfjstc.lib.file_utils import PathType
 
 def open_safe_output_file(
     path: PathType, text: bool = False, overwrite: Literal['deny', 'safe', 'unsafe'] = 'deny',
-    encoding: Optional[str] = 'utf-8', errors: Optional[str] = None, newline: Optional[str] = None, buffering: int = -1
+    success: Literal['nonempty', 'commit'] = 'nonempty', encoding: Optional[str] = 'utf-8',
+    errors: Optional[str] = None, newline: Optional[str] = None, buffering: int = -1
 ) -> 'SafeOutputFile':
     """
     Open an output file in the safe manner as described in the package documentation.
@@ -73,6 +74,8 @@ def open_safe_output_file(
             existing output files will be treated in the safe manner described in the package documentation (i.e. moved
             out of the way and replaced only if the operation was successful). If 'unsafe', files will be overwritten
             blindly.
+        success: If 'nonempty' (the default), the output file will be preserved if any content was written to it. For
+            'commit', the file will be preserved only if `commit()` was explicitly called.
         encoding: See the built-in `open` function.
         errors: See the built-in `open` function.
         newline: See the built-in `open` function.
@@ -115,7 +118,7 @@ def open_safe_output_file(
     except Exception as e:
         raise OutputFileOpenError(path) from e
 
-    record = _SafeOutputFile(handle)
+    record = _SafeOutputFile(handle, success)
 
     atexit.register(record.finish)
 
@@ -148,10 +151,12 @@ class SafeOutputFile(metaclass=ABCMeta):
 class _SafeOutputFile(SafeOutputFile):
     _handle: IO
     _finished: bool
+    _success: Literal['nonempty', 'commit']
 
-    def __init__(self, handle: IO):
+    def __init__(self, handle: IO, success: Literal['nonempty', 'commit']):
         self._handle = handle
         self._finished = False
+        self._success = success
 
     @property
     def handle(self) -> IO:
