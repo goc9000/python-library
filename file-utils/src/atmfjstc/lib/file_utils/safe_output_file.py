@@ -139,6 +139,26 @@ class SafeOutputFile(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
+    def commit(self, finish_now: bool = True):
+        """
+        Signal that the output file should be preserved, the output generation having been successful.
+
+        The `finish()` method will also be called right away by default. If this is undesirable (e.g. the file system
+        should not be accessed at the time), specify `finish_now=False`.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def abandon(self, finish_now: bool = True):
+        """
+        Signal that the output file should be abandoned (even if data was written to it).
+
+        The `finish()` method will also be called right away by default. If this is undesirable (e.g. the file system
+        should not be accessed at the time), specify `finish_now=False`.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def finish(self):
         """
         Resolves the fate of the output file by preserving or deleting it as appropriate.
@@ -151,22 +171,59 @@ class SafeOutputFile(metaclass=ABCMeta):
 class _SafeOutputFile(SafeOutputFile):
     _handle: IO
     _finished: bool
+    _commit: bool
+    _abandon: bool
     _success: Literal['nonempty', 'commit']
 
     def __init__(self, handle: IO, success: Literal['nonempty', 'commit']):
         self._handle = handle
         self._finished = False
+        self._commit = False
+        self._abandon = False
         self._success = success
 
     @property
     def handle(self) -> IO:
         return self._handle
 
+    def commit(self, finish_now: bool = True):
+        self._commit = True
+        if finish_now:
+            self.finish()
+
+    def abandon(self, finish_now: bool = True):
+        self._abandon = True
+        if finish_now:
+            self.finish()
+
     def finish(self):
         if self._finished:
             return
 
         self._finished = True
+
+        if self._abandon:
+            keep = False
+        elif self._commit:
+            keep = True
+        elif self._success == 'nonempty' and self._is_nonempty():
+            keep = True
+        else:
+            keep = False
+
+        if keep:
+            self._keep()
+        else:
+            self._discard()
+
+    def _is_nonempty(self) -> bool:
+        return False
+
+    def _keep(self):
+        pass  # Not implemented yet
+
+    def _discard(self):
+        pass  # Not implemented yet
 
 
 class SafeOutputFileError(Exception):
