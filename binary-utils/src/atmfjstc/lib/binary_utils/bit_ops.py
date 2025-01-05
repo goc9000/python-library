@@ -65,3 +65,46 @@ def iter_powers2(value: int) -> Iterable[int]:
         next_value = value & (value - 1)
         yield value - next_value
         value = next_value
+
+
+_INT_BIT_COUNT_AVAILABLE = hasattr(0, 'bit_count')
+
+
+def count_bits(value: int) -> int:
+    """
+    Returns the number of set bits in an integer. E.g. for 24, returns 2 since 24 = (1 << 3) + (1 << 4)
+
+    This operation is also called a "population count".
+
+    Starting with Python 3.10, one can use the (undoubtedly much faster) int.bit_count() function. This implementation
+    is still useful when dealing with older Pythons.
+
+    Negative values are not supported as this is mainly intended for taking apart values representing masks and flags.
+    """
+    if value < 0:
+        raise ValueError("Negative values are not supported")
+
+    if _INT_BIT_COUNT_AVAILABLE:
+        return value.bit_count()
+
+    # There are all sorts of possible accelerations for this but we're not gonna bother as this is just a stopgap
+    result = 0
+
+    while value > 0:
+        next_value = value & (value - 1)
+        result += 1
+        value = next_value
+
+    return result
+
+
+def is_power_of_2(value: int) -> bool:
+    """
+    Checks if a value is a power of 2.
+
+    Negative values are not supported.
+    """
+    if value < 0:
+        raise ValueError("Negative values are not supported")
+
+    return (value > 0) and (value & (value - 1) == 0)
