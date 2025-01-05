@@ -283,11 +283,31 @@ class ZXHExtendedTimestamps(ZipExtraHeader):
     def parse(reader: BinaryReader, is_local: bool) -> 'ZXHExtendedTimestamps':
         flags = reader.read_uint8('flags')
 
-        mtime = iso_from_unix_time(reader.read_uint32('mtime')) if flags & (1 << 0) else None
-        atime = iso_from_unix_time(reader.read_uint32('atime')) if is_local and (flags & (1 << 1)) else None
-        ctime = iso_from_unix_time(reader.read_uint32('ctime')) if is_local and (flags & (1 << 2)) else None
+        warnings = []
 
-        return ZXHExtendedTimestamps(is_local, (), None, mtime=mtime, atime=atime, ctime=ctime)
+        if flags > 7:
+            warnings.append("Flags are set beyond bits 0-2, don't know how to handle those")
+
+        # The spec states that, for the central version of this header, only the mtime is included, with the flags
+        # being an irrelevant copy of those from the local version. In practice, this rule seems to be disregarded,
+        # with some programs (including zipinfo itself) treating the central header just like the local one. We try
+        # to handle both situations here.
+
+        n_fields = reader.bytes_remaining() >> 2
+
+        if (not is_local) and (n_fields < 2):
+            mtime = iso_from_unix_time(reader.read_uint32('mtime')) if (n_fields > 0) else None
+            atime = None
+            ctime = None
+        else:
+            mtime = iso_from_unix_time(reader.read_uint32('mtime')) if flags & (1 << 0) else None
+            atime = iso_from_unix_time(reader.read_uint32('atime')) if flags & (1 << 1) else None
+
+            # Despite the spec claiming this is the "creation time", in practice it seems to be the ctime with all the
+            # ambiguity that implies
+            ctime = iso_from_unix_time(reader.read_uint32('ctime')) if flags & (1 << 2) else None
+
+        return ZXHExtendedTimestamps(is_local, tuple(warnings), None, mtime=mtime, atime=atime, ctime=ctime)
 
 
 @dataclass(frozen=True)
