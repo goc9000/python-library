@@ -1,7 +1,28 @@
 import zipfile
 
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from typing import Set, Union
+
+
+class ZipEntryFlags(IntFlag):
+    ENCRYPTED = 1 << 0
+    IMPLODE_8K_DICTIONARY = 1 << 1
+    IMPLODE_3_SHANNON_TREES = 1 << 2
+    DEFLATE_MAX_COMPRESSION = 1 << 1
+    DEFLATE_FAST_COMPRESSION = 1 << 2
+    DEFLATE_SUPERFAST_COMPRESSION = (1 << 1) | (1 << 2)
+    LZMA_EOS_MARKER_USED = 1 << 1
+    DEFERRED_CRC32 = 1 << 3
+    ENHANCED_DEFLATE = 1 << 4
+    PATCHED_DATA = 1 << 5
+    STRONG_ENCRYPTION = 1 << 6
+    UTF8 = 1 << 11
+    ENHANCED_COMPRESSION = 1 << 12
+    LOCAL_HEADER_MASKED = 1 << 13
+
+
+class ZipInternalFileAttributes(IntFlag):
+    LIKELY_TEXT_FILE = 1 << 0
 
 
 class ZipHostOS(IntEnum):
