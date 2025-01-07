@@ -96,3 +96,60 @@ def extract_posix_permissions(posix_mode: PosixMode) -> PosixNumericPermissions:
 
 def posix_permissions_num_to_string(permissions: PosixNumericPermissions) -> PosixPermissionsString:
     return PosixPermissionsString(stat.filemode(permissions)[1:])
+
+
+def posix_permissions_string_to_num(permissions: PosixPermissionsString) -> PosixNumericPermissions:
+    result = _STR_TO_NUM_CONVERSION_CACHE.get(permissions)
+
+    if result is not None:
+        return result
+
+    if len(_STR_TO_NUM_CONVERSION_CACHE) == 0:
+        for bits in range(0, 1 << 12):
+            as_num = PosixNumericPermissions(bits)
+            as_str = posix_permissions_num_to_string(as_num)
+            _STR_TO_NUM_CONVERSION_CACHE[as_str] = as_num
+
+    # Either the cache was not built, or the string was bad. Run the slow path to detect the exact error.
+
+    return _posix_permissions_string_to_num_slow(permissions)
+
+
+_STR_TO_NUM_CONVERSION_CACHE = {}
+
+
+def _posix_permissions_string_to_num_slow(permissions: PosixPermissionsString) -> PosixNumericPermissions:
+    if len(permissions) != 9:
+        raise ValueError("POSIX permissions string must be exactly 9 characters long")
+
+    result = PosixNumericPermissions(0)
+
+    for index, char in enumerate(permissions):
+        if char != '-':
+            part = _STR_TO_NUM_CONVERSION_LOOKUP.get((index, char))
+
+            if part is None:
+                raise ValueError(f"Invalid character '{char}' at index #{index} in POSIX permissions string")
+
+            result |= part
+
+    return result
+
+
+_STR_TO_NUM_CONVERSION_LOOKUP = {
+    (0, 'r'): PosixNumericPermissions.OWNER_READ,
+    (1, 'w'): PosixNumericPermissions.OWNER_WRITE,
+    (2, 'x'): PosixNumericPermissions.OWNER_EXEC,
+    (2, 's'): PosixNumericPermissions.SET_UID | PosixNumericPermissions.OWNER_EXEC,
+    (2, 'S'): PosixNumericPermissions.SET_UID,
+    (3, 'r'): PosixNumericPermissions.GROUP_READ,
+    (4, 'w'): PosixNumericPermissions.GROUP_WRITE,
+    (5, 'x'): PosixNumericPermissions.GROUP_EXEC,
+    (5, 's'): PosixNumericPermissions.SET_GID | PosixNumericPermissions.GROUP_EXEC,
+    (5, 'S'): PosixNumericPermissions.SET_GID,
+    (6, 'r'): PosixNumericPermissions.OTHERS_READ,
+    (7, 'w'): PosixNumericPermissions.OTHERS_WRITE,
+    (8, 'x'): PosixNumericPermissions.OTHERS_EXEC,
+    (8, 't'): PosixNumericPermissions.STICKY | PosixNumericPermissions.OTHERS_EXEC,
+    (8, 'T'): PosixNumericPermissions.STICKY,
+}

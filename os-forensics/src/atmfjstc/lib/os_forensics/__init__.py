@@ -8,4 +8,4 @@ Windows stuff installed to be able to analyze Windows data.
 """
 
 
-__version__ = '0.2.4'
+__version__ = '0.3.0'
