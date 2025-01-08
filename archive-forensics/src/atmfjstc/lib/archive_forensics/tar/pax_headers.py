@@ -1,9 +1,12 @@
 from dataclasses import dataclass, field, replace
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 from atmfjstc.lib.py_lang_utils.convert_struct import make_struct_converter
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
-from atmfjstc.lib.os_forensics.posix import INodeNo, PosixDeviceIDKDevTFormat
+from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat
+from atmfjstc.lib.os_forensics.generic import UserName, UserGroupName
+
+from . import TarCharset
 
 
 @dataclass(frozen=True)
@@ -31,13 +34,28 @@ def parse_tar_archive_pax_headers(raw_headers: Dict[str, str]) -> TarArchivePaxH
 @dataclass(frozen=True)
 class TarArchiveEntryPaxHeaders:
     complete_path: Optional[str] = None
+    complete_link_path: Optional[str] = None
+
+    comment: Optional[str] = None
+
+    file_size: Optional[int] = None
+
     mtime: Optional[ISOTimestamp] = None
     ctime: Optional[ISOTimestamp] = None
     atime: Optional[ISOTimestamp] = None
+    creation_time: Optional[ISOTimestamp] = None
+
+    owner_uid: Optional[PosixUID] = None
+    owner_username: Optional[UserName] = None
+    group_gid: Optional[PosixGID] = None
+    group_name: Optional[UserGroupName] = None
+
     inode: Optional[INodeNo] = None
     host_device_kdev: Optional[PosixDeviceIDKDevTFormat] = None
     n_links: Optional[int] = None
-    creation_time: Optional[ISOTimestamp] = None
+
+    charset: Optional[Union[TarCharset, str]] = None
+    header_charset: Optional[Union[TarCharset, str]] = None
 
     unhandled_headers: Dict[str, str] = field(default_factory=dict)
 
@@ -66,14 +84,30 @@ def parse_tar_archive_and_entry_pax_headers(
     return archive_headers, entry_pax_headers
 
 
+def _parse_charset(raw: str) -> Optional[Union[TarCharset, str]]:
+    try:
+        return TarCharset(raw)
+    except ValueError:
+        return raw
+
+
 _convert_entry_headers = make_struct_converter(
     source_type='dict',
     dest_type='dict',
     fields=dict(
         complete_path=dict(src='path'),
-        mtime=dict(convert=lambda x: iso_from_unix_time_string(x)),
-        ctime=dict(convert=lambda x: iso_from_unix_time_string(x)),
-        atime=dict(convert=lambda x: iso_from_unix_time_string(x)),
+        complete_link_path=dict(src='linkpath'),
+        comment=True,
+        file_size=dict(src='size', convert=int),
+        mtime=dict(convert=iso_from_unix_time_string),
+        ctime=dict(convert=iso_from_unix_time_string),
+        atime=dict(convert=iso_from_unix_time_string),
+        owner_uid=dict(src='uid', convert=lambda x: PosixUID(int(x))),
+        owner_username=dict(src='uname', convert=UserName),
+        group_gid=dict(src='gid', convert=lambda x: PosixGID(int(x))),
+        group_name=dict(src='gname', convert=UserGroupName),
+        charset=dict(src='charset', convert=_parse_charset),
+        header_charset=dict(src='hdrcharset', convert=_parse_charset),
         # SCHILY.* headers are added by the `star` program by Jörg Schilling
         inode=dict(src='SCHILY.ino', convert=INodeNo),
         host_device_kdev=dict(src='SCHILY.dev', convert=PosixDeviceIDKDevTFormat),
