@@ -7,4 +7,4 @@ can also form a base for building alternative ZIP, RAR etc. parsers of our own.
 """
 
 
-__version__ = '0.7.0'
+__version__ = '0.8.0'

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, replace, asdict
 from typing import Dict, Optional, Tuple, Union
 
 from atmfjstc.lib.py_lang_utils.convert_struct import make_struct_converter
@@ -63,6 +63,23 @@ class TarArchiveEntryPaxHeaders:
 
     canceled_headers: Tuple[str, ...] = (),
     unhandled_headers: Dict[str, str] = field(default_factory=dict)
+
+    def apply_override(self, override: 'TarArchiveEntryPaxHeaders') -> 'TarArchiveEntryPaxHeaders':
+        """
+        Overrides these parsed headers with another set; this is intended for applying entry-level headers over any
+        defaults set by global-level headers.
+
+        Note that canceled headers are not processed here; they should be processed by the caller because they also
+        effect values in the original entry data.
+        """
+        raw_data = asdict(self)
+        raw_data.update({k: v for k, v in asdict(override).items() if v is not None})
+
+        raw_data['charset'] = override.charset
+        raw_data['header_charset'] = override.header_charset
+        # canceled_headers and unhandled_headers will intentionally be taken 100% from the override
+
+        return TarArchiveEntryPaxHeaders(**raw_data)
 
 
 def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryPaxHeaders:
