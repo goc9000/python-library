@@ -138,8 +138,8 @@ _convert_entry_headers = make_struct_converter(
         charset=dict(src='charset', convert=_parse_charset),
         header_charset=dict(src='hdrcharset', convert=_parse_charset),
         # SCHILY.* headers are added by the `star` program by Jörg Schilling
-        inode=dict(src='SCHILY.ino', convert=INodeNo),
-        host_device_kdev=dict(src='SCHILY.dev', convert=PosixDeviceIDKDevTFormat),
+        inode=dict(src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
+        host_device_kdev=dict(src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
         n_links=dict(src='SCHILY.nlink', convert=int),
         # libarchive headers
         creation_time=dict(src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time_string(x)),
