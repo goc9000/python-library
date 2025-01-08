@@ -21,13 +21,17 @@ class TarArchivePaxHeaders:
     Also, "archive-level" and "global" are two different concepts, although archive-level headers will almost certainly
     have to be global headers.
     """
+    canceled_headers: Tuple[str, ...] = (),
     unhandled_headers: Dict[str, str] = field(default_factory=dict)
 
 
 def parse_tar_archive_pax_headers(raw_headers: Dict[str, str]) -> TarArchivePaxHeaders:
+    raw_headers, canceled_headers = _extract_canceled_headers(raw_headers)
+
     return TarArchivePaxHeaders(
         # No per-archive headers defined yet
-        unhandled_headers=raw_headers.copy(),  # Intentional copy
+        canceled_headers=canceled_headers,
+        unhandled_headers=raw_headers,
     )
 
 
@@ -57,14 +61,18 @@ class TarArchiveEntryPaxHeaders:
     charset: Optional[Union[TarCharset, str]] = None
     header_charset: Optional[Union[TarCharset, str]] = None
 
+    canceled_headers: Tuple[str, ...] = (),
     unhandled_headers: Dict[str, str] = field(default_factory=dict)
 
 
 def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryPaxHeaders:
+    raw_headers, canceled_headers = _extract_canceled_headers(raw_headers)
+
     result, unhandled = _convert_entry_headers(raw_headers)
 
     return TarArchiveEntryPaxHeaders(
         **result,
+        canceled_headers=canceled_headers,
         unhandled_headers=unhandled,
     )
 
@@ -82,6 +90,10 @@ def parse_tar_archive_and_entry_pax_headers(
     archive_headers = replace(archive_headers, unhandled_headers=entry_pax_headers.unhandled_headers)
 
     return archive_headers, entry_pax_headers
+
+
+def _extract_canceled_headers(raw_headers: Dict[str, str]) -> Tuple[Dict[str, str], Tuple[str, ...]]:
+    return {k: v for k, v in raw_headers.items() if len(v) > 0}, tuple(k for k, v in raw_headers.items() if len(v) == 0)
 
 
 def _parse_charset(raw: str) -> Optional[Union[TarCharset, str]]:
