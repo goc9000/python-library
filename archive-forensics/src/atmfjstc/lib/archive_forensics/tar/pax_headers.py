@@ -2,7 +2,8 @@ from dataclasses import dataclass, asdict, replace
 from typing import Dict, Optional, Tuple, Union, Callable, Any, Iterable
 
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
-from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat
+from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat, PosixDeviceIDMajor, \
+    PosixDeviceIDMinor
 from atmfjstc.lib.os_forensics.generic import UserName, UserGroupName
 
 from . import TarCharset
@@ -35,6 +36,9 @@ class TarEntryFields:
     owner_username: Optional[UserName] = None
     group_gid: Optional[PosixGID] = None
     group_name: Optional[UserGroupName] = None
+
+    dev_major: Optional[PosixDeviceIDMajor] = None
+    dev_minor: Optional[PosixDeviceIDMinor] = None
 
     inode: Optional[INodeNo] = None
     host_device_kdev: Optional[PosixDeviceIDKDevTFormat] = None
@@ -160,6 +164,8 @@ _ENTRY_FIELD_CONVERSIONS = (
     _FieldSpec(dest='group_name', src='gname', convert=UserGroupName),
     # SCHILY.* headers are added by the `star` program by Jörg Schilling
     _FieldSpec(dest='inode', src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
+    _FieldSpec(dest='dev_major', src='SCHILY.devmajor', convert=lambda x: PosixDeviceIDMajor(int(x))),
+    _FieldSpec(dest='dev_minor', src='SCHILY.devminor', convert=lambda x: PosixDeviceIDMinor(int(x))),
     _FieldSpec(dest='host_device_kdev', src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
     _FieldSpec(dest='n_links', src='SCHILY.nlink', convert=int),
     # libarchive headers
