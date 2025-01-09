@@ -118,12 +118,12 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
     )
 
 
-def parse_tar_archive_and_entry_pax_headers(
+def parse_tar_global_pax_headers(
     raw_headers: RawHeaders
 ) -> Tuple[TarArchivePaxHeaders, TarArchiveEntryPaxHeaders, RawHeaders]:
     """
-    Convenience function for extracting both archive-level and entry-level headers, useful particularly for handling
-    the global headers, which contain both (entry-level headers there apply to all files).
+    Convenience function for extracting both archive-level and entry-level headers from global PAX headers. The
+    entry-level headers apply to all files in the archive.
     """
     archive_headers, unhandled = parse_tar_archive_pax_headers(raw_headers)
     entry_pax_headers, unhandled = parse_tar_entry_pax_headers(unhandled)
