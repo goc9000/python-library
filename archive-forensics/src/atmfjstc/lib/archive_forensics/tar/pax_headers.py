@@ -1,5 +1,5 @@
-from dataclasses import dataclass, asdict
-from typing import Dict, Optional, Tuple, Union, Callable, Any
+from dataclasses import dataclass, asdict, replace
+from typing import Dict, Optional, Tuple, Union, Callable, Any, Iterable
 
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
 from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat
@@ -46,6 +46,9 @@ class TarEntryFields:
 
         return TarEntryFields(**raw_data)
 
+    def clear_fields(self, fields: Iterable[str]) -> 'TarEntryFields':
+        return replace(self, **{field: None for field in fields})
+
 
 @dataclass(frozen=True)
 class TarArchivePaxHeaders:
@@ -77,19 +80,8 @@ class TarArchiveEntryPaxHeaders:
     cleared_fields: Tuple[str, ...] = (),
     header_charset: Optional[Union[TarCharset, str]] = None
 
-    def apply_override(self, override: 'TarArchiveEntryPaxHeaders') -> 'TarArchiveEntryPaxHeaders':
-        """
-        Overrides these parsed headers with another set; this is intended for applying entry-level headers over any
-        defaults set by global-level headers.
-
-        Note that cleared fields are not processed here; they should be processed by the caller because they also
-        affect values in the original entry data.
-        """
-        return TarArchiveEntryPaxHeaders(
-            entry_fields=self.entry_fields.apply_override(override.entry_fields),
-            cleared_fields=override.cleared_fields,
-            header_charset=override.header_charset,
-        )
+    def apply_to_entry(self, tar_entry: TarEntryFields) -> TarEntryFields:
+        return tar_entry.apply_override(self.entry_fields).clear_fields(self.cleared_fields)
 
 
 def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntryPaxHeaders, RawHeaders]:
