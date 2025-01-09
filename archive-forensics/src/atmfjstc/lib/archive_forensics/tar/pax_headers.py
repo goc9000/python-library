@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field, replace, asdict
-from typing import Dict, Optional, Tuple, Union
+from dataclasses import dataclass, asdict
+from typing import Dict, Optional, Tuple, Union, Callable, Any
 
-from atmfjstc.lib.py_lang_utils.convert_struct import make_struct_converter
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
 from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat
 from atmfjstc.lib.os_forensics.generic import UserName, UserGroupName
@@ -83,9 +82,16 @@ class TarArchiveEntryPaxHeaders:
 
 
 def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntryPaxHeaders, RawHeaders]:
-    raw_headers, canceled_headers = _extract_canceled_headers(raw_headers)
+    unhandled, canceled_headers = _extract_canceled_headers(raw_headers)
+    result = dict()
 
-    result, unhandled = _convert_entry_headers(raw_headers)
+    for field in _FIELD_CONVERSIONS:
+        raw_value = unhandled.pop(field.src, None)
+
+        if raw_value is None:
+            continue
+
+        result[field.dest] = field.convert(raw_value)
 
     return (
         TarArchiveEntryPaxHeaders(
@@ -120,29 +126,31 @@ def _parse_charset(raw: str) -> Optional[Union[TarCharset, str]]:
         return raw
 
 
-_convert_entry_headers = make_struct_converter(
-    source_type='dict',
-    dest_type='dict',
-    fields=dict(
-        complete_path=dict(src='path'),
-        complete_link_path=dict(src='linkpath'),
-        comment=True,
-        file_size=dict(src='size', convert=int),
-        mtime=dict(convert=iso_from_unix_time_string),
-        ctime=dict(convert=iso_from_unix_time_string),
-        atime=dict(convert=iso_from_unix_time_string),
-        owner_uid=dict(src='uid', convert=lambda x: PosixUID(int(x))),
-        owner_username=dict(src='uname', convert=UserName),
-        group_gid=dict(src='gid', convert=lambda x: PosixGID(int(x))),
-        group_name=dict(src='gname', convert=UserGroupName),
-        charset=dict(src='charset', convert=_parse_charset),
-        header_charset=dict(src='hdrcharset', convert=_parse_charset),
-        # SCHILY.* headers are added by the `star` program by Jörg Schilling
-        inode=dict(src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
-        host_device_kdev=dict(src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
-        n_links=dict(src='SCHILY.nlink', convert=int),
-        # libarchive headers
-        creation_time=dict(src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time_string(x)),
-    ),
-    return_unparsed=True,
+@dataclass(frozen=True)
+class _FieldSpec:
+    dest: str
+    src: str
+    convert: Callable[[str], Any] = lambda v: v
+
+
+_FIELD_CONVERSIONS = (
+    _FieldSpec(dest='complete_path', src='path'),
+    _FieldSpec(dest='complete_link_path', src='linkpath'),
+    _FieldSpec(dest='comment', src='comment'),
+    _FieldSpec(dest='file_size', src='size', convert=int),
+    _FieldSpec(dest='mtime', src='mtime', convert=iso_from_unix_time_string),
+    _FieldSpec(dest='ctime', src='ctime', convert=iso_from_unix_time_string),
+    _FieldSpec(dest='atime', src='atime', convert=iso_from_unix_time_string),
+    _FieldSpec(dest='owner_uid', src='uid', convert=lambda x: PosixUID(int(x))),
+    _FieldSpec(dest='owner_username', src='uname', convert=UserName),
+    _FieldSpec(dest='group_gid', src='gid', convert=lambda x: PosixGID(int(x))),
+    _FieldSpec(dest='group_name', src='gname', convert=UserGroupName),
+    _FieldSpec(dest='charset', src='charset', convert=_parse_charset),
+    _FieldSpec(dest='header_charset', src='hdrcharset', convert=_parse_charset),
+    # SCHILY.* headers are added by the `star` program by Jörg Schilling
+    _FieldSpec(dest='inode', src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
+    _FieldSpec(dest='host_device_kdev', src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
+    _FieldSpec(dest='n_links', src='SCHILY.nlink', convert=int),
+    # libarchive headers
+    _FieldSpec(dest='creation_time', src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time_string(x)),
 )
