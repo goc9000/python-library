@@ -85,6 +85,12 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
     unhandled, canceled_headers = _extract_canceled_headers(raw_headers)
     result = dict()
 
+    if 'hdrcharset' in unhandled:
+        raw_value = unhandled.pop('hdrcharset')
+        # For now we just store the charset and assume the caller has already converted the headers to UTF-8. Could add
+        # support for binary headers later
+        result['header_charset'] = _parse_charset(raw_value) if raw_value != '' else TarCharset.UTF8
+
     for field in _FIELD_CONVERSIONS:
         raw_value = unhandled.pop(field.src, None)
 
@@ -146,7 +152,6 @@ _FIELD_CONVERSIONS = (
     _FieldSpec(dest='group_gid', src='gid', convert=lambda x: PosixGID(int(x))),
     _FieldSpec(dest='group_name', src='gname', convert=UserGroupName),
     _FieldSpec(dest='charset', src='charset', convert=_parse_charset),
-    _FieldSpec(dest='header_charset', src='hdrcharset', convert=_parse_charset),
     # SCHILY.* headers are added by the `star` program by Jörg Schilling
     _FieldSpec(dest='inode', src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
     _FieldSpec(dest='host_device_kdev', src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
