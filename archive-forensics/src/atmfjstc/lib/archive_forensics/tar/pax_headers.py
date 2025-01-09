@@ -15,8 +15,9 @@ class TarArchivePaxHeaders:
     Data structure for storing interpreted TAR PAX headers that add extra information about the archive itself as
     opposed to the entries.
 
-    Note that there are no such headers yet defined in the official spec, but if any extra archive-level metadata is
-    ever specified, it will likely use PAX headers for implementation.
+    Note that there are no such standard headers yet defined in the official spec, but other implementations such as
+    `star` do feature some, e.g. `SCHILY.volhdr.*`. In any case, if any standard archive-level metadata is ever
+    specified, it will likely use PAX headers for implementation.
 
     Also, "archive-level" and "global" are two different concepts, although archive-level headers will almost certainly
     have to be global headers.
