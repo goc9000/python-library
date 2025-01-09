@@ -9,6 +9,9 @@ from atmfjstc.lib.os_forensics.generic import UserName, UserGroupName
 from . import TarCharset
 
 
+RawHeaders = Dict[str, str]
+
+
 @dataclass(frozen=True)
 class TarArchivePaxHeaders:
     """
@@ -22,10 +25,10 @@ class TarArchivePaxHeaders:
     Also, "archive-level" and "global" are two different concepts, although archive-level headers will almost certainly
     have to be global headers.
     """
-    unhandled_headers: Dict[str, str] = field(default_factory=dict)
+    unhandled_headers: RawHeaders = field(default_factory=dict)
 
 
-def parse_tar_archive_pax_headers(raw_headers: Dict[str, str]) -> TarArchivePaxHeaders:
+def parse_tar_archive_pax_headers(raw_headers: RawHeaders) -> TarArchivePaxHeaders:
     return TarArchivePaxHeaders(
         # No per-archive headers defined yet
         unhandled_headers=raw_headers.copy(),  # Intentional copy
@@ -59,7 +62,7 @@ class TarArchiveEntryPaxHeaders:
     header_charset: Optional[Union[TarCharset, str]] = None
 
     canceled_headers: Tuple[str, ...] = (),
-    unhandled_headers: Dict[str, str] = field(default_factory=dict)
+    unhandled_headers: RawHeaders = field(default_factory=dict)
 
     def apply_override(self, override: 'TarArchiveEntryPaxHeaders') -> 'TarArchiveEntryPaxHeaders':
         """
@@ -79,7 +82,7 @@ class TarArchiveEntryPaxHeaders:
         return TarArchiveEntryPaxHeaders(**raw_data)
 
 
-def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryPaxHeaders:
+def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> TarArchiveEntryPaxHeaders:
     raw_headers, canceled_headers = _extract_canceled_headers(raw_headers)
 
     result, unhandled = _convert_entry_headers(raw_headers)
@@ -92,7 +95,7 @@ def parse_tar_entry_pax_headers(raw_headers: Dict[str, str]) -> TarArchiveEntryP
 
 
 def parse_tar_archive_and_entry_pax_headers(
-    raw_headers: Dict[str, str]
+    raw_headers: RawHeaders
 ) -> Tuple[TarArchivePaxHeaders, TarArchiveEntryPaxHeaders]:
     """
     Convenience function for extracting both archive-level and entry-level headers, useful particularly for handling
@@ -106,7 +109,7 @@ def parse_tar_archive_and_entry_pax_headers(
     return archive_headers, entry_pax_headers
 
 
-def _extract_canceled_headers(raw_headers: Dict[str, str]) -> Tuple[Dict[str, str], Tuple[str, ...]]:
+def _extract_canceled_headers(raw_headers: RawHeaders) -> Tuple[RawHeaders, Tuple[str, ...]]:
     return {k: v for k, v in raw_headers.items() if len(v) > 0}, tuple(k for k, v in raw_headers.items() if len(v) == 0)
 
 
