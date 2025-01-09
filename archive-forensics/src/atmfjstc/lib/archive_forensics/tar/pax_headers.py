@@ -74,29 +74,29 @@ def parse_tar_archive_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchivePa
 @dataclass(frozen=True)
 class TarArchiveEntryPaxHeaders:
     entry_fields: TarEntryFields
+    cleared_fields: Tuple[str, ...] = (),
     header_charset: Optional[Union[TarCharset, str]] = None
-    canceled_headers: Tuple[str, ...] = (),
 
     def apply_override(self, override: 'TarArchiveEntryPaxHeaders') -> 'TarArchiveEntryPaxHeaders':
         """
         Overrides these parsed headers with another set; this is intended for applying entry-level headers over any
         defaults set by global-level headers.
 
-        Note that canceled headers are not processed here; they should be processed by the caller because they also
-        effect values in the original entry data.
+        Note that cleared fields are not processed here; they should be processed by the caller because they also
+        affect values in the original entry data.
         """
         return TarArchiveEntryPaxHeaders(
             entry_fields=self.entry_fields.apply_override(override.entry_fields),
+            cleared_fields=override.cleared_fields,
             header_charset=override.header_charset,
-            canceled_headers=override.canceled_headers,
         )
 
 
 def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntryPaxHeaders, RawHeaders]:
     unhandled = raw_headers.copy()
 
-    result = dict()
-    canceled_headers = []
+    set_fields = dict()
+    cleared_fields = []
 
     header_charset = None
     if 'hdrcharset' in unhandled:
@@ -111,16 +111,16 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
         if raw_value is None:
             continue
         elif raw_value == '':
-            canceled_headers.append(field.src)
+            cleared_fields.append(field.dest)
             continue
 
-        result[field.dest] = field.convert(raw_value)
+        set_fields[field.dest] = field.convert(raw_value)
 
     return (
         TarArchiveEntryPaxHeaders(
-            entry_fields=TarEntryFields(**result),
+            entry_fields=TarEntryFields(**set_fields),
+            cleared_fields=tuple(cleared_fields),
             header_charset=header_charset,
-            canceled_headers=tuple(canceled_headers),
         ),
         unhandled
     )
