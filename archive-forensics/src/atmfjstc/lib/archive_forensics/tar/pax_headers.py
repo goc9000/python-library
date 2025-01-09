@@ -93,9 +93,10 @@ class TarArchiveEntryPaxHeaders:
 
 
 def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntryPaxHeaders, RawHeaders]:
-    unhandled, canceled_headers = _extract_canceled_headers(raw_headers)
+    unhandled = raw_headers.copy()
 
     result = dict()
+    canceled_headers = []
 
     header_charset = None
     if 'hdrcharset' in unhandled:
@@ -109,6 +110,9 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
 
         if raw_value is None:
             continue
+        elif raw_value == '':
+            canceled_headers.append(field.src)
+            continue
 
         result[field.dest] = field.convert(raw_value)
 
@@ -116,7 +120,7 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
         TarArchiveEntryPaxHeaders(
             entry_fields=TarEntryFields(**result),
             header_charset=header_charset,
-            canceled_headers=canceled_headers,
+            canceled_headers=tuple(canceled_headers),
         ),
         unhandled
     )
@@ -133,10 +137,6 @@ def parse_tar_archive_and_entry_pax_headers(
     entry_pax_headers, unhandled = parse_tar_entry_pax_headers(unhandled)
 
     return archive_headers, entry_pax_headers, unhandled
-
-
-def _extract_canceled_headers(raw_headers: RawHeaders) -> Tuple[RawHeaders, Tuple[str, ...]]:
-    return {k: v for k, v in raw_headers.items() if len(v) > 0}, tuple(k for k, v in raw_headers.items() if len(v) == 0)
 
 
 def _parse_charset(raw: str) -> Optional[Union[TarCharset, str]]:
