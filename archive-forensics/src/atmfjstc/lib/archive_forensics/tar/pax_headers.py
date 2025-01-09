@@ -12,6 +12,42 @@ RawHeaders = Dict[str, str]
 
 
 @dataclass(frozen=True)
+class TarEntryFields:
+    """
+    Data structure for storing known metadata fields in a TAR entry, or an assignment thereof. It is meant for helping
+    with computing the final result of headers overriding one another (e.g. local entry extended headers override
+    global headers, which override standard TAR headers etc)
+    """
+    path: Optional[str] = None
+    link_path: Optional[str] = None
+
+    comment: Optional[str] = None
+
+    content_size: Optional[int] = None
+    content_charset: Optional[Union[TarCharset, str]] = None
+
+    mtime: Optional[ISOTimestamp] = None
+    ctime: Optional[ISOTimestamp] = None
+    atime: Optional[ISOTimestamp] = None
+    creation_time: Optional[ISOTimestamp] = None
+
+    owner_uid: Optional[PosixUID] = None
+    owner_username: Optional[UserName] = None
+    group_gid: Optional[PosixGID] = None
+    group_name: Optional[UserGroupName] = None
+
+    inode: Optional[INodeNo] = None
+    host_device_kdev: Optional[PosixDeviceIDKDevTFormat] = None
+    n_links: Optional[int] = None
+
+    def apply_override(self, override: 'TarEntryFields') -> 'TarEntryFields':
+        raw_data = asdict(self)
+        raw_data.update({k: v for k, v in asdict(override).items() if v is not None})
+
+        return TarEntryFields(**raw_data)
+
+
+@dataclass(frozen=True)
 class TarArchivePaxHeaders:
     """
     Data structure for storing interpreted TAR PAX headers that add extra information about the archive itself as
@@ -37,30 +73,8 @@ def parse_tar_archive_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchivePa
 
 @dataclass(frozen=True)
 class TarArchiveEntryPaxHeaders:
-    complete_path: Optional[str] = None
-    complete_link_path: Optional[str] = None
-
-    comment: Optional[str] = None
-
-    file_size: Optional[int] = None
-
-    mtime: Optional[ISOTimestamp] = None
-    ctime: Optional[ISOTimestamp] = None
-    atime: Optional[ISOTimestamp] = None
-    creation_time: Optional[ISOTimestamp] = None
-
-    owner_uid: Optional[PosixUID] = None
-    owner_username: Optional[UserName] = None
-    group_gid: Optional[PosixGID] = None
-    group_name: Optional[UserGroupName] = None
-
-    inode: Optional[INodeNo] = None
-    host_device_kdev: Optional[PosixDeviceIDKDevTFormat] = None
-    n_links: Optional[int] = None
-
-    charset: Optional[Union[TarCharset, str]] = None
+    entry_fields: TarEntryFields
     header_charset: Optional[Union[TarCharset, str]] = None
-
     canceled_headers: Tuple[str, ...] = (),
 
     def apply_override(self, override: 'TarArchiveEntryPaxHeaders') -> 'TarArchiveEntryPaxHeaders':
@@ -71,27 +85,26 @@ class TarArchiveEntryPaxHeaders:
         Note that canceled headers are not processed here; they should be processed by the caller because they also
         effect values in the original entry data.
         """
-        raw_data = asdict(self)
-        raw_data.update({k: v for k, v in asdict(override).items() if v is not None})
-
-        raw_data['charset'] = override.charset
-        raw_data['header_charset'] = override.header_charset
-        # canceled_headers will intentionally be taken 100% from the override
-
-        return TarArchiveEntryPaxHeaders(**raw_data)
+        return TarArchiveEntryPaxHeaders(
+            entry_fields=self.entry_fields.apply_override(override.entry_fields),
+            header_charset=override.header_charset,
+            canceled_headers=override.canceled_headers,
+        )
 
 
 def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntryPaxHeaders, RawHeaders]:
     unhandled, canceled_headers = _extract_canceled_headers(raw_headers)
+
     result = dict()
 
+    header_charset = None
     if 'hdrcharset' in unhandled:
         raw_value = unhandled.pop('hdrcharset')
         # For now we just store the charset and assume the caller has already converted the headers to UTF-8. Could add
         # support for binary headers later
-        result['header_charset'] = _parse_charset(raw_value) if raw_value != '' else TarCharset.UTF8
+        header_charset = _parse_charset(raw_value) if raw_value != '' else TarCharset.UTF8
 
-    for field in _FIELD_CONVERSIONS:
+    for field in _ENTRY_FIELD_CONVERSIONS:
         raw_value = unhandled.pop(field.src, None)
 
         if raw_value is None:
@@ -101,7 +114,8 @@ def parse_tar_entry_pax_headers(raw_headers: RawHeaders) -> Tuple[TarArchiveEntr
 
     return (
         TarArchiveEntryPaxHeaders(
-            **result,
+            entry_fields=TarEntryFields(**result),
+            header_charset=header_charset,
             canceled_headers=canceled_headers,
         ),
         unhandled
@@ -139,11 +153,12 @@ class _FieldSpec:
     convert: Callable[[str], Any] = lambda v: v
 
 
-_FIELD_CONVERSIONS = (
-    _FieldSpec(dest='complete_path', src='path'),
-    _FieldSpec(dest='complete_link_path', src='linkpath'),
+_ENTRY_FIELD_CONVERSIONS = (
+    _FieldSpec(dest='path', src='path'),
+    _FieldSpec(dest='link_path', src='linkpath'),
     _FieldSpec(dest='comment', src='comment'),
-    _FieldSpec(dest='file_size', src='size', convert=int),
+    _FieldSpec(dest='content_size', src='size', convert=int),
+    _FieldSpec(dest='content_charset', src='charset', convert=_parse_charset),
     _FieldSpec(dest='mtime', src='mtime', convert=iso_from_unix_time_string),
     _FieldSpec(dest='ctime', src='ctime', convert=iso_from_unix_time_string),
     _FieldSpec(dest='atime', src='atime', convert=iso_from_unix_time_string),
@@ -151,7 +166,6 @@ _FIELD_CONVERSIONS = (
     _FieldSpec(dest='owner_username', src='uname', convert=UserName),
     _FieldSpec(dest='group_gid', src='gid', convert=lambda x: PosixGID(int(x))),
     _FieldSpec(dest='group_name', src='gname', convert=UserGroupName),
-    _FieldSpec(dest='charset', src='charset', convert=_parse_charset),
     # SCHILY.* headers are added by the `star` program by Jörg Schilling
     _FieldSpec(dest='inode', src='SCHILY.ino', convert=lambda x: INodeNo(int(x))),
     _FieldSpec(dest='host_device_kdev', src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
