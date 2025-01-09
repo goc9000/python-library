@@ -22,17 +22,13 @@ class TarArchivePaxHeaders:
     Also, "archive-level" and "global" are two different concepts, although archive-level headers will almost certainly
     have to be global headers.
     """
-    canceled_headers: Tuple[str, ...] = (),
     unhandled_headers: Dict[str, str] = field(default_factory=dict)
 
 
 def parse_tar_archive_pax_headers(raw_headers: Dict[str, str]) -> TarArchivePaxHeaders:
-    raw_headers, canceled_headers = _extract_canceled_headers(raw_headers)
-
     return TarArchivePaxHeaders(
         # No per-archive headers defined yet
-        canceled_headers=canceled_headers,
-        unhandled_headers=raw_headers,
+        unhandled_headers=raw_headers.copy(),  # Intentional copy
     )
 
 
