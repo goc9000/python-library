@@ -22,6 +22,11 @@ class WindowsFileAttributes(IntFlag):
     INTEGRITY_STREAM = 1 << 15
     VIRTUAL = 1 << 16
     NO_SCRUB_DATA = 1 << 17
+    EXTENDED_ATTRS = 1 << 18
+    RECALL_ON_OPEN = 1 << 18
+    PINNED = 1 << 19
+    UNPINNED = 1 << 20
+    RECALL_ON_DATA_ACCESS = 1 << 22
 
 
 class NTReparsePointTag(IntEnum):
