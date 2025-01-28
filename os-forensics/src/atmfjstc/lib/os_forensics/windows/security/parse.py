@@ -2,10 +2,10 @@ from typing import Union, List
 
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 
-from atmfjstc.lib.os_forensics.windows.security import NTSecurityID, NTGuid, NTSecurityDescriptor, NTSdTrusteeInfo, \
-    NTSdACLInfo, NTAclEntry, NTAclEntryInheritFlags, NTStandardRights, NTSpecificRights, NTAllowAccessACLEntry, \
-    NTDenyAccessACLEntry, NTSystemAuditACLEntry, NTSystemAlarmACLEntry, NTMandatoryLabelACLEntry
-from atmfjstc.lib.os_forensics.windows.security.low_level import NTSdControlFlags, NTAclEntryType, NTAclEntryFlags, \
+from . import NTSecurityID, NTGuid, NTSecurityDescriptor, NTSdTrusteeInfo, NTSdACLInfo, NTAclEntry, \
+    NTAclEntryInheritFlags, NTStandardRights, NTSpecificRights, NTAllowAccessACLEntry, NTDenyAccessACLEntry, \
+    NTSystemAuditACLEntry, NTSystemAlarmACLEntry, NTMandatoryLabelACLEntry
+from .low_level import NTSdControlFlags, NTAclEntryType, NTAclEntryFlags, \
     NTStoredAccessMask, NTObjectSpecificACLFlags, NTMandatoryAccessPolicy
 
 

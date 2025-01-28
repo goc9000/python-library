@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from atmfjstc.lib.os_forensics.windows.security.rights import NTSpecificRights
+from .rights import NTSpecificRights
 
 
 @dataclass(frozen=True)
