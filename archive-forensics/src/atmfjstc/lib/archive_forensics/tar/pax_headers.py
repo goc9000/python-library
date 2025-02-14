@@ -135,7 +135,7 @@ def parse_tar_global_pax_headers(
     return archive_headers, entry_pax_headers, unhandled
 
 
-def _parse_charset(raw: str) -> Optional[Union[TarCharset, str]]:
+def _parse_charset(raw: str) -> Union[TarCharset, str]:
     try:
         return TarCharset(raw)
     except ValueError:
@@ -169,5 +169,5 @@ _ENTRY_FIELD_CONVERSIONS = (
     _FieldSpec(dest='host_device_kdev', src='SCHILY.dev', convert=lambda x: PosixDeviceIDKDevTFormat(int(x))),
     _FieldSpec(dest='n_links', src='SCHILY.nlink', convert=int),
     # libarchive headers
-    _FieldSpec(dest='creation_time', src='LIBARCHIVE.creationtime', convert=lambda x: iso_from_unix_time_string(x)),
+    _FieldSpec(dest='creation_time', src='LIBARCHIVE.creationtime', convert=iso_from_unix_time_string),
 )
