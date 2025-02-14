@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict, replace
 from typing import Dict, Optional, Tuple, Union, Callable, Any, Iterable
+from enum import Enum, auto
 
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time_string, ISOTimestamp
 from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, INodeNo, PosixDeviceIDKDevTFormat, PosixDeviceIDMajor, \
@@ -44,6 +45,8 @@ class TarEntryFields:
     host_device_kdev: Optional[PosixDeviceIDKDevTFormat] = None
     n_links: Optional[int] = None
 
+    symlink_target_type: Optional['SymlinkTargetType'] = None
+
     def apply_override(self, override: 'TarEntryFields') -> 'TarEntryFields':
         raw_data = asdict(self)
         raw_data.update({k: v for k, v in asdict(override).items() if v is not None})
@@ -52,6 +55,11 @@ class TarEntryFields:
 
     def clear_fields(self, fields: Iterable[str]) -> 'TarEntryFields':
         return replace(self, **{field: None for field in fields})
+
+
+class SymlinkTargetType(Enum):
+    FILE = auto()
+    DIRECTORY = auto()
 
 
 @dataclass(frozen=True)
@@ -142,6 +150,15 @@ def _parse_charset(raw: str) -> Union[TarCharset, str]:
         return raw
 
 
+def _parse_symlink_type(raw: str) -> SymlinkTargetType:
+    if raw == 'file':
+        return SymlinkTargetType.FILE
+    elif raw == 'dir':
+        return SymlinkTargetType.DIRECTORY
+    else:
+        raise ValueError(f"Unsupported value for LIBARCHIVE.symlinktype header: '{raw}'")
+
+
 @dataclass(frozen=True)
 class _FieldSpec:
     dest: str
@@ -170,4 +187,5 @@ _ENTRY_FIELD_CONVERSIONS = (
     _FieldSpec(dest='n_links', src='SCHILY.nlink', convert=int),
     # libarchive headers
     _FieldSpec(dest='creation_time', src='LIBARCHIVE.creationtime', convert=iso_from_unix_time_string),
+    _FieldSpec(dest='symlink_target_type', src='LIBARCHIVE.symlinktype', convert=_parse_symlink_type),
 )
