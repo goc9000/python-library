@@ -4,13 +4,20 @@ Utilities for working with temporary files.
 
 import os
 
-from typing import IO, Optional, AnyStr, Iterator, ContextManager, Union, Callable
+from typing import IO, Optional, AnyStr, Iterator, ContextManager, Union, Callable, NamedTuple
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from shutil import copyfileobj
 from contextlib import contextmanager, suppress
 
 from atmfjstc.lib.file_utils import PathType
 from atmfjstc.lib.file_utils.fileobj import get_fileobj_size
+
+
+class _TempFileNaming(NamedTuple):
+    suffix: Optional[AnyStr]
+    prefix: Optional[AnyStr]
+    dir: Optional[AnyStr]
+    specific_name: Optional[AnyStr]
 
 
 @contextmanager
@@ -132,11 +139,13 @@ def temp_drop_data_to_disk(
     This is a convenience alias for `temp_drop_file_obj_to_disk` that also supports passing the data in as a
     `bytes` object.
     """
+    naming = _TempFileNaming(specific_name=specific_name)
+
     if isinstance(data, bytes):
-        return _temp_drop_bytes_to_disk(data, safety_limit_mb=safety_limit_mb, specific_name=specific_name)
+        return _temp_drop_bytes_to_disk(data, safety_limit_mb=safety_limit_mb, temp_file_naming=naming)
     else:
         return _temp_drop_file_obj_to_disk(
-            data, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name
+            data, safety_limit_mb=safety_limit_mb, rewind=rewind, temp_file_naming=naming
         )
 
 
@@ -176,13 +185,14 @@ def temp_drop_file_obj_to_disk(
             stated amount.
     """
     return _temp_drop_file_obj_to_disk(
-        fileobj, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name
+        fileobj, safety_limit_mb=safety_limit_mb, rewind=rewind,
+        temp_file_naming=_TempFileNaming(specific_name=specific_name),
     )
 
 
 @contextmanager
 def _temp_drop_file_obj_to_disk(
-    fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
+    fileobj: IO, safety_limit_mb: Optional[int], rewind: bool, temp_file_naming: _TempFileNaming
 ) -> Iterator[AnyStr]:
     assert (safety_limit_mb is None) or fileobj.seekable(), "File obj must be seekable if safety_limit_mb is provided"
     assert (not rewind) or fileobj.seekable(), "File obj must be seekable if rewind=True"
@@ -199,9 +209,7 @@ def _temp_drop_file_obj_to_disk(
     _do_size_check(safety_limit_mb, lambda: get_fileobj_size(fileobj, 'start' if rewind else 'current'))
 
     try:
-        temp_file = named_temp_file() if (specific_name is None) else specifically_named_temp_file(specific_name)
-
-        with temp_file as f:
+        with _init_temp_file(temp_file_naming) as f:
             if rewind:
                 fileobj.seek(0)
 
@@ -217,13 +225,11 @@ def _temp_drop_file_obj_to_disk(
 
 @contextmanager
 def _temp_drop_bytes_to_disk(
-    data: bytes, safety_limit_mb: Optional[int] = None, specific_name: Optional[AnyStr] = None
+    data: bytes, safety_limit_mb: Optional[int], temp_file_naming: _TempFileNaming
 ) -> Iterator[AnyStr]:
     _do_size_check(safety_limit_mb, lambda: len(data))
 
-    temp_file = named_temp_file() if (specific_name is None) else specifically_named_temp_file(specific_name)
-
-    with temp_file as f:
+    with _init_temp_file(temp_file_naming) as f:
         f.write(data)
         f.close()  # Close the file - very important on Windows!
 
@@ -238,3 +244,10 @@ def _do_size_check(safety_limit_mb: Optional[int], size_getter: Callable[[], int
 
     if file_size > (safety_limit_mb * 1000000):
         raise FileTooBigError(file_size, safety_limit_mb * 1000000)
+
+
+def _init_temp_file(naming: _TempFileNaming) -> ContextManager[IO]:
+    if naming.specific_name is None:
+        return named_temp_file(prefix=naming.prefix, suffix=naming.suffix, dir=naming.dir)
+    else:
+        return specifically_named_temp_file(naming.specific_name, prefix=naming.prefix, suffix=naming.suffix, dir=naming.dir)
