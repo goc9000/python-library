@@ -131,7 +131,8 @@ class FileTooBigError(ValueError):
 
 def temp_drop_data_to_disk(
     data: Union[IO, bytes], safety_limit_mb: Optional[int] = None, rewind: bool = False,
-    specific_name: Optional[AnyStr] = None
+    specific_name: Optional[AnyStr] = None,
+    prefix: Optional[AnyStr] = None, suffix: Optional[AnyStr] = None, dir: Optional[AnyStr] = None
 ) -> ContextManager[AnyStr]:
     """
     Temporarily copies data to disk, for access by an external utility.
@@ -139,7 +140,7 @@ def temp_drop_data_to_disk(
     This is a convenience alias for `temp_drop_file_obj_to_disk` that also supports passing the data in as a
     `bytes` object.
     """
-    naming = _TempFileNaming(specific_name=specific_name)
+    naming = _TempFileNaming(specific_name=specific_name, prefix=prefix, suffix=suffix, dir=dir)
 
     if isinstance(data, bytes):
         return _temp_drop_bytes_to_disk(data, safety_limit_mb=safety_limit_mb, temp_file_naming=naming)
@@ -150,7 +151,9 @@ def temp_drop_data_to_disk(
 
 
 def temp_drop_file_obj_to_disk(
-    fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
+    fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False,
+    specific_name: Optional[AnyStr] = None,
+    prefix: Optional[AnyStr] = None, suffix: Optional[AnyStr] = None, dir: Optional[AnyStr] = None
 ) -> ContextManager[AnyStr]:
     """
     Temporarily copies the contents of an arbitrary file object to disk, for access by an external utility.
@@ -175,6 +178,9 @@ def temp_drop_file_obj_to_disk(
             afterwards.
         specific_name: If provided, the data will be saved with the given filename (required for some utilities which
             take the filename into account).
+        prefix: See the `named_temp_file` or `specifically_named_temp_file` functions
+        suffix: See the `named_temp_file` or `specifically_named_temp_file` functions
+        dir: See the `named_temp_file` or `specifically_named_temp_file` functions
 
     Returns:
         The context manager returns the path of the file to which the data was saved. The file will disappear with the
@@ -186,7 +192,7 @@ def temp_drop_file_obj_to_disk(
     """
     return _temp_drop_file_obj_to_disk(
         fileobj, safety_limit_mb=safety_limit_mb, rewind=rewind,
-        temp_file_naming=_TempFileNaming(specific_name=specific_name),
+        temp_file_naming=_TempFileNaming(specific_name=specific_name, prefix=prefix, suffix=suffix, dir=dir)
     )
 
 
