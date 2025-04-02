@@ -14,16 +14,69 @@ from atmfjstc.lib.file_utils.fileobj import get_fileobj_size
 
 
 @contextmanager
+def named_temp_file(
+    suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[PathType] = None,
+    mode: str = 'w+b', buffering: int = -1,
+    encoding: Optional[str] = None, newline: Optional[str] = None, errors: Optional[str] = None
+) -> Iterator[IO]:
+    """
+    Similar to `tempfile.NamedTemporaryFile` but allows for the file to be closed without being deleted. The file will
+    only be deleted when the context is closed.
+
+    This is crucial if we e.g. want to pass the file to another utility, since on Windows, other programs will not be
+    able to open the file while we are still keeping it open for writing.
+
+    The standard `NamedTemporaryFile` can only be configured in this way starting with Python 3.12 ; this solution
+    works with earlier Python versions.
+
+    Args:
+        suffix: The desired suffix for the temporary file.
+        prefix: The desired prefix for the temporary file.
+        dir: The path of the parent directory for the temporary file.
+        mode: See the `open` function.
+        buffering: See the `open` function.
+        encoding: See the `open` function.
+        newline: See the `open` function.
+        errors: See the `open` function.
+
+    Returns:
+        The context manager will return the temporary file as an open file object.
+    """
+
+    filename = None
+
+    try:
+        with NamedTemporaryFile(
+            mode=mode, buffering=buffering, encoding=encoding, newline=newline,
+            suffix=suffix, prefix=prefix, dir=dir,
+            delete=False, errors=errors,
+        ) as tmp_file:
+            filename = tmp_file.name
+
+            try:
+                yield tmp_file
+            finally:
+                with suppress(OSError):
+                    tmp_file.close()
+    finally:
+        if filename is not None:
+            with suppress(OSError, PermissionError):
+                os.remove(filename)
+
+
+@contextmanager
 def specifically_named_temp_file(
     name: AnyStr, suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[PathType] = None,
     mode: str = 'w+b', buffering: int = -1,
     encoding: Optional[str] = None, newline: Optional[str] = None, errors: Optional[str] = None
 ) -> Iterator[IO]:
     """
-    Similar to `tempfile.NamedTemporaryFile` but creates a temporary file with a specific name.
+    Similar to `named_temp_file` but creates a temporary file with a specific name. This is particularly useful for
+    calling external binaries that care about the exact name of the file they operate upon (e.g. archivers).
 
-    The `suffix`, `prefix` and `dir` parameters apply to a temporary directory created to contain the file. There is
-    no `delete` option - the file and its containing directory are always deleted when the context is closed.
+    The `suffix`, `prefix` and `dir` parameters apply to a temporary directory created to contain the file.
+
+    As with `named_temp_file`, the file and its containing directory are deleted when the context is closed.
 
     Args:
         name: The name with which the temporary file will be created.
