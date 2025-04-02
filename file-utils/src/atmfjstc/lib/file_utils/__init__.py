@@ -6,7 +6,7 @@ from typing import AnyStr, Union
 from os import PathLike
 
 
-__version__ = '2.1.0'
+__version__ = '2.2.0'
 
 
 PathType = Union[PathLike, AnyStr]
