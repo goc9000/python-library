@@ -3,7 +3,7 @@ Utilities for working with file objects.
 """
 
 from contextlib import contextmanager
-from typing import IO, Optional, BinaryIO, ContextManager
+from typing import IO, Optional, BinaryIO, Iterator
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from io import BufferedIOBase, IOBase, TextIOBase
 
@@ -11,7 +11,7 @@ from atmfjstc.lib.error_utils import ignore_errors
 
 
 @contextmanager
-def preserve_fileobj_pos(fileobj: IO) -> ContextManager[int]:
+def preserve_fileobj_pos(fileobj: IO) -> Iterator[int]:
     """
     Context manager for ensuring a fileobj's position is restored to where it was, once the context closes.
 

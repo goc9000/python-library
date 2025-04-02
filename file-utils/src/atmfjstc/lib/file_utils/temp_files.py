@@ -4,7 +4,7 @@ Utilities for working with temporary files.
 
 import os
 
-from typing import IO, ContextManager, Optional, AnyStr
+from typing import IO, Optional, AnyStr, Iterator
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from shutil import copyfileobj
 from contextlib import contextmanager, suppress
@@ -18,7 +18,7 @@ def specifically_named_temp_file(
     name: AnyStr, suffix: Optional[AnyStr] = None, prefix: Optional[AnyStr] = None, dir: Optional[PathType] = None,
     mode: str = 'w+b', buffering: int = -1,
     encoding: Optional[str] = None, newline: Optional[str] = None, errors: Optional[str] = None
-) -> ContextManager[IO]:
+) -> Iterator[IO]:
     """
     Similar to `tempfile.NamedTemporaryFile` but creates a temporary file with a specific name.
 
@@ -72,7 +72,7 @@ class FileTooBigError(ValueError):
 @contextmanager
 def temp_drop_file_obj_to_disk(
     fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
-) -> ContextManager[AnyStr]:
+) -> Iterator[AnyStr]:
     """
     Temporarily copies the contents of an arbitrary file object to disk.
 
