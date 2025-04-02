@@ -4,7 +4,7 @@ Utilities for working with temporary files.
 
 import os
 
-from typing import IO, Optional, AnyStr, Iterator
+from typing import IO, Optional, AnyStr, Iterator, ContextManager, Union, Callable
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from shutil import copyfileobj
 from contextlib import contextmanager, suppress
@@ -122,6 +122,22 @@ class FileTooBigError(ValueError):
         self.allowed_size = allowed_size
 
 
+def temp_drop_data_to_disk(
+    data: Union[IO, bytes], safety_limit_mb: Optional[int] = None, rewind: bool = False,
+    specific_name: Optional[AnyStr] = None
+) -> ContextManager[AnyStr]:
+    """
+    Temporarily copies data to disk, for access by an external utility.
+
+    This is a convenience alias for `temp_drop_file_obj_to_disk` that also supports passing the data in as a
+    `bytes` object.
+    """
+    if isinstance(data, bytes):
+        return _temp_drop_bytes_to_disk(data, safety_limit_mb=safety_limit_mb, specific_name=specific_name)
+    else:
+        return temp_drop_data_to_disk(data, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name)
+
+
 @contextmanager
 def temp_drop_file_obj_to_disk(
     fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
@@ -171,17 +187,10 @@ def temp_drop_file_obj_to_disk(
             except Exception:
                 pass
 
-    # Do size check
-    if safety_limit_mb is not None:
-        file_size = get_fileobj_size(fileobj, 'start' if rewind else 'current')
-        if file_size > (safety_limit_mb * 1000000):
-            raise FileTooBigError(file_size, safety_limit_mb * 1000000)
+    _do_size_check(safety_limit_mb, lambda: get_fileobj_size(fileobj, 'start' if rewind else 'current'))
 
     try:
-        if specific_name is not None:
-            temp_file = specifically_named_temp_file(specific_name)
-        else:
-            temp_file = named_temp_file()
+        temp_file = named_temp_file() if (specific_name is None) else specifically_named_temp_file(specific_name)
 
         with temp_file as f:
             if rewind:
@@ -195,3 +204,28 @@ def temp_drop_file_obj_to_disk(
             yield f.name
     finally:
         _maybe_restore_position()
+
+
+@contextmanager
+def _temp_drop_bytes_to_disk(
+    data: bytes, safety_limit_mb: Optional[int] = None, specific_name: Optional[AnyStr] = None
+) -> Iterator[AnyStr]:
+    _do_size_check(safety_limit_mb, lambda: len(data))
+
+    temp_file = named_temp_file() if (specific_name is None) else specifically_named_temp_file(specific_name)
+
+    with temp_file as f:
+        f.write(data)
+        f.close()  # Close the file - very important on Windows!
+
+        yield f.name
+
+
+def _do_size_check(safety_limit_mb: Optional[int], size_getter: Callable[[], int]):
+    if safety_limit_mb is None:
+        return
+
+    file_size = size_getter()
+
+    if file_size > (safety_limit_mb * 1000000):
+        raise FileTooBigError(file_size, safety_limit_mb * 1000000)
