@@ -135,13 +135,14 @@ def temp_drop_data_to_disk(
     if isinstance(data, bytes):
         return _temp_drop_bytes_to_disk(data, safety_limit_mb=safety_limit_mb, specific_name=specific_name)
     else:
-        return temp_drop_data_to_disk(data, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name)
+        return _temp_drop_file_obj_to_disk(
+            data, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name
+        )
 
 
-@contextmanager
 def temp_drop_file_obj_to_disk(
     fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
-) -> Iterator[AnyStr]:
+) -> ContextManager[AnyStr]:
     """
     Temporarily copies the contents of an arbitrary file object to disk, for access by an external utility.
 
@@ -174,7 +175,15 @@ def temp_drop_file_obj_to_disk(
         FileTooBig: Thrown if the safety limit is enabled, and the size of the file that would be written exceeds the
             stated amount.
     """
+    return _temp_drop_file_obj_to_disk(
+        fileobj, safety_limit_mb=safety_limit_mb, rewind=rewind, specific_name=specific_name
+    )
 
+
+@contextmanager
+def _temp_drop_file_obj_to_disk(
+    fileobj: IO, safety_limit_mb: Optional[int] = None, rewind: bool = False, specific_name: Optional[AnyStr] = None
+) -> Iterator[AnyStr]:
     assert (safety_limit_mb is None) or fileobj.seekable(), "File obj must be seekable if safety_limit_mb is provided"
     assert (not rewind) or fileobj.seekable(), "File obj must be seekable if rewind=True"
 
