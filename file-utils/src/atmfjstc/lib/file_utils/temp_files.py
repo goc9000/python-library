@@ -180,16 +180,16 @@ def temp_drop_file_obj_to_disk(
 
     try:
         if specific_name is not None:
-            named_temp_file = specifically_named_temp_file(specific_name)
+            temp_file = specifically_named_temp_file(specific_name)
         else:
-            named_temp_file = NamedTemporaryFile()
+            temp_file = named_temp_file()
 
-        with named_temp_file as f:
+        with temp_file as f:
             if rewind:
                 fileobj.seek(0)
 
             copyfileobj(fileobj, f)
-            f.flush()
+            f.close()  # Close the file - very important on Windows!
 
             _maybe_restore_position()
 
