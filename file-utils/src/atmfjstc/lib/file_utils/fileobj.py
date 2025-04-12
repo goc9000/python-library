@@ -4,7 +4,7 @@ Utilities for working with file objects.
 
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
-from typing import IO, Optional, BinaryIO, Iterator
+from typing import IO, Optional, BinaryIO, Iterator, Union
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from io import BufferedIOBase, IOBase, TextIOBase, RawIOBase
 
@@ -195,3 +195,77 @@ class FileObjSliceReader(SeekableBase, BufferedIOBase):
         self._fileobj.seek(self._window_base + self._position)
 
         return size
+
+
+class ByteArrayIO(SeekableBase, RawIOBase):
+    """
+    File object that allows writing to a `bytearray`.
+
+    This is somewhat similar to a `BytesIO`, but with some key differences:
+
+    - `BytesIO` writes to a private buffer whose contents need to be explicitly retrieved after writes are done. This
+      abstraction works with a buffer provided by the caller, which is updated in real time as writes are performed.
+    - The contents of the `BytesIO` buffer are lost when it is closed. This file object can be closed at any time
+      with no effect on the contents of the provided buffer.
+
+    The semantics of the read/write/seek operations are similar to those for a real file opened in random access
+    read+write mode. In particular, one can seek at any position within the array as well as past it. Writes to an
+    existing position will overwrite the content of the array at that position; writes past the end of the array will
+    extend it.
+    """
+
+    _buffer: bytearray
+
+    def __init__(self, buffer: bytearray):
+        self._buffer = buffer
+        self._position = len(buffer)
+
+    def _end_position(self) -> int:
+        return len(self._buffer)
+
+    def readable(self) -> bool:
+        return True
+
+    def readall(self) -> bytes:
+        data = bytes(self._buffer[min(self._position, len(self._buffer)):])
+
+        self._position = len(self._buffer)
+
+        return data
+
+    def readinto(self, buffer: bytearray) -> int:
+        total_read = min(max(0, len(self._buffer) - self._position), len(buffer))
+
+        if total_read == 0:
+            return 0
+
+        buffer[0:total_read] = self._buffer[self._position:self._position + total_read]
+
+        self._position += total_read
+
+        return total_read
+
+    def writable(self) -> bool:
+        return True
+
+    def truncate(self, size: Optional[int] = None) -> int:
+        if size is None:
+            size = self._position
+
+        if size < len(self._buffer):
+            self._buffer[size:] = b''
+        elif size > len(self._buffer):
+            self._buffer.extend(b'\x00' * (size - len(self._buffer)))
+
+        return size
+
+    def write(self, data: Union[bytes, bytearray]) -> int:
+        if len(self._buffer) < self._position:
+            self.truncate()
+
+        if len(data) > 0:
+            self._buffer[self._position:self._position + len(data)] = data
+
+        self._position += len(data)
+
+        return len(data)
