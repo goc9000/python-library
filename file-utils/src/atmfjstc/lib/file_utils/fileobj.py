@@ -160,6 +160,30 @@ class FileObjSliceReader(SeekableBase, BufferedIOBase):
         return True
 
     def read(self, size: Optional[int] = -1) -> bytes:
+        size = self._prepare_read(size)
+
+        data = bytearray()
+
+        while len(data) < size:
+            chunk = self._fileobj.read(size - len(data))
+            data.extend(chunk)
+            self._position += len(chunk)
+
+            if len(chunk) == 0:
+                break
+
+        return bytes(data)
+
+    def read1(self, size: int = -1) -> bytes:
+        size = self._prepare_read(size)
+
+        data = self._fileobj.read(size)
+
+        self._position += len(data)
+
+        return data
+
+    def _prepare_read(self, size: Optional[int]) -> int:
         if self.closed:
             raise ValueError("Cannot read from closed fileobj")
 
@@ -169,12 +193,5 @@ class FileObjSliceReader(SeekableBase, BufferedIOBase):
         size = min(size, self._window_size - self._position)
 
         self._fileobj.seek(self._window_base + self._position)
-        data = self._fileobj.read(size)
-        assert len(data) == size, "Got short read from window?!"
 
-        self._position += size
-
-        return data
-
-    def read1(self, size: int = -1) -> bytes:
-        return self.read(size)
+        return size
