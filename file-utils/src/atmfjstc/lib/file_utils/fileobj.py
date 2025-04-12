@@ -2,10 +2,11 @@
 Utilities for working with file objects.
 """
 
+from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
 from typing import IO, Optional, BinaryIO, Iterator
 from os import SEEK_SET, SEEK_CUR, SEEK_END
-from io import BufferedIOBase, IOBase, TextIOBase
+from io import BufferedIOBase, IOBase, TextIOBase, RawIOBase
 
 from atmfjstc.lib.error_utils import ignore_errors
 
@@ -63,14 +64,51 @@ def get_fileobj_size(fileobj: IO, whence: str = 'start') -> int:
         return end_pos - (0 if whence == 'start' else original_pos)
 
 
-class FileObjSliceReader(BufferedIOBase):
+class SeekableBase(RawIOBase, metaclass=ABCMeta):
+    _position: int = 0
+
+    @abstractmethod
+    def _end_position(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def _allow_seek_past_end(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return True
+
+    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
+        if self.closed:
+            raise ValueError("Cannot seek in closed fileobj")
+
+        if whence == SEEK_SET:
+            self._position = offset
+        elif whence == SEEK_CUR:
+            self._position += offset
+        elif whence == SEEK_END:
+            self._position = self._end_position() + offset
+        else:
+            raise ValueError("whence should be os.SEEK_{SET|CUR|END}")
+
+        self._position = max(0, self._position)
+
+        if not self._allow_seek_past_end:
+            self._position = min(self._position, self._end_position())
+
+        return self._position
+
+    def tell(self) -> int:
+        return self._position
+
+
+class FileObjSliceReader(SeekableBase, BufferedIOBase):
     """
     This class provides a virtual file object that reads within a slice ("window") of another file object's data.
     """
 
     _fileobj: BinaryIO
 
-    _position: int = 0
     _window_base: int
     _window_size: int
 
@@ -111,6 +149,13 @@ class FileObjSliceReader(BufferedIOBase):
         self._window_base = window_base
         self._window_size = window_size
 
+    def _end_position(self) -> int:
+        return self._window_size
+
+    @property
+    def _allow_seek_past_end(self) -> bool:
+        return False
+
     def readable(self) -> bool:
         return True
 
@@ -133,23 +178,3 @@ class FileObjSliceReader(BufferedIOBase):
 
     def read1(self, size: int = -1) -> bytes:
         return self.read(size)
-
-    def seekable(self) -> bool:
-        return True
-
-    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
-        if self.closed:
-            raise ValueError("Cannot seek in closed fileobj")
-
-        if whence == SEEK_SET:
-            self._position = offset
-        elif whence == SEEK_CUR:
-            self._position += offset
-        elif whence == SEEK_END:
-            self._position = self._window_size - offset
-        else:
-            raise ValueError("whence should be os.SEEK_{SET|CUR|END}")
-
-        self._position = max(0, min(self._position, self._window_size))
-
-        return self._position
