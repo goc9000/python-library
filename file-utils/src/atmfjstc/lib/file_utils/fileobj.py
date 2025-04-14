@@ -269,3 +269,135 @@ class ByteArrayIO(SeekableBase, RawIOBase):
         self._position += len(data)
 
         return len(data)
+
+
+class FakeSeekableReader(BufferedIOBase):
+    """
+    Adapter that wraps around a non-seekable file object (e.g. stdin) and provides some level of "fake" seekability,
+    useful mainly for advanced "peeking" capabilitites. Specifically, one will be able to "rewind" only within
+    `buffer_size` bytes of the last byte read.
+    """
+
+    _fileobj: BinaryIO
+
+    _buffer_size: int
+    _buffer: bytearray
+
+    _position: int
+    _real_position: int
+
+    def __init__(self, fileobj: BinaryIO, buffer_size: int):
+        self._fileobj = fileobj
+
+        self._buffer_size = buffer_size
+        self._buffer = bytearray()
+
+        self._position = 0
+        self._real_position = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def read(self, size: Optional[int] = -1) -> bytes:
+        infy_size = (size is None) or (size < 0)
+
+        data = bytearray()
+
+        while (len(data) < size) or infy_size:
+            chunk = self.read1(-1 if infy_size else (size - len(data)))
+
+            data.extend(chunk)
+
+            if len(chunk) == 0:
+                break
+
+        return bytes(data)
+
+    def read1(self, size: int = -1) -> bytes:
+        if self.closed:
+            raise ValueError("Cannot seek in closed fileobj")
+
+        infy_size = (size is None) or (size < 0)
+
+        to_read_from_buf = self._real_position - self._position
+        if not infy_size:
+            to_read_from_buf = min(size, to_read_from_buf)
+
+        if to_read_from_buf == 0:
+            return self._read_real(size)
+
+        buf_offset = len(self._buffer) + self._position - self._real_position
+        buf_chunk = bytes(self._buffer[buf_offset:buf_offset + to_read_from_buf])
+
+        self._position += len(buf_chunk)
+
+        to_read_real = -1 if infy_size else (size - to_read_from_buf)
+
+        if to_read_real == 0:
+            return buf_chunk
+
+        return buf_chunk + self._read_real(to_read_real)
+
+    def _read_real(self, size: int = -1) -> bytes:
+        data = self._fileobj.read(size)
+        self._position += len(data)
+        self._real_position += len(data)
+
+        keep_offset = max(0, len(self._buffer) + len(data) - self._buffer_size)
+        incoming_offset = max(0, len(data) - self._buffer_size)
+
+        self._buffer[0:keep_offset] = b''
+        self._buffer.extend(data[incoming_offset:])
+
+        return data
+
+    def _advance_real(self, size: int = -1):
+        total_advanced = 0
+        chunk_size = 1_000_000
+
+        while True:
+            to_read = chunk_size if (size == -1) else min(size - total_advanced, chunk_size)
+
+            data = self._read_real(to_read)
+            if len(data) == 0:
+                break
+
+            total_advanced += len(data)
+            self._real_position += len(data)
+
+    def seekable(self) -> bool:
+        return True
+
+    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
+        if self.closed:
+            raise ValueError("Cannot seek in closed fileobj")
+
+        if whence == SEEK_SET:
+            new_position = offset
+        elif whence == SEEK_CUR:
+            new_position = self._position + offset
+        elif whence == SEEK_END:
+            self._advance_real(-1)
+
+            new_position = self._real_position + offset
+        else:
+            raise ValueError("whence should be os.SEEK_{SET|CUR|END}")
+
+        new_position = max(0, new_position)
+
+        if new_position <= self._real_position:
+            if new_position < (self._real_position - self._buffer_size):
+                raise ValueError(f"Cannot seek more than {self._buffer_size} bytes into the past")
+
+            self._position = new_position
+
+            return new_position
+
+        self._advance_real(self._real_position - new_position)
+
+        self._position = self._real_position
+
+        return self._position
+
+    def tell(self) -> int:
+        return self._position
