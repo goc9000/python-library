@@ -484,9 +484,18 @@ class IZUnixV3DataV1(IZUnixV3Data):
     gid: PosixGID
 
 
+@dataclass(frozen=True)
+class ZXHJARMarker(ZipExtraHeader):
+    magic: int = field(default=0xcafe, init=False)
+
+    @staticmethod
+    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHJARMarker':
+        return ZXHJARMarker(is_local, (), None)
+
+
 _ALL_HEADER_CLASSES : List[Type[ZipExtraHeader]] = [
     ZXHZip64, ZXHPkWareNTFS, ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1,
-    ZXHInfoZipUnicodeComment, ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3,
+    ZXHInfoZipUnicodeComment, ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker
 ]
 
 
