@@ -12,7 +12,7 @@ from atmfjstc.lib.os_forensics.windows.security import NTSecurityDescriptor
 from atmfjstc.lib.os_forensics.windows.security.parse import decode_nt_security_descriptor
 from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, PosixDeviceID
 
-from atmfjstc.lib.archive_forensics.zip import decompress_now
+from .. import decompress_now
 
 
 def parse_zip_central_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
