@@ -3,7 +3,7 @@ Utilities for handling ZIP "extra data" fields
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple, Type, TypeVar, ClassVar
+from typing import List, Optional, Tuple, Type, TypeVar
 
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 from atmfjstc.lib.iso_timestamp import ISOTimestamp, iso_from_unix_time
@@ -16,27 +16,15 @@ from .. import decompress_now
 
 
 def parse_zip_central_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
-    return _parse_zip_extra_data(field_bytes, is_local=False)
+    from ._parse import parse_zip_extra_data
+
+    return parse_zip_extra_data(field_bytes, is_local=False)
 
 
 def parse_zip_local_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
-    return _parse_zip_extra_data(field_bytes, is_local=True)
+    from ._parse import parse_zip_extra_data
 
-
-def _parse_zip_extra_data(data: bytes, is_local: bool) -> List['ZipExtraHeader']:
-    result = []
-
-    reader = BinaryReader(data, big_endian=False)
-
-    try:
-        for header_id, value in reader.iter_tlv(type_bytes=2, length_bytes=2, meaning='ZIP extra headers'):
-            result.append(ZipExtraHeader.parse_from_tlv(header_id, value, is_local))
-    except Exception as e:
-        raise MalformedZipExtraDataError(
-            f"Malformed binary data for ZIP {'local' if is_local else 'central'} extra field"
-        ) from e
-
-    return result
+    return parse_zip_extra_data(field_bytes, is_local=True)
 
 
 @dataclass(frozen=True)
@@ -54,40 +42,6 @@ class ZipExtraHeader:
     def description(self) -> str:
         return f"ZIP {'local' if self.is_local else 'central'} extra header of type " + \
                (f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation.__class__.__name__)
-
-    @staticmethod
-    def parse_from_tlv(header_id: int, data: bytes, is_local: bool) -> 'ZipExtraHeader':
-        reader = BinaryReader(data, big_endian=False)
-
-        header_class = ZipExtraHeader.get_header_class_for_magic(header_id)
-        if header_class is None:
-            return ZipExtraHeader(header_id, is_local, None, (), reader.read_remainder())
-
-        warnings = []
-        interpretation = header_class.parse(reader, is_local, warnings)
-
-        unconsumed_data = None
-
-        if not reader.eof():
-            warnings.append("Header was not fully consumed")
-            unconsumed_data = reader.read_remainder()
-
-        return ZipExtraHeader(
-            magic=header_id,
-            is_local=is_local,
-            interpretation=interpretation,
-            warnings=tuple(warnings),
-            unconsumed_data=unconsumed_data,
-        )
-
-    _cached_header_index: ClassVar[Optional[Dict[int, Type['ZipExtraHeaderInterpretation']]]] = None
-
-    @classmethod
-    def get_header_class_for_magic(cls, magic: int) -> Optional[Type['ZipExtraHeaderInterpretation']]:
-        if cls._cached_header_index is None:
-            cls._cached_header_index = { header_class.magic: header_class for header_class in _ALL_HEADER_CLASSES }
-
-        return cls._cached_header_index.get(magic)
 
 
 @dataclass(frozen=True)
@@ -497,12 +451,6 @@ class ZXHJARMarker(ZipExtraHeaderInterpretation):
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHJARMarker':
         return ZXHJARMarker()
-
-
-_ALL_HEADER_CLASSES : List[Type[ZipExtraHeaderInterpretation]] = [
-    ZXHZip64, ZXHPkWareNTFS, ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1,
-    ZXHInfoZipUnicodeComment, ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker
-]
 
 
 class ZipExtraFieldsError(Exception):
