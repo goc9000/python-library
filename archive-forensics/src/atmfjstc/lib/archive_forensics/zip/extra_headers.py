@@ -2,7 +2,7 @@
 Utilities for handling ZIP "extra data" fields
 """
 
-from dataclasses import dataclass, replace, field
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Tuple, Type, TypeVar, ClassVar
 
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
@@ -43,16 +43,17 @@ def _parse_zip_extra_data(data: bytes, is_local: bool) -> List['ZipExtraHeader']
 class ZipExtraHeader:
     magic: int
     is_local: bool
+    interpretation: Optional['ZipExtraHeaderInterpretation']
     warnings: Tuple[str, ...]
     unconsumed_data: Optional[bytes]
 
     @property
     def is_unrecognized(self) -> bool:
-        return isinstance(self, ZXHUnrecognized)
+        return self.interpretation is None
 
     def description(self) -> str:
         return f"ZIP {'local' if self.is_local else 'central'} extra header of type " + \
-               (f"0x{self.magic:04x}" if self.is_unrecognized else self.__class__.__name__)
+               (f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation.__class__.__name__)
 
     @staticmethod
     def parse_from_tlv(header_id: int, data: bytes, is_local: bool) -> 'ZipExtraHeader':
@@ -60,27 +61,29 @@ class ZipExtraHeader:
 
         header_class = ZipExtraHeader.get_header_class_for_magic(header_id)
         if header_class is None:
-            return ZXHUnrecognized(header_id, is_local, (), reader.read_remainder())
+            return ZipExtraHeader(header_id, is_local, None, (), reader.read_remainder())
 
-        result = header_class.parse(reader, is_local)
+        interpretation = header_class.parse(reader, is_local)
+
+        warnings = interpretation.warnings
+        unconsumed_data = interpretation.unconsumed_data
 
         if not reader.eof():
-            result = replace(
-                result,
-                warnings=(*result.warnings, "Header was not fully consumed"),
-                unconsumed_data=reader.read_remainder()
-            )
+            warnings = interpretation.warnings + ("Header was not fully consumed",)
+            unconsumed_data = reader.read_remainder()
 
-        return result
+        return ZipExtraHeader(
+            magic=header_id,
+            is_local=is_local,
+            interpretation=interpretation,
+            warnings=warnings,
+            unconsumed_data=unconsumed_data,
+        )
 
-    @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZipExtraHeader':
-        raise NotImplementedError("Must override this in concrete header classes")
-
-    _cached_header_index: ClassVar[Optional[Dict[int, Type['ZipExtraHeader']]]] = None
+    _cached_header_index: ClassVar[Optional[Dict[int, Type['ZipExtraHeaderInterpretation']]]] = None
 
     @classmethod
-    def get_header_class_for_magic(cls, magic: int) -> Optional[Type['ZipExtraHeader']]:
+    def get_header_class_for_magic(cls, magic: int) -> Optional[Type['ZipExtraHeaderInterpretation']]:
         if cls._cached_header_index is None:
             cls._cached_header_index = { header_class.magic: header_class for header_class in _ALL_HEADER_CLASSES }
 
@@ -88,12 +91,21 @@ class ZipExtraHeader:
 
 
 @dataclass(frozen=True)
-class ZXHUnrecognized(ZipExtraHeader):
-    pass
+class ZipExtraHeaderInterpretation:
+    # NOTE: temporary duplicates of the container's fields until refactoring is complete
+    magic: int
+    is_local: bool
+    warnings: Tuple[str, ...]
+    unconsumed_data: Optional[bytes]
+    # NOTE: end of temporary fields
+
+    @staticmethod
+    def parse(reader: BinaryReader, is_local: bool) -> 'ZipExtraHeaderInterpretation':
+        raise NotImplementedError("Must override this in concrete header classes")
 
 
 @dataclass(frozen=True)
-class ZXHZip64(ZipExtraHeader):
+class ZXHZip64(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x0001, init=False)
     sizes: Tuple[int, ...]
     disk_start_no: Optional[int]
@@ -122,7 +134,7 @@ TagT = TypeVar('TagT', bound='NTFSInfoTag')
 
 
 @dataclass(frozen=True)
-class ZXHPkWareNTFS(ZipExtraHeader):
+class ZXHPkWareNTFS(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x000a, init=False)
     tags: Tuple['NTFSInfoTag', ...]
     reserved: int
@@ -182,7 +194,7 @@ class NTFSInfoUnhandledTag(NTFSInfoTag):
 
 
 @dataclass(frozen=True)
-class ZXHPkWareUnix(ZipExtraHeader):
+class ZXHPkWareUnix(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x000d, init=False)
     atime: ISOTimestamp
     mtime: ISOTimestamp
@@ -217,7 +229,7 @@ class ZXHPkWareUnix(ZipExtraHeader):
 
 
 @dataclass(frozen=True)
-class ZXHNTSecurityDescriptor(ZipExtraHeader):
+class ZXHNTSecurityDescriptor(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x4453, init=False)
     uncompressed_data_size: int
     data: Optional['NTSecurityDescriptorData']
@@ -277,7 +289,7 @@ class NTSecurityDescriptorDataV0(NTSecurityDescriptorDataDecompressed):
 
 
 @dataclass(frozen=True)
-class ZXHExtendedTimestamps(ZipExtraHeader):
+class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x5455, init=False)
     mtime: Optional[ISOTimestamp] = None
     atime: Optional[ISOTimestamp] = None
@@ -315,7 +327,7 @@ class ZXHExtendedTimestamps(ZipExtraHeader):
 
 
 @dataclass(frozen=True)
-class ZXHInfoZipUnixV1(ZipExtraHeader):
+class ZXHInfoZipUnixV1(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x5855, init=False)
     mtime: ISOTimestamp
     atime: ISOTimestamp
@@ -338,7 +350,7 @@ class ZXHInfoZipUnixV1(ZipExtraHeader):
 
 
 @dataclass(frozen=True)
-class ZXHInfoZipUnicodeComment(ZipExtraHeader):
+class ZXHInfoZipUnicodeComment(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x6375, init=False)
     data: Optional['IZUnicodeCommentData']
 
@@ -382,7 +394,7 @@ class IZUnicodeCommentDataV1(IZUnicodeCommentData):
 
 
 @dataclass(frozen=True)
-class ZXHInfoZipUnicodePath(ZipExtraHeader):
+class ZXHInfoZipUnicodePath(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x7075, init=False)
     data: Optional['IZUnicodePathData']
 
@@ -426,7 +438,7 @@ class IZUnicodePathDataV1(IZUnicodePathData):
 
 
 @dataclass(frozen=True)
-class ZXHInfoZipUnixV2(ZipExtraHeader):
+class ZXHInfoZipUnixV2(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x7855, init=False)
     uid: Optional[PosixUID] = None
     gid: Optional[PosixGID] = None
@@ -442,7 +454,7 @@ class ZXHInfoZipUnixV2(ZipExtraHeader):
 
 
 @dataclass(frozen=True)
-class ZXHInfoZipUnixV3(ZipExtraHeader):
+class ZXHInfoZipUnixV3(ZipExtraHeaderInterpretation):
     magic: int = field(default=0x7875, init=False)
     data: Optional['IZUnixV3Data']
 
@@ -489,7 +501,7 @@ class IZUnixV3DataV1(IZUnixV3Data):
 
 
 @dataclass(frozen=True)
-class ZXHJARMarker(ZipExtraHeader):
+class ZXHJARMarker(ZipExtraHeaderInterpretation):
     magic: int = field(default=0xcafe, init=False)
 
     @staticmethod
@@ -497,7 +509,7 @@ class ZXHJARMarker(ZipExtraHeader):
         return ZXHJARMarker(is_local, (), None)
 
 
-_ALL_HEADER_CLASSES : List[Type[ZipExtraHeader]] = [
+_ALL_HEADER_CLASSES : List[Type[ZipExtraHeaderInterpretation]] = [
     ZXHZip64, ZXHPkWareNTFS, ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1,
     ZXHInfoZipUnicodeComment, ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker
 ]
