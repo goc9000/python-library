@@ -46,10 +46,6 @@ class ZipExtraHeader:
 
 @dataclass(frozen=True)
 class ZipExtraHeaderInterpretation:
-    # NOTE: temporary duplicates of the container's fields until refactoring is complete
-    magic: int
-    # NOTE: end of temporary fields
-
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZipExtraHeaderInterpretation':
         raise NotImplementedError("Must override this in concrete header classes")
@@ -57,7 +53,6 @@ class ZipExtraHeaderInterpretation:
 
 @dataclass(frozen=True)
 class ZXHZip64(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x0001, init=False)
     sizes: Tuple[int, ...]
     disk_start_no: Optional[int]
 
@@ -86,7 +81,6 @@ TagT = TypeVar('TagT', bound='NTFSInfoTag')
 
 @dataclass(frozen=True)
 class ZXHPkWareNTFS(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x000a, init=False)
     tags: Tuple['NTFSInfoTag', ...]
     reserved: int
 
@@ -147,7 +141,6 @@ class NTFSInfoUnhandledTag(NTFSInfoTag):
 
 @dataclass(frozen=True)
 class ZXHPkWareUnix(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x000d, init=False)
     atime: ISOTimestamp
     mtime: ISOTimestamp
     uid: PosixUID
@@ -181,7 +174,6 @@ class ZXHPkWareUnix(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class ZXHNTSecurityDescriptor(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x4453, init=False)
     uncompressed_data_size: int
     data: Optional['NTSecurityDescriptorData']
 
@@ -240,7 +232,6 @@ class NTSecurityDescriptorDataV0(NTSecurityDescriptorDataDecompressed):
 
 @dataclass(frozen=True)
 class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x5455, init=False)
     mtime: Optional[ISOTimestamp] = None
     atime: Optional[ISOTimestamp] = None
     ctime: Optional[ISOTimestamp] = None
@@ -276,7 +267,6 @@ class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class ZXHInfoZipUnixV1(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x5855, init=False)
     mtime: ISOTimestamp
     atime: ISOTimestamp
     uid: Optional[PosixUID] = None
@@ -298,7 +288,6 @@ class ZXHInfoZipUnixV1(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class ZXHInfoZipUnicodeComment(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x6375, init=False)
     data: Optional['IZUnicodeCommentData']
 
     @staticmethod
@@ -341,7 +330,6 @@ class IZUnicodeCommentDataV1(IZUnicodeCommentData):
 
 @dataclass(frozen=True)
 class ZXHInfoZipUnicodePath(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x7075, init=False)
     data: Optional['IZUnicodePathData']
 
     @staticmethod
@@ -384,7 +372,6 @@ class IZUnicodePathDataV1(IZUnicodePathData):
 
 @dataclass(frozen=True)
 class ZXHInfoZipUnixV2(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x7855, init=False)
     uid: Optional[PosixUID] = None
     gid: Optional[PosixGID] = None
 
@@ -400,7 +387,6 @@ class ZXHInfoZipUnixV2(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class ZXHInfoZipUnixV3(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0x7875, init=False)
     data: Optional['IZUnixV3Data']
 
     @staticmethod
@@ -446,8 +432,6 @@ class IZUnixV3DataV1(IZUnixV3Data):
 
 @dataclass(frozen=True)
 class ZXHJARMarker(ZipExtraHeaderInterpretation):
-    magic: int = field(default=0xcafe, init=False)
-
     @staticmethod
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHJARMarker':
         return ZXHJARMarker()

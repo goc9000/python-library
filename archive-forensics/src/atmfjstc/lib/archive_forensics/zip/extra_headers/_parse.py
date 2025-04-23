@@ -2,7 +2,7 @@
 Utilities for handling ZIP "extra data" fields
 """
 
-from typing import List, Optional, Dict, Type
+from typing import List, Dict, Callable
 
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 
@@ -30,12 +30,19 @@ def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
 def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipExtraHeader:
     reader = BinaryReader(data, big_endian=False)
 
-    header_class = _get_header_class_for_magic(header_id)
-    if header_class is None:
-        return ZipExtraHeader(header_id, is_local, None, (), reader.read_remainder())
+    parser = _PARSERS_BY_MAGIC.get(header_id)
+
+    if parser is None:
+        return ZipExtraHeader(
+            magic=header_id,
+            is_local=is_local,
+            interpretation=None,
+            warnings=(),
+            unconsumed_data=reader.read_remainder()
+        )
 
     warnings = []
-    interpretation = header_class.parse(reader, is_local, warnings)
+    interpretation = parser(reader, is_local, warnings)
 
     unconsumed_data = None
 
@@ -52,19 +59,16 @@ def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipEx
     )
 
 
-_cached_header_index: Optional[Dict[int, Type[ZipExtraHeaderInterpretation]]] = None
-
-
-def _get_header_class_for_magic(magic: int) -> Optional[Type[ZipExtraHeaderInterpretation]]:
-    global _cached_header_index
-
-    if _cached_header_index is None:
-        _cached_header_index = { header_class.magic: header_class for header_class in _ALL_HEADER_CLASSES }
-
-    return _cached_header_index.get(magic)
-
-
-_ALL_HEADER_CLASSES : List[Type[ZipExtraHeaderInterpretation]] = [
-    ZXHZip64, ZXHPkWareNTFS, ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1,
-    ZXHInfoZipUnicodeComment, ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker
-]
+_PARSERS_BY_MAGIC : Dict[int, Callable[[BinaryReader, bool, List[str]], ZipExtraHeaderInterpretation]] = {
+    0x0001: ZXHZip64.parse,
+    0x000a: ZXHPkWareNTFS.parse,
+    0x000d: ZXHPkWareUnix.parse,
+    0x4453: ZXHNTSecurityDescriptor.parse,
+    0x5455: ZXHExtendedTimestamps.parse,
+    0x5855: ZXHInfoZipUnixV1.parse,
+    0x6375: ZXHInfoZipUnicodeComment.parse,
+    0x7075: ZXHInfoZipUnicodePath.parse,
+    0x7855: ZXHInfoZipUnixV2.parse,
+    0x7875: ZXHInfoZipUnixV3.parse,
+    0xcafe: ZXHJARMarker.parse,
+}
