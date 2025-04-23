@@ -63,20 +63,20 @@ class ZipExtraHeader:
         if header_class is None:
             return ZipExtraHeader(header_id, is_local, None, (), reader.read_remainder())
 
-        interpretation = header_class.parse(reader, is_local)
+        warnings = []
+        interpretation = header_class.parse(reader, is_local, warnings)
 
-        warnings = interpretation.warnings
         unconsumed_data = interpretation.unconsumed_data
 
         if not reader.eof():
-            warnings = interpretation.warnings + ("Header was not fully consumed",)
+            warnings.append("Header was not fully consumed")
             unconsumed_data = reader.read_remainder()
 
         return ZipExtraHeader(
             magic=header_id,
             is_local=is_local,
             interpretation=interpretation,
-            warnings=warnings,
+            warnings=tuple(warnings),
             unconsumed_data=unconsumed_data,
         )
 
@@ -100,7 +100,7 @@ class ZipExtraHeaderInterpretation:
     # NOTE: end of temporary fields
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZipExtraHeaderInterpretation':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZipExtraHeaderInterpretation':
         raise NotImplementedError("Must override this in concrete header classes")
 
 
@@ -111,7 +111,7 @@ class ZXHZip64(ZipExtraHeaderInterpretation):
     disk_start_no: Optional[int]
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHZip64':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHZip64':
         # Due to the way this header works (subfields may be included or omitted depending on other fields in the
         # local/central directory record), we can't decode it here completely as we need a lot more context. So we just
         # return a list of unmarked 64-bit sizes, and the 32-bit disk start number.
@@ -152,7 +152,7 @@ class ZXHPkWareNTFS(ZipExtraHeaderInterpretation):
         return result
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHPkWareNTFS':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHPkWareNTFS':
         reserved = reader.read_uint32('reserved field')
 
         tags = tuple(NTFSInfoTag.parse(tag, value) for tag, value in reader.iter_tlv(type_bytes=2, length_bytes=2))
@@ -204,7 +204,7 @@ class ZXHPkWareUnix(ZipExtraHeaderInterpretation):
     link_target: Optional[bytes] = None
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHPkWareUnix':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHPkWareUnix':
         raw_atime, raw_mtime, uid, gid = reader.read_struct('IIHH')
         device = link_target = None
 
@@ -235,7 +235,7 @@ class ZXHNTSecurityDescriptor(ZipExtraHeaderInterpretation):
     data: Optional['NTSecurityDescriptorData']
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHNTSecurityDescriptor':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHNTSecurityDescriptor':
         descriptor_size = reader.read_uint32('descriptor size')
         data = None
         warnings = ()
@@ -296,7 +296,7 @@ class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
     ctime: Optional[ISOTimestamp] = None
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHExtendedTimestamps':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHExtendedTimestamps':
         flags = reader.read_uint8('flags')
 
         warnings = []
@@ -335,7 +335,7 @@ class ZXHInfoZipUnixV1(ZipExtraHeaderInterpretation):
     gid: Optional[PosixGID] = None
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnixV1':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnixV1':
         raw_atime, raw_mtime = reader.read_struct('II', 'timestamps')
 
         if not reader.eof():
@@ -355,7 +355,7 @@ class ZXHInfoZipUnicodeComment(ZipExtraHeaderInterpretation):
     data: Optional['IZUnicodeCommentData']
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnicodeComment':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnicodeComment':
         data = IZUnicodeCommentData.parse(reader)
 
         warnings = ()
@@ -399,7 +399,7 @@ class ZXHInfoZipUnicodePath(ZipExtraHeaderInterpretation):
     data: Optional['IZUnicodePathData']
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnicodePath':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnicodePath':
         data = IZUnicodePathData.parse(reader)
 
         warnings = ()
@@ -444,7 +444,7 @@ class ZXHInfoZipUnixV2(ZipExtraHeaderInterpretation):
     gid: Optional[PosixGID] = None
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnixV2':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnixV2':
         if is_local:
             uid, gid = reader.read_struct('HH', 'UID/GID')
         else:
@@ -459,7 +459,7 @@ class ZXHInfoZipUnixV3(ZipExtraHeaderInterpretation):
     data: Optional['IZUnixV3Data']
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHInfoZipUnixV3':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnixV3':
         data = IZUnixV3Data.parse(reader)
 
         warnings = ()
@@ -505,7 +505,7 @@ class ZXHJARMarker(ZipExtraHeaderInterpretation):
     magic: int = field(default=0xcafe, init=False)
 
     @staticmethod
-    def parse(reader: BinaryReader, is_local: bool) -> 'ZXHJARMarker':
+    def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHJARMarker':
         return ZXHJARMarker(is_local, (), None)
 
 
