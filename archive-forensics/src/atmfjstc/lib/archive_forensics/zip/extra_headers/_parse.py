@@ -7,12 +7,19 @@ from typing import List, Dict, Callable
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time
 
+from atmfjstc.lib.os_forensics.windows import iso_from_ntfs_time
+from atmfjstc.lib.os_forensics.windows.security.parse import decode_nt_security_descriptor
+from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID
+
+from .. import decompress_now
+
 from . import ZipExtraHeader, ZipExtraHeaderInterpretation, MalformedZipExtraDataError, ZXHZip64, ZXHPkWareNTFS, \
     ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1, ZXHInfoZipUnicodeComment, \
     ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker, NTFSInfoTag, NTFSInfoUnhandledTag, \
     NTSecurityDescriptorData, NTSecurityDescriptorDataDecompressed, NTSecurityDescriptorDataCompressed, \
     IZUnicodeCommentData, IZUnicodeCommentDataUnsupported, IZUnicodePathData, IZUnicodePathDataUnsupported, \
-    IZUnixV3Data, IZUnixV3DataUnsupported
+    IZUnixV3Data, IZUnixV3DataUnsupported, NTFSInfoTimestampsTag, NTSecurityDescriptorDataV0, IZUnicodeCommentDataV1, \
+    IZUnicodePathDataV1, IZUnixV3DataV1
 
 
 def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
@@ -85,7 +92,7 @@ def _parse_zip64(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) 
 def _parse_pkware_ntfs(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHPkWareNTFS:
     reserved = reader.read_uint32('reserved field')
 
-    tags = tuple(NTFSInfoTag.parse(tag, value) for tag, value in reader.iter_tlv(type_bytes=2, length_bytes=2))
+    tags = tuple(_parse_ntfs_info_tag(tag, value) for tag, value in reader.iter_tlv(type_bytes=2, length_bytes=2))
 
     unhandled = set(tag.tag for tag in tags if isinstance(tag, NTFSInfoUnhandledTag))
 
@@ -93,6 +100,17 @@ def _parse_pkware_ntfs(reader: BinaryReader, is_local: bool, mut_warnings: List[
         mut_warnings.append(f"Unhandled tag(s) of type {', '.join(str(tag) for tag in unhandled)}")
 
     return ZXHPkWareNTFS(tags, reserved)
+
+
+def _parse_ntfs_info_tag(tag: int, value: bytes) -> NTFSInfoTag:
+    reader = BinaryReader(value, big_endian=False)
+
+    if tag == 1:
+        return NTFSInfoTimestampsTag(*(
+            iso_from_ntfs_time(raw_time) for raw_time in reader.read_struct('QQQ', 'timestamps')
+        ))
+
+    return NTFSInfoUnhandledTag(tag, value)
 
 
 def _parse_pkware_unix(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHPkWareUnix:
@@ -125,7 +143,7 @@ def _parse_nt_security_descriptor(
     data = None
 
     if is_local:
-        data = NTSecurityDescriptorData.parse(reader)
+        data = _parse_nt_security_descriptor_data(reader)
 
         if isinstance(data, NTSecurityDescriptorDataCompressed):
             mut_warnings.append("Failed to decompress descriptor")
@@ -133,6 +151,21 @@ def _parse_nt_security_descriptor(
             mut_warnings.append("Don't know how to decode this format version")
 
     return ZXHNTSecurityDescriptor(descriptor_size, data)
+
+
+def _parse_nt_security_descriptor_data(reader: BinaryReader) -> NTSecurityDescriptorData:
+    version, compress_type, crc = reader.read_struct('BHI')
+    compressed_data = reader.read_remainder()
+
+    try:
+        raw_data = decompress_now(compressed_data, compress_type)
+    except Exception:
+        return NTSecurityDescriptorDataCompressed(version, compress_type, compressed_data)
+
+    if version == 0:
+        return NTSecurityDescriptorDataV0(compress_type, raw_data, decode_nt_security_descriptor(raw_data))
+
+    return NTSecurityDescriptorDataDecompressed(version, compress_type, raw_data)
 
 
 def _parse_extended_timestamps(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHExtendedTimestamps:
@@ -179,7 +212,7 @@ def _parse_infozip_unix_v1(reader: BinaryReader, is_local: bool, mut_warnings: L
 def _parse_infozip_unicode_comment(
     reader: BinaryReader, is_local: bool, mut_warnings: List[str]
 ) -> ZXHInfoZipUnicodeComment:
-    data = IZUnicodeCommentData.parse(reader)
+    data = _parse_infozip_unicode_comment_data(reader)
 
     if isinstance(data, IZUnicodeCommentDataUnsupported):
         mut_warnings.append(f"Don't know how to decode this format version")
@@ -187,13 +220,35 @@ def _parse_infozip_unicode_comment(
     return ZXHInfoZipUnicodeComment(data)
 
 
+def _parse_infozip_unicode_comment_data(reader: BinaryReader) -> IZUnicodeCommentData:
+    version = reader.read_uint8('version')
+
+    if version == 1:
+        standard_comment_crc32 = reader.read_uint32('CRC32')
+        comment = reader.read_remainder().decode('utf-8')
+        return IZUnicodeCommentDataV1(comment, standard_comment_crc32)
+    else:
+        return IZUnicodeCommentDataUnsupported(version, reader.read_remainder())
+
+
 def _parse_infozip_unicode_path(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHInfoZipUnicodePath:
-    data = IZUnicodePathData.parse(reader)
+    data = _parse_infozip_unicode_path_data(reader)
 
     if isinstance(data, IZUnicodePathDataUnsupported):
         mut_warnings.append("Don't know how to decode this format version")
 
     return ZXHInfoZipUnicodePath(data)
+
+
+def _parse_infozip_unicode_path_data(reader: BinaryReader) -> IZUnicodePathData:
+    version = reader.read_uint8('version')
+
+    if version == 1:
+        standard_path_crc32 = reader.read_uint32('CRC32')
+        path = reader.read_remainder().decode('utf-8')
+        return IZUnicodePathDataV1(path, standard_path_crc32)
+    else:
+        return IZUnicodePathDataUnsupported(version, reader.read_remainder())
 
 
 def _parse_infozip_unix_v2(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHInfoZipUnixV2:
@@ -206,12 +261,26 @@ def _parse_infozip_unix_v2(reader: BinaryReader, is_local: bool, mut_warnings: L
 
 
 def _parse_infozip_unix_v3(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHInfoZipUnixV3:
-    data = IZUnixV3Data.parse(reader)
+    data = _parse_infozip_unix_v3_data(reader)
 
     if isinstance(data, IZUnixV3DataUnsupported):
         mut_warnings.append("Don't know how to decode this format version")
 
     return ZXHInfoZipUnixV3(data)
+
+
+def _parse_infozip_unix_v3_data(reader: BinaryReader) -> IZUnixV3Data:
+    version = reader.read_uint8('version')
+
+    if version == 1:
+        uid_size = reader.read_uint8('UID size')
+        uid = PosixUID(reader.read_fixed_size_int(uid_size, signed=False, meaning='UID'))
+        gid_size = reader.read_uint8('GID size')
+        gid = PosixGID(reader.read_fixed_size_int(gid_size, signed=False, meaning='GID'))
+
+        return IZUnixV3DataV1(uid, gid)
+    else:
+        return IZUnixV3DataUnsupported(version, reader.read_remainder())
 
 
 def _parse_jar_marker(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHJARMarker:

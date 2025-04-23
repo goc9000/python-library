@@ -5,14 +5,9 @@ Utilities for handling ZIP "extra data" fields
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Type, TypeVar
 
-from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 from atmfjstc.lib.iso_timestamp import ISOTimestamp
-from atmfjstc.lib.os_forensics.windows import iso_from_ntfs_time
 from atmfjstc.lib.os_forensics.windows.security import NTSecurityDescriptor
-from atmfjstc.lib.os_forensics.windows.security.parse import decode_nt_security_descriptor
 from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID, PosixDeviceID
-
-from .. import decompress_now
 
 
 def parse_zip_central_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
@@ -78,23 +73,11 @@ class ZXHPkWareNTFS(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class NTFSInfoTag:
-    tag: int
-
-    @staticmethod
-    def parse(tag: int, value: bytes) -> 'NTFSInfoTag':
-        reader = BinaryReader(value, big_endian=False)
-
-        if tag == 1:
-            return NTFSInfoTimestampsTag(*(
-                iso_from_ntfs_time(raw_time) for raw_time in reader.read_struct('QQQ', 'timestamps')
-            ))
-
-        return NTFSInfoUnhandledTag(tag, value)
+    pass
 
 
 @dataclass(frozen=True)
 class NTFSInfoTimestampsTag(NTFSInfoTag):
-    tag: int = field(default=1, init=False)
     mtime: ISOTimestamp
     atime: ISOTimestamp
     ctime: ISOTimestamp
@@ -102,6 +85,7 @@ class NTFSInfoTimestampsTag(NTFSInfoTag):
 
 @dataclass(frozen=True)
 class NTFSInfoUnhandledTag(NTFSInfoTag):
+    tag: int
     raw_data: bytes
 
 
@@ -125,21 +109,6 @@ class ZXHNTSecurityDescriptor(ZipExtraHeaderInterpretation):
 class NTSecurityDescriptorData:
     format_version: int
     compression_method: int
-
-    @staticmethod
-    def parse(reader: BinaryReader) -> 'NTSecurityDescriptorData':
-        version, compress_type, crc = reader.read_struct('BHI')
-        compressed_data = reader.read_remainder()
-
-        try:
-            raw_data = decompress_now(compressed_data, compress_type)
-        except Exception:
-            return NTSecurityDescriptorDataCompressed(version, compress_type, compressed_data)
-
-        if version == 0:
-            return NTSecurityDescriptorDataV0(compress_type, raw_data, decode_nt_security_descriptor(raw_data))
-
-        return NTSecurityDescriptorDataDecompressed(version, compress_type, raw_data)
 
 
 @dataclass(frozen=True)
@@ -180,28 +149,17 @@ class ZXHInfoZipUnicodeComment(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class IZUnicodeCommentData:
-    format_version: int
-
-    @staticmethod
-    def parse(reader: BinaryReader) -> 'IZUnicodeCommentData':
-        version = reader.read_uint8('version')
-
-        if version == 1:
-            standard_comment_crc32 = reader.read_uint32('CRC32')
-            comment = reader.read_remainder().decode('utf-8')
-            return IZUnicodeCommentDataV1(comment, standard_comment_crc32)
-        else:
-            return IZUnicodeCommentDataUnsupported(version, reader.read_remainder())
+    pass
 
 
 @dataclass(frozen=True)
 class IZUnicodeCommentDataUnsupported(IZUnicodeCommentData):
+    format_version: int
     raw_data: bytes
 
 
 @dataclass(frozen=True)
 class IZUnicodeCommentDataV1(IZUnicodeCommentData):
-    format_version: int = field(default=1, init=False)
     comment: str
     standard_comment_crc32: int
 
@@ -213,28 +171,17 @@ class ZXHInfoZipUnicodePath(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class IZUnicodePathData:
-    format_version: int
-
-    @staticmethod
-    def parse(reader: BinaryReader) -> 'IZUnicodePathData':
-        version = reader.read_uint8('version')
-
-        if version == 1:
-            standard_path_crc32 = reader.read_uint32('CRC32')
-            path = reader.read_remainder().decode('utf-8')
-            return IZUnicodePathDataV1(path, standard_path_crc32)
-        else:
-            return IZUnicodePathDataUnsupported(version, reader.read_remainder())
+    pass
 
 
 @dataclass(frozen=True)
 class IZUnicodePathDataUnsupported(IZUnicodePathData):
+    format_version: int
     raw_data: bytes
 
 
 @dataclass(frozen=True)
 class IZUnicodePathDataV1(IZUnicodePathData):
-    format_version: int = field(default=1, init=False)
     path: str
     standard_path_crc32: int
 
@@ -252,31 +199,17 @@ class ZXHInfoZipUnixV3(ZipExtraHeaderInterpretation):
 
 @dataclass(frozen=True)
 class IZUnixV3Data:
-    format_version: int
-
-    @staticmethod
-    def parse(reader: BinaryReader) -> 'IZUnixV3Data':
-        version = reader.read_uint8('version')
-
-        if version == 1:
-            uid_size = reader.read_uint8('UID size')
-            uid = PosixUID(reader.read_fixed_size_int(uid_size, signed=False, meaning='UID'))
-            gid_size = reader.read_uint8('GID size')
-            gid = PosixGID(reader.read_fixed_size_int(gid_size, signed=False, meaning='GID'))
-
-            return IZUnixV3DataV1(uid, gid)
-        else:
-            return IZUnixV3DataUnsupported(version, reader.read_remainder())
+    pass
 
 
 @dataclass(frozen=True)
 class IZUnixV3DataUnsupported(IZUnixV3Data):
+    format_version: int
     raw_data: bytes
 
 
 @dataclass(frozen=True)
 class IZUnixV3DataV1(IZUnixV3Data):
-    format_version: int = field(default=1, init=False)
     uid: PosixUID
     gid: PosixGID
 
