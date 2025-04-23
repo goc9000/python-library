@@ -46,9 +46,13 @@ class ZipExtraHeader:
     warnings: Tuple[str, ...]
     unconsumed_data: Optional[bytes]
 
+    @property
+    def is_unrecognized(self) -> bool:
+        return isinstance(self, ZXHUnrecognized)
+
     def description(self) -> str:
         return f"ZIP {'local' if self.is_local else 'central'} extra header of type " + \
-               (self.__class__.__name__ if not isinstance(self, ZXHUnrecognized) else f"0x{self.magic:04x}")
+               (f"0x{self.magic:04x}" if self.is_unrecognized else self.__class__.__name__)
 
     @staticmethod
     def parse_from_tlv(header_id: int, data: bytes, is_local: bool) -> 'ZipExtraHeader':
@@ -56,7 +60,7 @@ class ZipExtraHeader:
 
         header_class = ZipExtraHeader.get_header_class_for_magic(header_id)
         if header_class is None:
-            return ZXHUnrecognized(header_id, is_local, (), None, reader.read_remainder())
+            return ZXHUnrecognized(header_id, is_local, (), reader.read_remainder())
 
         result = header_class.parse(reader, is_local)
 
@@ -85,7 +89,7 @@ class ZipExtraHeader:
 
 @dataclass(frozen=True)
 class ZXHUnrecognized(ZipExtraHeader):
-    raw_data: bytes
+    pass
 
 
 @dataclass(frozen=True)
