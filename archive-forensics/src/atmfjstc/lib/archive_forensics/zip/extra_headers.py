@@ -158,10 +158,11 @@ class ZXHPkWareNTFS(ZipExtraHeaderInterpretation):
         tags = tuple(NTFSInfoTag.parse(tag, value) for tag, value in reader.iter_tlv(type_bytes=2, length_bytes=2))
 
         unhandled = set(tag.tag for tag in tags if isinstance(tag, NTFSInfoUnhandledTag))
-        warnings = (f"Unhandled tag(s) of type {', '.join(str(tag) for tag in unhandled)}",) if len(
-            unhandled) > 0 else ()
 
-        return ZXHPkWareNTFS(is_local, warnings, None, tags, reserved)
+        if len(unhandled) > 0:
+            mut_warnings.append(f"Unhandled tag(s) of type {', '.join(str(tag) for tag in unhandled)}")
+
+        return ZXHPkWareNTFS(is_local, (), None, tags, reserved)
 
 
 @dataclass(frozen=True)
@@ -238,17 +239,16 @@ class ZXHNTSecurityDescriptor(ZipExtraHeaderInterpretation):
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHNTSecurityDescriptor':
         descriptor_size = reader.read_uint32('descriptor size')
         data = None
-        warnings = ()
 
         if is_local:
             data = NTSecurityDescriptorData.parse(reader)
 
             if isinstance(data, NTSecurityDescriptorDataCompressed):
-                warnings = (f"Failed to decompress descriptor",)
+                mut_warnings.append("Failed to decompress descriptor")
             elif data.__class__ == NTSecurityDescriptorDataDecompressed:
-                warnings = (f"Don't know how to decode this format version",)
+                mut_warnings.append("Don't know how to decode this format version")
 
-        return ZXHNTSecurityDescriptor(is_local, warnings, None, descriptor_size, data)
+        return ZXHNTSecurityDescriptor(is_local, (), None, descriptor_size, data)
 
 
 @dataclass(frozen=True)
@@ -299,10 +299,8 @@ class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHExtendedTimestamps':
         flags = reader.read_uint8('flags')
 
-        warnings = []
-
         if flags > 7:
-            warnings.append("Flags are set beyond bits 0-2, don't know how to handle those")
+            mut_warnings.append("Flags are set beyond bits 0-2, don't know how to handle those")
 
         # The spec states that, for the central version of this header, only the mtime is included, with the flags
         # being an irrelevant copy of those from the local version. In practice, this rule seems to be disregarded,
@@ -323,7 +321,7 @@ class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
             # ambiguity that implies
             ctime = iso_from_unix_time(reader.read_uint32('ctime')) if flags & (1 << 2) else None
 
-        return ZXHExtendedTimestamps(is_local, tuple(warnings), None, mtime=mtime, atime=atime, ctime=ctime)
+        return ZXHExtendedTimestamps(is_local, (), None, mtime=mtime, atime=atime, ctime=ctime)
 
 
 @dataclass(frozen=True)
@@ -358,11 +356,10 @@ class ZXHInfoZipUnicodeComment(ZipExtraHeaderInterpretation):
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnicodeComment':
         data = IZUnicodeCommentData.parse(reader)
 
-        warnings = ()
         if isinstance(data, IZUnicodeCommentDataUnsupported):
-            warnings = (f"Don't know how to decode this format version",)
+            mut_warnings.append(f"Don't know how to decode this format version")
 
-        return ZXHInfoZipUnicodeComment(is_local, warnings, None, data)
+        return ZXHInfoZipUnicodeComment(is_local, (), None, data)
 
 
 @dataclass(frozen=True)
@@ -402,11 +399,10 @@ class ZXHInfoZipUnicodePath(ZipExtraHeaderInterpretation):
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnicodePath':
         data = IZUnicodePathData.parse(reader)
 
-        warnings = ()
         if isinstance(data, IZUnicodePathDataUnsupported):
-            warnings = (f"Don't know how to decode this format version",)
+            mut_warnings.append("Don't know how to decode this format version")
 
-        return ZXHInfoZipUnicodePath(is_local, warnings, None, data)
+        return ZXHInfoZipUnicodePath(is_local, (), None, data)
 
 
 @dataclass(frozen=True)
@@ -462,11 +458,10 @@ class ZXHInfoZipUnixV3(ZipExtraHeaderInterpretation):
     def parse(reader: BinaryReader, is_local: bool, mut_warnings: list[str]) -> 'ZXHInfoZipUnixV3':
         data = IZUnixV3Data.parse(reader)
 
-        warnings = ()
         if isinstance(data, IZUnixV3DataUnsupported):
-            warnings = (f"Don't know how to decode this format version",)
+            mut_warnings.append("Don't know how to decode this format version")
 
-        return ZXHInfoZipUnixV3(is_local, warnings, None, data)
+        return ZXHInfoZipUnixV3(is_local, (), None, data)
 
 
 @dataclass(frozen=True)
