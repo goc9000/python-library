@@ -48,14 +48,13 @@ def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipEx
             magic=header_id,
             is_local=is_local,
             interpretation=None,
-            warnings=(),
             unconsumed_data=reader.read_remainder()
         )
 
     warnings = []
     interpretation = parser(reader, is_local, warnings)
 
-    unconsumed_data = None
+    unconsumed_data = b''
 
     if not reader.eof():
         warnings.append("Header was not fully consumed")

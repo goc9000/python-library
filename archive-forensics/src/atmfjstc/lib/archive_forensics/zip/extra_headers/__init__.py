@@ -26,9 +26,9 @@ def parse_zip_local_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
 class ZipExtraHeader:
     magic: int
     is_local: bool
-    interpretation: Optional['ZipExtraHeaderInterpretation']
-    warnings: Tuple[str, ...]
-    unconsumed_data: Optional[bytes]
+    interpretation: Optional['ZipExtraHeaderInterpretation'] = None
+    warnings: Tuple[str, ...] = ()
+    unconsumed_data: bytes = b''
 
     @property
     def is_unrecognized(self) -> bool:
