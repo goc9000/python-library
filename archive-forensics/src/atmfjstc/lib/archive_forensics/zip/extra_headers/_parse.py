@@ -2,7 +2,7 @@
 Utilities for handling ZIP "extra data" fields
 """
 
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Tuple, Type
 
 from atmfjstc.lib.binary_utils.BinaryReader import BinaryReader
 from atmfjstc.lib.iso_timestamp import iso_from_unix_time
@@ -41,13 +41,12 @@ def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
 def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipExtraHeader:
     reader = BinaryReader(data, big_endian=False)
 
-    parser = _PARSERS_BY_MAGIC.get(header_id)
+    interpretation_type, parser = _INTERPRETATIONS_BY_MAGIC.get(header_id, (None, None))
 
     if parser is None:
         return ZipExtraHeader(
             magic=header_id,
             is_local=is_local,
-            interpretation=None,
             unconsumed_data=reader.read_remainder()
         )
 
@@ -63,6 +62,7 @@ def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipEx
     return ZipExtraHeader(
         magic=header_id,
         is_local=is_local,
+        interpretation_type=interpretation_type,
         interpretation=interpretation,
         warnings=tuple(warnings),
         unconsumed_data=unconsumed_data,
@@ -286,16 +286,22 @@ def _parse_jar_marker(reader: BinaryReader, is_local: bool, mut_warnings: List[s
     return ZXHJARMarker()
 
 
-_PARSERS_BY_MAGIC : Dict[int, Callable[[BinaryReader, bool, List[str]], ZipExtraHeaderInterpretation]] = {
-    0x0001: _parse_zip64,
-    0x000a: _parse_pkware_ntfs,
-    0x000d: _parse_pkware_unix,
-    0x4453: _parse_nt_security_descriptor,
-    0x5455: _parse_extended_timestamps,
-    0x5855: _parse_infozip_unix_v1,
-    0x6375: _parse_infozip_unicode_comment,
-    0x7075: _parse_infozip_unicode_path,
-    0x7855: _parse_infozip_unix_v2,
-    0x7875: _parse_infozip_unix_v3,
-    0xcafe: _parse_jar_marker,
+_INTERPRETATIONS_BY_MAGIC : Dict[
+    int,
+    Tuple[
+        Type[ZipExtraHeaderInterpretation],
+        Callable[[BinaryReader, bool, List[str]], ZipExtraHeaderInterpretation]
+    ]
+] = {
+    0x0001: (ZXHZip64, _parse_zip64),
+    0x000a: (ZXHPkWareNTFS, _parse_pkware_ntfs),
+    0x000d: (ZXHPkWareUnix, _parse_pkware_unix),
+    0x4453: (ZXHNTSecurityDescriptor, _parse_nt_security_descriptor),
+    0x5455: (ZXHExtendedTimestamps, _parse_extended_timestamps),
+    0x5855: (ZXHInfoZipUnixV1, _parse_infozip_unix_v1),
+    0x6375: (ZXHInfoZipUnicodeComment, _parse_infozip_unicode_comment),
+    0x7075: (ZXHInfoZipUnicodePath, _parse_infozip_unicode_path),
+    0x7855: (ZXHInfoZipUnixV2, _parse_infozip_unix_v2),
+    0x7875: (ZXHInfoZipUnixV3, _parse_infozip_unix_v3),
+    0xcafe: (ZXHJARMarker, _parse_jar_marker),
 }

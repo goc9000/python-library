@@ -26,17 +26,18 @@ def parse_zip_local_extra_data(field_bytes: bytes) -> List['ZipExtraHeader']:
 class ZipExtraHeader:
     magic: int
     is_local: bool
+    interpretation_type: Optional[Type['ZipExtraHeaderInterpretation']] = None
     interpretation: Optional['ZipExtraHeaderInterpretation'] = None
     warnings: Tuple[str, ...] = ()
     unconsumed_data: bytes = b''
 
     @property
     def is_unrecognized(self) -> bool:
-        return self.interpretation is None
+        return self.interpretation_type is None
 
     def description(self, short: bool = False) -> str:
         centrality_text = 'local' if self.is_local else 'central'
-        type_text = f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation.__class__.__name__
+        type_text = f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation_type.__name__
 
         return f"{type_text} ({centrality_text})" \
             if short else f"ZIP {centrality_text} extra header of type {type_text}"
