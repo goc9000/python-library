@@ -226,11 +226,3 @@ class IZUnixV3DataV1(IZUnixV3Data):
 @dataclass(frozen=True)
 class ZXHJARMarker(ZipExtraHeaderInterpretation):
     pass
-
-
-class ZipExtraFieldsError(Exception):
-    pass
-
-
-class MalformedZipExtraDataError(ZipExtraFieldsError):
-    pass

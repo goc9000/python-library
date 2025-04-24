@@ -13,8 +13,8 @@ from atmfjstc.lib.os_forensics.posix import PosixUID, PosixGID
 
 from .. import decompress_now
 
-from . import ZipExtraHeader, ZipExtraHeaderInterpretation, MalformedZipExtraDataError, ZXHZip64, ZXHPkWareNTFS, \
-    ZXHPkWareUnix, ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1, ZXHInfoZipUnicodeComment, \
+from . import ZipExtraHeader, ZipExtraHeaderInterpretation, ZXHZip64, ZXHPkWareNTFS, ZXHPkWareUnix, \
+    ZXHNTSecurityDescriptor, ZXHExtendedTimestamps, ZXHInfoZipUnixV1, ZXHInfoZipUnicodeComment, \
     ZXHInfoZipUnicodePath, ZXHInfoZipUnixV2, ZXHInfoZipUnixV3, ZXHJARMarker, NTFSInfoTag, NTFSInfoUnhandledTag, \
     NTSecurityDescriptorData, NTSecurityDescriptorDataDecompressed, NTSecurityDescriptorDataCompressed, \
     IZUnicodeCommentData, IZUnicodeCommentDataUnsupported, IZUnicodePathData, IZUnicodePathDataUnsupported, \
@@ -26,14 +26,19 @@ def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
     result = []
 
     reader = BinaryReader(data, big_endian=False)
+    last_ok_position = 0
 
     try:
         for header_id, value in reader.iter_tlv(type_bytes=2, length_bytes=2, meaning='ZIP extra headers'):
             result.append(_parse_header_from_tlv(header_id, value, is_local))
+            last_ok_position = reader.tell()
     except Exception as e:
-        raise MalformedZipExtraDataError(
-            f"Malformed binary data for ZIP {'local' if is_local else 'central'} extra field"
-        ) from e
+        result.append(ZipExtraHeader(
+            magic=0,
+            is_local=is_local,
+            parse_error=e,
+            unconsumed_data=data[last_ok_position:],
+        ))
 
     return result
 
@@ -83,7 +88,7 @@ def _parse_zip64(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) 
     total_bytes = reader.bytes_remaining()
 
     if (total_bytes > 28) or (total_bytes % 4 != 0):
-        raise MalformedZipExtraDataError(
+        raise AssertionError(
             f"ZIP64 extra header size should be a multiple of 4 between 0 and 28, but it is {total_bytes}"
         )
 
