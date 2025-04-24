@@ -100,6 +100,16 @@ def _parse_zip64(reader: BinaryReader, is_local: bool, mut_warnings: List[Warnin
 
 
 def _parse_pkware_ntfs(reader: BinaryReader, is_local: bool, mut_warnings: List[Warning]) -> ZXHPkWareNTFS:
+    # KLUDGE: Some headers have been observed in the wild whereby the MTime, ATime, CTime etc. fields are intact, but
+    # there are only 0s where the TLV structure would be. Given that the app note insists that this header is virtually
+    # always 32 bytes and only tag type 1 was ever implemented, it's possible that some utility out there is taking
+    # shortcuts and just writing the times at a fixed location in the header. We check for this very specific case and
+    # try to recover.
+    if is_local and (reader.bytes_remaining() == 32) and (reader.peek(8) == (b'\x00' * 8)):
+        reader.skip_bytes(8)
+
+        return ZXHPkWareNTFS((_parse_ntfs_info_tag(1, reader.read_amount(24)),), 0)
+
     reserved = reader.read_uint32('reserved field')
 
     tags = tuple(_parse_ntfs_info_tag(tag, value) for tag, value in reader.iter_tlv(type_bytes=2, length_bytes=2))
