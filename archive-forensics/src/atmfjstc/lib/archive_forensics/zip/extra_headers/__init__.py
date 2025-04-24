@@ -34,9 +34,12 @@ class ZipExtraHeader:
     def is_unrecognized(self) -> bool:
         return self.interpretation is None
 
-    def description(self) -> str:
-        return f"ZIP {'local' if self.is_local else 'central'} extra header of type " + \
-               (f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation.__class__.__name__)
+    def description(self, short: bool = False) -> str:
+        centrality_text = 'local' if self.is_local else 'central'
+        type_text = f"0x{self.magic:04x}" if self.is_unrecognized else self.interpretation.__class__.__name__
+
+        return f"{type_text} ({centrality_text})" \
+            if short else f"ZIP {centrality_text} extra header of type {type_text}"
 
 
 @dataclass(frozen=True)
