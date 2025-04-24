@@ -39,21 +39,26 @@ def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
 
 
 def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipExtraHeader:
-    reader = BinaryReader(data, big_endian=False)
-
     interpretation_type, parser = _INTERPRETATIONS_BY_MAGIC.get(header_id, (None, None))
 
     if parser is None:
         return ZipExtraHeader(
             magic=header_id,
             is_local=is_local,
-            unconsumed_data=reader.read_remainder()
+            unconsumed_data=data
         )
 
-    warnings = []
-    interpretation = parser(reader, is_local, warnings)
+    reader = BinaryReader(data, big_endian=False)
 
+    interpretation = None
+    warnings = []
+    parse_error = None
     unconsumed_data = b''
+
+    try:
+        interpretation = parser(reader, is_local, warnings)
+    except Exception as e:
+        parse_error = e
 
     if not reader.eof():
         warnings.append("Header was not fully consumed")
@@ -64,6 +69,7 @@ def _parse_header_from_tlv(header_id: int, data: bytes, is_local: bool) -> ZipEx
         is_local=is_local,
         interpretation_type=interpretation_type,
         interpretation=interpretation,
+        parse_error=parse_error,
         warnings=tuple(warnings),
         unconsumed_data=unconsumed_data,
     )

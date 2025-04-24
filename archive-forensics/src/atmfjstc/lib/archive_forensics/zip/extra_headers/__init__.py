@@ -28,12 +28,17 @@ class ZipExtraHeader:
     is_local: bool
     interpretation_type: Optional[Type['ZipExtraHeaderInterpretation']] = None
     interpretation: Optional['ZipExtraHeaderInterpretation'] = None
+    parse_error: Optional[Exception] = None
     warnings: Tuple[str, ...] = ()
     unconsumed_data: bytes = b''
 
     @property
     def is_unrecognized(self) -> bool:
         return self.interpretation_type is None
+
+    @property
+    def is_failed(self) -> bool:
+        return self.parse_error is not None
 
     def description(self, short: bool = False) -> str:
         centrality_text = 'local' if self.is_local else 'central'
