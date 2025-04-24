@@ -29,7 +29,7 @@ class ZipExtraHeader:
     interpretation_type: Optional[Type['ZipExtraHeaderInterpretation']] = None
     interpretation: Optional['ZipExtraHeaderInterpretation'] = None
     parse_error: Optional[Exception] = None
-    warnings: Tuple[str, ...] = ()
+    warnings: Tuple[Warning, ...] = ()
     unconsumed_data: bytes = b''
 
     @property
