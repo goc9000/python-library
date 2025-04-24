@@ -19,7 +19,7 @@ from . import ZipExtraHeader, ZipExtraHeaderInterpretation, ZXHZip64, ZXHPkWareN
     NTSecurityDescriptorData, NTSecurityDescriptorDataDecompressed, NTSecurityDescriptorDataCompressed, \
     IZUnicodeCommentData, IZUnicodeCommentDataUnsupported, IZUnicodePathData, IZUnicodePathDataUnsupported, \
     IZUnixV3Data, IZUnixV3DataUnsupported, NTFSInfoTimestampsTag, NTSecurityDescriptorDataV0, IZUnicodeCommentDataV1, \
-    IZUnicodePathDataV1, IZUnixV3DataV1
+    IZUnicodePathDataV1, IZUnixV3DataV1, ZXHXceedUnicodeData
 
 
 def parse_zip_extra_data(data: bytes, is_local: bool) -> List[ZipExtraHeader]:
@@ -206,6 +206,23 @@ def _parse_extended_timestamps(reader: BinaryReader, is_local: bool, mut_warning
     return ZXHExtendedTimestamps(mtime=mtime, atime=atime, ctime=ctime)
 
 
+def _parse_xceed_unicode_data(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHXceedUnicodeData:
+    # As per https://github.com/pmqs/zipdetails/issues/13
+
+    reader.expect_magic(b'NUCX', "Xceed unicode header signatura ('NUCX')")
+
+    unicode_path_len = reader.read_uint16('unicode path length')
+    unicode_comment_len = reader.read_uint16('unicode comment length') if (not is_local) else 0
+
+    raw_unicode_path = reader.read_amount(unicode_path_len * 2, 'UCS-16 path characters')
+    raw_unicode_comment = reader.read_amount(unicode_comment_len * 2, 'UCS-16 comment characters')
+
+    return ZXHXceedUnicodeData(
+        unicode_path=raw_unicode_path.decode('utf-16') if raw_unicode_path != b'' else None,
+        unicode_comment=raw_unicode_comment.decode('utf-16') if raw_unicode_comment != b'' else None,
+    )
+
+
 def _parse_infozip_unix_v1(reader: BinaryReader, is_local: bool, mut_warnings: List[str]) -> ZXHInfoZipUnixV1:
     raw_atime, raw_mtime = reader.read_struct('II', 'timestamps')
 
@@ -309,6 +326,7 @@ _INTERPRETATIONS_BY_MAGIC : Dict[
     0x000d: (ZXHPkWareUnix, _parse_pkware_unix),
     0x4453: (ZXHNTSecurityDescriptor, _parse_nt_security_descriptor),
     0x5455: (ZXHExtendedTimestamps, _parse_extended_timestamps),
+    0x554e: (ZXHXceedUnicodeData, _parse_xceed_unicode_data),
     0x5855: (ZXHInfoZipUnixV1, _parse_infozip_unix_v1),
     0x6375: (ZXHInfoZipUnicodeComment, _parse_infozip_unicode_comment),
     0x7075: (ZXHInfoZipUnicodePath, _parse_infozip_unicode_path),

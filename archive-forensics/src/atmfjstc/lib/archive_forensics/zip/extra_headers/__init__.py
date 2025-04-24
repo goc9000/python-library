@@ -144,6 +144,12 @@ class ZXHExtendedTimestamps(ZipExtraHeaderInterpretation):
 
 
 @dataclass(frozen=True)
+class ZXHXceedUnicodeData(ZipExtraHeaderInterpretation):
+    unicode_path: Optional[str] = None
+    unicode_comment: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class ZXHInfoZipUnixV1(ZipExtraHeaderInterpretation):
     mtime: ISOTimestamp
     atime: ISOTimestamp
